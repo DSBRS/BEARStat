@@ -281,7 +281,8 @@ function admin(){
 <option value="home"${e.homeAway==='home'?' selected':''}>홈</option>
 <option value="away"${e.homeAway==='away'?' selected':''}>원정</option>
 </select>
-<label>선발 (경기)</label><input id="f_starter" value="${e.starter||''}">
+<label>두산 선발</label><input id="f_starter" value="${e.starter||''}" placeholder="예: 곽빈">
+<label>상대팀 선발</label><input id="f_oppStarter" value="${e.oppStarter||''}" placeholder="예: 임찬규">
   <label>스코어 두산 : 상대 (종료 시)</label><div style="display:flex;gap:8px"><input id="f_sd" type="number" min="0" value="${e.score?e.score.d:''}"><input id="f_so" type="number" min="0" value="${e.score?e.score.o:''}"></div>
   <label>포스트시즌 단계 / 차전 / 시리즈 전적</label><div style="display:flex;gap:8px"><select id="f_stage"><option value="">정규시즌</option>${['시범경기','와일드카드','준플레이오프','플레이오프','한국시리즈','관련 없음'].map(x=>`<option${e.stage===x?' selected':''}>${x}</option>`).join('')}</select><input id="f_gno" type="number" min="1" placeholder="차전" value="${e.gameNo||''}"></div><input id="f_series" placeholder="1승 0패" value="${e.series||''}" style="margin-top:8px">
   <label>프로그램명</label><input id="f_program" value="${e.program||''}"><label>방송사</label><input id="f_channel" value="${e.channel||''}">
