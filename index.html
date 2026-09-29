@@ -314,7 +314,7 @@ document.addEventListener('click',ev=>{
     if(!title||!v('date')){alert('날짜와 제목(경기는 상대팀)은 필수입니다');return}
     const sd=v('sd'),so=v('so'),gn=v('gno'),id=editing?editing.id:'c'+Date.now();
     Repo.upsert({id,type,date:v('date'),time:v('time'),title,place:v('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp:v('opp'),venue:v('venue'),starter:v('starter'),score:{d:sd,v:so},stage:v('stage')}).then(()=>{editing=null;keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
-    }
+  }
   else if(t.id==='cancel'){editing=null;keep()}
   else if(t.dataset.edit){editing=Repo.custom().find(x=>x.id===t.dataset.edit);keep()}
   else if(t.dataset.del){if(confirm('삭제할까요?')){Repo.remove(t.dataset.del).catch(e=>alert('삭제하지 못했습니다: '+(e.message||''))).finally(keep)}}
