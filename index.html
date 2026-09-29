@@ -276,7 +276,6 @@ function admin(){
   <label>날짜</label><input id="f_date" type="date" value="${e.date}"><label>시간</label><input id="f_time" type="time" value="${e.time||''}">
   <label>장소</label><select id="f_place">${['',...VENUES].map(v=>`<option value="${v}" ${e.place===v?'selected':''}>${v||'장소 선택'}</option>`).join('')}</select>
   <label>상대팀 (경기)</label><select id="f_opp">${['',...TEAMS].map(t=>`<option value="${t}"${e.opp===t?' selected':''}>${t||'상대팀 선택'}</option>`).join('')}</select>
-<label>경기장 (경기)</label><input id="f_venue" value="${e.venue||''}">
 <label>홈 / 원정</label><select id="f_homeAway">
 <option value="">홈/원정 선택</option>
 <option value="home"${e.homeAway==='home'?' selected':''}>홈</option>
