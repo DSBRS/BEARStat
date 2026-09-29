@@ -157,7 +157,7 @@ function home(){
   <div class="foot"><a href="#/admin">관리자</a></div>`;
 }
 let OTHERS=[]; // 다른 구단 시즌 성적 [{n,w,d,l}] (관리자 입력)
-standings(){
+function standings(){
   const yr=String(TODAY.getFullYear());
 
   const calc=games=>{
