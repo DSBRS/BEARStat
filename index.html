@@ -310,7 +310,7 @@ document.addEventListener('click',ev=>{
   else if(t.id==='saveo'){const rows=TEAMS.map(n=>{const g=k=>+(document.querySelector(`[data-o="${n}"][data-k="${k}"]`).value||0);return{n,w:g('w'),d:g('d'),l:g('l')}});
     Repo.saveOthers(rows).then(()=>{alert('저장했습니다');keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'')))}
   else if(t.id==='save'){
-    const v=k=>$('#f_'+k).value.trim(),type=v('type'),opp=v('opp'),homeAway=v('homeAway'),g=type==='kbo'||type==='futures';
+    const v=k=>$('#f_'+k)?.value?.trim()||'',type=v('type'),opp=v('opp'),homeAway=v('homeAway'),g=type==='kbo'||type==='futures';
     if(g&&!homeAway){alert('경기는 홈/원정을 선택해주세요');return}
     const title=v('title')||(g&&opp?(type==='futures'?'FUTURES ':'')+'두산 vs '+opp:'');
     if(!title||!v('date')){alert('날짜와 제목(경기는 상대팀)은 필수입니다');return}
