@@ -223,7 +223,7 @@ function home(){
 }
 let stLg='kbo',stYear=TODAY.getFullYear();
 const lgTabs=()=>`<div class="chips" style="margin-bottom:12px">${[['kbo','KBO'],['futures','FUTURES']].map(([k,l])=>`<button class="chip${stLg===k?' on':''}" data-lg="${k}">${l}</button>`).join('')}</div>`;
-const standingsYearNav=()=>`<div class="calhead" style="margin-bottom:10px"><button class="ib" data-syear="-1">‹</button><b>${stYear}년 ${stLg==='kbo'?'KBO':'FUTURES'}</b><button class="ib" data-syear="1"${stYear>=TODAY.getFullYear()?' disabled':''}>›</button></div>`;
+const standingsYearNav=()=>`<div class="calhead" style="margin-bottom:10px"><button class="ib" data-syear="-1">‹</button><b>${stYear}년 ${stLg==='kbo'?'KBO':'FUTURES'}</b><button class="ib" data-syear="1"${stYear>=TODAY.getFullYear()+1?' disabled':''}>›</button></div>`;
 let OTHERS=[]; // 다른 구단 시즌 성적 [{n,w,d,l}] (관리자 입력)
 function standings(){
   const yr=String(stYear);
@@ -337,7 +337,7 @@ function recStats(){
 }
 
 function recordTabs(){
-  const maxYear=TODAY.getFullYear();
+  const maxYear=TODAY.getFullYear()+1;
   return `<div class="calhead" style="margin-bottom:10px"><button class="ib" data-ryear="-1">‹</button><b>${recYear}년 ${recLeague==='kbo'?'KBO':'FUTURES'}</b><button class="ib" data-ryear="1"${recYear>=maxYear?' disabled':''}>›</button></div>
   <div class="chips" style="margin-bottom:10px">${[['kbo','KBO'],['futures','FUTURES']].map(([k,l])=>`<button class="chip${recLeague===k?' on':''}" data-rleague="${k}">${l}</button>`).join('')}</div>
   <div class="chips" style="margin-bottom:12px">${[['pitcher','투수'],['hitter','타자']].map(([k,l])=>`<button class="chip${recKind===k?' on':''}" data-rkind="${k}">${l}</button>`).join('')}</div>`;
@@ -458,7 +458,7 @@ function admin(){
   <button class="btn" id="save">${editing?'수정 저장':'추가'}</button>${editing?'<button class="btn g" id="cancel">취소</button>':''}</div>
   <h2>두산 선수 명단</h2>
   <div class="card">
-    <div class="calhead" style="margin-bottom:6px"><button class="ib" data-aroster="-1">‹</button><b>${adminRosterYear}년 선수 명단</b><button class="ib" data-aroster="1"${adminRosterYear>=TODAY.getFullYear()?' disabled':''}>›</button></div>
+    <div class="calhead" style="margin-bottom:6px"><button class="ib" data-aroster="-1">‹</button><b>${adminRosterYear}년 선수 명단</b><button class="ib" data-aroster="1"${adminRosterYear>=TODAY.getFullYear()+1?' disabled':''}>›</button></div>
     <label>투수 명단</label>
     <textarea id="f_pitchers" rows="10" placeholder="한 줄에 한 명씩 입력">${esc(rosterForYear(adminRosterYear).filter(x=>x.t==='pitcher').map(x=>x.n).join('\n'))}</textarea>
     <label>타자 명단</label>
@@ -466,7 +466,7 @@ function admin(){
     <button class="btn" id="saveroster">${adminRosterYear}년 선수 명단 저장</button>
     <div class="note">시즌별 명단을 따로 저장합니다. 기존 bears_roster는 현재 연도 명단이 없을 때만 호환용으로 사용됩니다.</div>
   </div>
-  <h2>다른 구단 시즌 성적 (순위표용)</h2><div class="card"><div class="calhead" style="margin-bottom:6px"><button class="ib" data-astand="-1">‹</button><b>${adminStandingsYear}년 순위 입력</b><button class="ib" data-astand="1"${adminStandingsYear>=TODAY.getFullYear()?' disabled':''}>›</button></div>${TEAMS.map(t=>{const o=othersForYear(adminStandingsYear).find(x=>x.n===t)||{w:'',d:'',l:''};return `<div class="ev" style="align-items:center"><div class="tm" style="width:52px">${t}</div><div class="bd" style="display:flex;gap:6px"><input data-o="${t}" data-k="w" type="number" min="0" placeholder="승" value="${o.w}"><input data-o="${t}" data-k="d" type="number" min="0" placeholder="무" value="${o.d}"><input data-o="${t}" data-k="l" type="number" min="0" placeholder="패" value="${o.l}"></div></div>`}).join('')}<button class="btn" id="saveo">${adminStandingsYear}년 순위 성적 저장</button><div class="note">두산 성적은 해당 연도의 등록 경기 결과로 자동 계산됩니다. 다른 구단 성적은 연도별로 따로 저장됩니다.</div></div>
+  <h2>다른 구단 시즌 성적 (순위표용)</h2><div class="card"><div class="calhead" style="margin-bottom:6px"><button class="ib" data-astand="-1">‹</button><b>${adminStandingsYear}년 순위 입력</b><button class="ib" data-astand="1"${adminStandingsYear>=TODAY.getFullYear()+1?' disabled':''}>›</button></div>${TEAMS.map(t=>{const o=othersForYear(adminStandingsYear).find(x=>x.n===t)||{w:'',d:'',l:''};return `<div class="ev" style="align-items:center"><div class="tm" style="width:52px">${t}</div><div class="bd" style="display:flex;gap:6px"><input data-o="${t}" data-k="w" type="number" min="0" placeholder="승" value="${o.w}"><input data-o="${t}" data-k="d" type="number" min="0" placeholder="무" value="${o.d}"><input data-o="${t}" data-k="l" type="number" min="0" placeholder="패" value="${o.l}"></div></div>`}).join('')}<button class="btn" id="saveo">${adminStandingsYear}년 순위 성적 저장</button><div class="note">두산 성적은 해당 연도의 등록 경기 결과로 자동 계산됩니다. 다른 구단 성적은 연도별로 따로 저장됩니다.</div></div>
   <h2>직접 등록한 일정</h2><div class="card">${list.length?list.map(x=>`<div class="ev"><div class="tm">${x.date.slice(5)}</div><div class="bd"><div class="ti">${x.title}</div><div class="sb">${TYPES[x.type]}${x.kboGameId?' · KBO 자동연동':''}</div><button class="link" data-edit="${x.id}">수정</button>${x.kboGameId?'':`<button class="link" data-del="${x.id}">삭제</button>`}</div></div>`).join(''):'<div class="empty">등록한 일정이 없습니다.</div>'}</div>
   `;
 }
@@ -486,10 +486,10 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.sort){const k=t.dataset.sort;recSort=(recSort&&recSort.k===k)?{k,dir:recSort.dir==='desc'?'asc':'desc'}:{k,dir:k==='n'?'asc':'desc'};keep()}
   else if(t.dataset.rleague){recLeague=t.dataset.rleague;recSort=null;keep()}
   else if(t.dataset.rkind){recKind=t.dataset.rkind;recSort=null;keep()}
-  else if(t.dataset.ryear!==undefined){const y=recYear+(+t.dataset.ryear||0);recYear=Math.max(2000,Math.min(TODAY.getFullYear(),y));recSort=null;keep()}
-  else if(t.dataset.syear!==undefined){const y=stYear+(+t.dataset.syear||0);stYear=Math.max(2000,Math.min(TODAY.getFullYear(),y));keep()}
-  else if(t.dataset.aroster!==undefined){const y=adminRosterYear+(+t.dataset.aroster||0);adminRosterYear=Math.max(2000,Math.min(TODAY.getFullYear(),y));keep()}
-  else if(t.dataset.astand!==undefined){const y=adminStandingsYear+(+t.dataset.astand||0);adminStandingsYear=Math.max(2000,Math.min(TODAY.getFullYear(),y));keep()}
+  else if(t.dataset.ryear!==undefined){const y=recYear+(+t.dataset.ryear||0);recYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));recSort=null;keep()}
+  else if(t.dataset.syear!==undefined){const y=stYear+(+t.dataset.syear||0);stYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));keep()}
+  else if(t.dataset.aroster!==undefined){const y=adminRosterYear+(+t.dataset.aroster||0);adminRosterYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));keep()}
+  else if(t.dataset.astand!==undefined){const y=adminStandingsYear+(+t.dataset.astand||0);adminStandingsYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));keep()}
   else if(t.dataset.lg){stLg=t.dataset.lg;keep()}
   else if(t.dataset.t){h2h=t.dataset.t;keep()}
   else if(t.id==='addhr'){const box=$('#hr_rows'),y=+(S($('#f_date')?.value).slice(0,4)||TODAY.getFullYear());if(box)box.insertAdjacentHTML('beforeend',hrRowHTML({},y))}
