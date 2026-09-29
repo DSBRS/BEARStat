@@ -129,7 +129,7 @@ function gameCard(e,kind){
   return `<div class="card"><div class="top"><span>${e.venue||''}${e.homeAway?` <span class="tag">${e.homeAway==='home'?'홈':'원정'}</span>`:''}</span><span>${e.stage?`<span class="badge">${sub}</span>`:kind==='kbo'?'정규시즌':'퓨처스리그'}${e.series?` <span class="tag" style="margin:0 0 0 4px">${e.series}</span>`:''}</span></div>
   <div class="vs"><span class="t">${e.opp}</span><span class="v">vs 두산</span></div>
   ${r?`<div class="score">${e.score.d} : ${e.score.v}<span class="res ${r}">${RL[r]}</span></div>`:`<div class="time">${e.time||'<span class=tbd>시간 미정</span>'}</div>`}
-  <div class="meta"><span>경기장</span><span>${e.venue||'미정'}</span><span>${kind==='kbo'?'선발':'선발/라인업'}</span><span>${st||'<span class=tbd>선발 투수 미정</span>'}</span>${e.broadcast?`<span>중계</span><span>${e.broadcast}</span>`:''}</div></div>`;
+  <div class="meta"><span>경기장</span><span>${e.venue||'미정'}</span><span>두산 선발</span><span>${e.starter||'<span class=tbd>미정</span>'}</span><span>${e.opp||'상대팀'} 선발</span><span>${e.oppStarter||'<span class=tbd>미정</span>'}</span>${e.broadcast?`<span>중계</span><span>${e.broadcast}</span>`:''}</div></div>`;
 }
 function evRow(e){
   let sb='';
