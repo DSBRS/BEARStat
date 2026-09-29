@@ -307,8 +307,7 @@ function recStats(){
       if(hrs.length)hrs.forEach(x=>add(x.player,'hr','hitter'));
       else{
         const hitters=roster.filter(x=>x.t==='hitter').map(x=>x.n).sort((a,b)=>b.length-a.length);
-        S(e.homeRuns).split(/
-+/).map(x=>x.trim()).filter(Boolean).forEach(line=>{
+        S(e.homeRuns).split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(line=>{
           const n=hitters.find(name=>line===name||line.startsWith(name+' '));
           if(n)add(n,'hr','hitter');
         });
