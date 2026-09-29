@@ -126,7 +126,7 @@ function gameCard(e,kind){
   if(!e)return `<div class="card"><div class="empty">오늘 경기가 없습니다.</div></div>`;
   const r=result(e),sub=[e.stage,e.gameNo?e.gameNo+'차전':''].filter(Boolean).join(' · ');
   const st=e.starter||'';
-  return `<div class="card"><div class="top"><span>${e.venue||''}</span><span>${e.stage?`<span class="badge">${sub}</span>`:kind==='kbo'?'정규시즌':'퓨처스리그'}${e.series?` <span class="tag" style="margin:0 0 0 4px">${e.series}</span>`:''}</span></div>
+  return `<div class="card"><div class="top"><span>${e.venue||''}${e.homeAway?` <span class="tag">${e.homeAway==='home'?'홈':'원정'}</span>`:''}</span><span>${e.stage?`<span class="badge">${sub}</span>`:kind==='kbo'?'정규시즌':'퓨처스리그'}${e.series?` <span class="tag" style="margin:0 0 0 4px">${e.series}</span>`:''}</span></div>
   <div class="vs"><span class="t">${e.opp}</span><span class="v">vs 두산</span></div>
   ${r?`<div class="score">${e.score.d} : ${e.score.o}<span class="res ${r}">${RL[r]}</span></div>`:`<div class="time">${e.time||'<span class=tbd>시간 미정</span>'}</div>`}
   <div class="meta"><span>경기장</span><span>${e.venue||'미정'}</span><span>${kind==='kbo'?'선발':'선발/라인업'}</span><span>${st||'<span class=tbd>선발 투수 미정</span>'}</span>${e.broadcast?`<span>중계</span><span>${e.broadcast}</span>`:''}</div></div>`;
@@ -157,14 +157,100 @@ function home(){
   <div class="foot"><a href="#/admin">관리자</a></div>`;
 }
 let OTHERS=[]; // 다른 구단 시즌 성적 [{n,w,d,l}] (관리자 입력)
-function standings(){
-  const yr=String(TODAY.getFullYear()),c={w:0,d:0,l:0};
-  Repo.all().filter(e=>e.type==='kbo'&&e.score&&!e.stage&&e.date.slice(0,4)===yr).forEach(e=>{const r=result(e);c[r==='W'?'w':r==='L'?'l':'d']++});
-  const rows=[{n:'두산',...c}].concat(TEAMS.map(n=>{const o=OTHERS.find(x=>x.n===n)||{};return{n,w:o.w||0,d:o.d||0,l:o.l||0}}))
-    .map(r=>({...r,g:r.w+r.d+r.l,p:r.w+r.l?r.w/(r.w+r.l):0})).sort((a,b)=>b.p-a.p||b.w-a.w);
-  return `<div class="brand"><div class="logo">순위</div></div><div class="card"><table><tr><th>순위</th><th>팀</th><th>경기</th><th>승</th><th>무</th><th>패</th><th>승률</th></tr>
-  ${rows.map((r,i)=>`<tr class="${r.n==='두산'?'me':''}"><td>${i+1}</td><td>${r.n==='두산'?'두산베어스':r.n}</td><td>${r.g}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.p>=1?'1.000':r.p.toFixed(3).slice(1)}</td></tr>`).join('')}</table></div>
-  <div class="foot">두산은 등록한 경기 결과로 자동 계산 · 다른 구단은 관리자가 입력한 성적 기준</div>`;
+standings(){
+  const yr=String(TODAY.getFullYear());
+
+  const calc=games=>{
+    const c={w:0,d:0,l:0};
+
+    games.forEach(e=>{
+      const r=result(e);
+      c[r==='W'?'w':r==='L'?'l':'d']++;
+    });
+
+    const g=c.w+c.d+c.l;
+    const p=c.w+c.l ? c.w/(c.w+c.l) : 0;
+
+    return {...c,g,p};
+  };
+
+  const games=Repo.all().filter(
+    e=>e.type==='kbo' &&
+       e.score &&
+       !e.stage &&
+       e.date.slice(0,4)===yr
+  );
+
+  const c=calc(games);
+  const home=calc(games.filter(e=>e.homeAway==='home'));
+  const away=calc(games.filter(e=>e.homeAway==='away'));
+
+  const fmt=p=>p>=1?'1.000':p.toFixed(3).slice(1);
+
+  const rows=[{n:'두산',...c}]
+    .concat(TEAMS.map(n=>{
+      const o=OTHERS.find(x=>x.n===n)||{};
+      return {
+        n,
+        w:o.w||0,
+        d:o.d||0,
+        l:o.l||0
+      };
+    }))
+    .map(r=>({
+      ...r,
+      g:r.w+r.d+r.l,
+      p:r.w+r.l ? r.w/(r.w+r.l) : 0
+    }))
+    .sort((a,b)=>b.p-a.p||b.w-a.w);
+
+  return `
+    <div class="brand">
+      <div class="logo">순위</div>
+    </div>
+
+    <div class="card">
+      <table>
+        <tr>
+          <th>순위</th>
+          <th>팀</th>
+          <th>경기</th>
+          <th>승</th>
+          <th>무</th>
+          <th>패</th>
+          <th>승률</th>
+        </tr>
+
+        ${rows.map((r,i)=>`
+          <tr class="${r.n==='두산'?'me':''}">
+            <td>${i+1}</td>
+            <td>${r.n==='두산'?'두산베어스':r.n}</td>
+            <td>${r.g}</td>
+            <td>${r.w}</td>
+            <td>${r.d}</td>
+            <td>${r.l}</td>
+            <td>${fmt(r.p)}</td>
+          </tr>
+        `).join('')}
+      </table>
+    </div>
+
+    <h2>홈 / 원정 성적</h2>
+
+    <div class="card">
+      <div class="meta">
+        <span>홈</span>
+        <span>${home.w}승 ${home.d}무 ${home.l}패 · 승률 ${fmt(home.p)}</span>
+
+        <span>원정</span>
+        <span>${away.w}승 ${away.d}무 ${away.l}패 · 승률 ${fmt(away.p)}</span>
+      </div>
+    </div>
+
+    <div class="foot">
+      두산은 등록한 경기 결과로 자동 계산 · 다른 구단은 관리자가 입력한 성적 기준
+    </div>
+  `;
 }
 function h2hView(){
   const kb=Repo.all().filter(e=>e.type==='kbo');
@@ -181,13 +267,20 @@ function h2hView(){
 }
 function admin(){
   if(!isOwner)return `<div class="brand"><div class="logo">관리자</div></div><div class="card">${SB?`<label>이메일</label><input id="em" type="email" autocomplete="username"><label>비밀번호</label><input id="pw" type="password" autocomplete="current-password"><button class="btn" id="login">로그인</button>${SB&&document.body.dataset.r==='admin'&&isOwner===false?'':''}`:'<div class="empty">Supabase 설정 후 사용할 수 있습니다.</div>'}<div class="note">일정 수정은 관리자로 등록된 계정만 가능하며 서버에서 확인합니다. <a href="#/">← 돌아가기</a></div></div>`;
-  const e=editing||{type:'kbo',date:TS,time:'',title:'',place:'',program:'',channel:'',players:[],desc:''},list=Repo.custom().sort((a,b)=>a.date.localeCompare(b.date));
+  const e=editing||{type:'kbo',date:TS,time:'',title:'',place:'',homeAway:'',program:'',channel:'',players:[],desc:''}
   return `<div class="brand"><div class="logo">관리자</div><a href="#/" class="demo" style="text-decoration:none">← 앱</a></div>
   <button class="btn g" id="logout" style="margin:0 0 12px">로그아웃</button><div class="card"><b>${editing?'일정 수정':'일정 추가'}</b>
   <label>종류</label><select id="f_type">${['kbo','futures','club','fan','broadcast','radio','ticket','edu','etc'].map(k=>`<option value="${k}"${e.type===k?' selected':''}>${TYPES[k]}</option>`).join('')}</select>
   <label>날짜</label><input id="f_date" type="date" value="${e.date}"><label>시간</label><input id="f_time" type="time" value="${e.time||''}">
   <label>장소</label><select id="f_place">${['',...VENUES].map(v=>`<option value="${v}" ${e.place===v?'selected':''}>${v||'장소 선택'}</option>`).join('')}</select>
-  <label>상대팀 (경기)</label><input id="f_opp" value="${e.opp||''}"><label>경기장 (경기)</label><input id="f_venue" value="${e.venue||''}"><label>선발 (경기)</label><input id="f_starter" value="${e.starter||''}">
+  <label>상대팀 (경기)</label><input id="f_opp" value="${e.opp||''}">
+<label>경기장 (경기)</label><input id="f_venue" value="${e.venue||''}">
+<label>홈 / 원정</label><select id="f_homeAway">
+<option value="">홈/원정 선택</option>
+<option value="home"${e.homeAway==='home'?' selected':''}>홈</option>
+<option value="away"${e.homeAway==='away'?' selected':''}>원정</option>
+</select>
+<label>선발 (경기)</label><input id="f_starter" value="${e.starter||''}">
   <label>스코어 두산 : 상대 (종료 시)</label><div style="display:flex;gap:8px"><input id="f_sd" type="number" min="0" value="${e.score?e.score.d:''}"><input id="f_so" type="number" min="0" value="${e.score?e.score.o:''}"></div>
   <label>포스트시즌 단계 / 차전 / 시리즈 전적</label><div style="display:flex;gap:8px"><select id="f_stage"><option value="">정규시즌</option>${['시범경기','와일드카드','준플레이오프','플레이오프','한국시리즈','관련 없음'].map(x=>`<option${e.stage===x?' selected':''}>${x}</option>`).join('')}</select><input id="f_gno" type="number" min="1" placeholder="차전" value="${e.gameNo||''}"></div><input id="f_series" placeholder="1승 0패" value="${e.series||''}" style="margin-top:8px">
   <label>프로그램명</label><input id="f_program" value="${e.program||''}"><label>방송사</label><input id="f_channel" value="${e.channel||''}">
@@ -215,11 +308,12 @@ document.addEventListener('click',ev=>{
   else if(t.id==='saveo'){const rows=TEAMS.map(n=>{const g=k=>+(document.querySelector(`[data-o="${n}"][data-k="${k}"]`).value||0);return{n,w:g('w'),d:g('d'),l:g('l')}});
     Repo.saveOthers(rows).then(()=>{alert('저장했습니다');keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'')))}
   else if(t.id==='save'){
-    const v=k=>$('#f_'+k).value.trim(),type=v('type'),opp=v('opp'),g=type==='kbo'||type==='futures';
+    const v=k=>$('#f_'+k).value.trim(),type=v('type'),opp=v('opp'),homeAway=v('homeAway'),g=type==='kbo'||type==='futures';
+    if(g&&!homeAway){alert('경기는 홈/원정을 선택해주세요');return}
     const title=v('title')||(g&&opp?(type==='futures'?'FUTURES ':'')+'두산 vs '+opp:'');
     if(!title||!v('date')){alert('날짜와 제목(경기는 상대팀)은 필수입니다');return}
     const sd=v('sd'),so=v('so'),gn=v('gno'),id=editing?editing.id:'c'+Date.now();
-    Repo.upsert({id,type,date:v('date'),time:v('time'),title,place:v('place'),program:v('program'),channel:v('channel'),players:v('players')?v('players').split(',').map(x=>x.trim()):[],desc:v('desc'),opp,venue:v('venue'),starter:v('starter'),score:(sd!==''&&so!=='')?{d:+sd,o:+so}:null,stage:v('stage'),gameNo:gn?+gn:0,series:v('series')})
+    Repo.upsert({id,type,date:v('date'),time:v('time'),title,place:v('place'),homeAway,program:v('program'),channel:v('channel'),
       .then(()=>{editing=null;keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));}
   else if(t.id==='cancel'){editing=null;keep()}
   else if(t.dataset.edit){editing=Repo.custom().find(x=>x.id===t.dataset.edit);keep()}
