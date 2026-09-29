@@ -139,7 +139,7 @@ function detail(e){
   const fin=hasScore(e),opp=S(e.opp)||'상대팀';
   const row=(l,v,hide)=>{const x=S(v);return x?`<span>${l}</span><span>${esc(x)}</span>`:(hide?'':`<span>${l}</span><span class="tbd">미정</span>`)};
   const ha=e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':'';
-  let h=row('경기장',e.venue||e.place)+row('홈/원정',ha)+row('두산 선발',e.starter)+row(opp+' 선발',e.oppStarter)+row('중계',e.broadcast);
+  let h=row('경기장',e.venue||e.place)+row('홈/원정',ha)+row('두산 선발',e.starter)+row(opp+' 선발',e.oppStarter);
   if(fin){
     const hr=S(e.homeRuns).split('\n').map(x=>esc(x.trim())).filter(Boolean).join('<br>');
     h+=row('승리투수',e.winP,1)+row('패전투수',e.loseP,1)+row('세이브',e.saveP,1)+row('홀드',e.holdP,1)+row('결승타',e.gwRbi,1)+(hr?`<span>홈런</span><span>${hr}</span>`:'')+row('경기시간',e.duration,1);
@@ -154,11 +154,11 @@ function gameCard(e,kind){
   return `<div class="card tap" data-x="${esc(e.id)}"><div class="top"><span>${e.venue||''}${e.homeAway?` <span class="tag">${e.homeAway==='home'?'홈':'원정'}</span>`:''}</span><span>${e.stage?`<span class="badge">${sub}</span>`:kind==='kbo'?'정규시즌':'퓨처스리그'}${e.series?` <span class="tag" style="margin:0 0 0 4px">${e.series}</span>`:''}</span></div>
   <div class="vs"><span class="t">${e.opp||'상대팀 미정'}</span><span class="v">vs 두산</span></div>
   ${r?`<div class="score">${e.score.d} : ${e.score.v}<span class="res ${r}">${RL[r]}</span></div>`:`<div class="time">${e.time||'<span class=tbd>시간 미정</span>'}</div>`}
-  <div class="meta"><span>경기장</span><span>${e.venue||'미정'}</span><span>두산 선발</span><span>${e.starter||'<span class=tbd>미정</span>'}</span><span>${e.opp||'상대팀'} 선발</span><span>${e.oppStarter||'<span class=tbd>미정</span>'}</span>${e.broadcast?`<span>중계</span><span>${e.broadcast}</span>`:''}</div><div class="more">${o?'접기 ▴':'경기 상세 ▾'}</div>${o?detail(e):''}</div>`;
+  <div class="meta"><span>경기장</span><span>${e.venue||'미정'}</span><span>두산 선발</span><span>${e.starter||'<span class=tbd>미정</span>'}</span><span>${e.opp||'상대팀'} 선발</span><span>${e.oppStarter||'<span class=tbd>미정</span>'}</span></div><div class="more">${o?'접기 ▴':'경기 상세 ▾'}</div>${o?detail(e):''}</div>`;
 }
 function evRow(e){
   let sb='';
-  if(e.type==='kbo'||e.type==='futures'||e.type==='edu'){const r=result(e);sb=[e.venue,hasScore(e)?`${e.score.d}:${e.score.v} ${RL[r]}`:'',e.stage?[e.stage,e.gameNo?e.gameNo+'차전':''].join(' '):'',e.starter,e.broadcast].filter(Boolean).join(' · ');}
+  if(e.type==='kbo'||e.type==='futures'||e.type==='edu'){const r=result(e);sb=[e.venue,hasScore(e)?`${e.score.d}:${e.score.v} ${RL[r]}`:'',e.stage?[e.stage,e.gameNo?e.gameNo+'차전':''].join(' '):'',e.starter].filter(Boolean).join(' · ');}
   else if(e.type==='broadcast'||e.type==='radio')sb=[e.program,e.players&&e.players.join(', '),e.channel].filter(Boolean).join(' · ');
   else sb=[e.place].filter(Boolean).join(' · ');
   const g=e.type==='kbo'||e.type==='futures',o=g&&openIds.has(e.id);
@@ -329,7 +329,6 @@ function admin(){
 <label>두산 선발</label><input id="f_starter" value="${e.starter||''}" placeholder="예: 곽빈">
 <label>상대팀 선발</label><input id="f_oppStarter" value="${e.oppStarter||''}" placeholder="예: 임찬규">
   <label>스코어 두산 : 상대 (종료 시)</label><div style="display:flex;gap:8px"><input id="f_sd" type="number" min="0" value="${e.score?e.score.d:''}"><input id="f_so" type="number" min="0" value="${e.score?e.score.v:''}"></div>
-  <label>중계 정보</label><input id="f_broadcast" value="${esc(e.broadcast)}" placeholder="예: SPOTV, 티빙">
   <label>경기시간</label><input id="f_duration" value="${esc(e.duration)}" placeholder="예: 3시간 12분">
   <label>승리투수</label><input id="f_winP" value="${esc(e.winP)}" placeholder="예: 곽빈">
   <label>패전투수</label><input id="f_loseP" value="${esc(e.loseP)}">
@@ -372,7 +371,7 @@ document.addEventListener('click',ev=>{
     if(!title||!v('date')){alert('날짜와 제목(경기는 상대팀)은 필수입니다');return}
     const sd=v('sd'),so=v('so'),gn=v('gno'),id=editing?editing.id:'c'+Date.now();
     const old=editing||{},f=k=>$('#f_'+k)?v(k):S(old[k]);
-    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:v('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp:v('opp'),venue:v('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),broadcast:f('broadcast'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),homeRuns:f('homeRuns')}).then(()=>{editing=null;keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
+    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:v('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp:v('opp'),venue:v('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),homeRuns:f('homeRuns')}).then(()=>{editing=null;keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
   }
   else if(t.id==='cancel'){editing=null;keep()}
   else if(t.dataset.edit){editing=Repo.custom().find(x=>x.id===t.dataset.edit);keep()}
