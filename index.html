@@ -143,7 +143,8 @@ function detail(e){
   const ha=e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':'';
   let h=row('경기장',e.venue||e.place)+row('홈/원정',ha)+row('두산 선발',e.starter)+row(opp+' 선발',e.oppStarter);
   if(fin){
-    const hr=S(e.homeRuns).split('\n').map(x=>esc(x.trim())).filter(Boolean).join('<br>');
+    const hrs=parseHrEntries(e);
+    const hr=hrs.length?hrs.map(x=>`${esc(x.player)} ${x.inning}회 ${x.runs}점`).join('<br>'):S(e.homeRuns).split('\n').map(x=>esc(x.trim())).filter(Boolean).join('<br>');
     h+=row('승리투수',e.winP,1)+row('패전투수',e.loseP,1)+row('세이브',e.saveP,1)+row('홀드',e.holdP,1)+row('결승타',e.gwRbi,1)+(hr?`<span>홈런</span><span>${hr}</span>`:'')+row('경기시간',e.duration,1);
   }
   return `<div class="dt">${fin?`<div class="big2">두산 ${+e.score.d} : ${+e.score.v} ${esc(opp)}</div>`:''}<div class="meta">${h}</div></div>`;
@@ -302,18 +303,15 @@ function recStats(){
     add(e.holdP,'h','pitcher');
     add(e.gwRbi,'g','hitter');
     {
-      const hitters=roster.filter(x=>x.t==='hitter').map(x=>x.n).sort((a,b)=>b.length-a.length);
-      const lines=S(e.homeRuns).split(/\n+/).map(x=>x.trim()).filter(Boolean);
-      if(lines.length){
-        lines.forEach(line=>{
-          const n=hitters.find(name=>line===name||line.startsWith(name+' ')||line.startsWith(name+'(')||line.startsWith(name+'（'));
-          if(n){
-            if(!m[n])m[n]={n,w:0,l:0,s:0,h:0,g:0,hr:0,d2:0,d3:0,hit:0,sb:0};
-            m[n].hr++;
-          }
+      const hrs=parseHrEntries(e);
+      if(hrs.length)hrs.forEach(x=>add(x.player,'hr','hitter'));
+      else{
+        const hitters=roster.filter(x=>x.t==='hitter').map(x=>x.n).sort((a,b)=>b.length-a.length);
+        S(e.homeRuns).split(/
++/).map(x=>x.trim()).filter(Boolean).forEach(line=>{
+          const n=hitters.find(name=>line===name||line.startsWith(name+' '));
+          if(n)add(n,'hr','hitter');
         });
-      }else{
-        add(e.hrPlayers,'hr','hitter');
       }
     }
     add(e.doubles,'d2','hitter');
@@ -366,6 +364,31 @@ function records(){
   <div class="foot">${TODAY.getFullYear()}년 ${recLeague==='kbo'?'KBO':'FUTURES'} · 두산 선수 명단 기준<br>${st}</div>`;
 }
 
+
+function parseHrEntries(e){
+  if(Array.isArray(e&&e.hrEntries))return e.hrEntries.map(x=>({player:S(x.player),inning:+x.inning||0,runs:+x.runs||0})).filter(x=>x.player&&x.inning&&x.runs);
+  const hitters=normRoster(BEARS_ROSTER).filter(x=>x.t==='hitter').map(x=>x.n).sort((a,b)=>b.length-a.length);
+  return S(e&&e.homeRuns).split(/\n+/).map(line=>{
+    const x=line.trim();if(!x)return null;
+    const player=hitters.find(n=>x===n||x.startsWith(n+' '))||'';
+    const im=x.match(/(\d{1,2})회/),rm=x.match(/([1-4])점/);
+    return player&&im&&rm?{player,inning:+im[1],runs:+rm[1]}:null;
+  }).filter(Boolean);
+}
+function hrRowHTML(x={}){
+  const hitters=normRoster(BEARS_ROSTER).filter(p=>p.t==='hitter').map(p=>p.n);
+  return `<div class="hr-row" style="display:grid;grid-template-columns:minmax(0,1fr) 78px 72px auto;gap:6px;align-items:center;margin-top:8px">
+    <select class="hr-player"><option value="">선수</option>${hitters.map(n=>`<option value="${esc(n)}"${S(x.player)===n?' selected':''}>${esc(n)}</option>`).join('')}</select>
+    <select class="hr-inning"><option value="">이닝</option>${Array.from({length:11},(_,i)=>i+1).map(n=>`<option value="${n}"${+x.inning===n?' selected':''}>${n}회</option>`).join('')}</select>
+    <select class="hr-runs"><option value="">점수</option>${[1,2,3,4].map(n=>`<option value="${n}"${+x.runs===n?' selected':''}>${n}점</option>`).join('')}</select>
+    <button type="button" class="link" data-hrdel style="margin:0">삭제</button>
+  </div>`;
+}
+function hrEditor(e){
+  const rows=parseHrEntries(e);
+  return `<label>홈런 기록</label><div id="hr_rows">${(rows.length?rows:[{}]).map(hrRowHTML).join('')}</div><button type="button" class="btn g" id="addhr">+ 홈런 추가</button><div class="note">선수는 등록된 타자 명단에서 선택 · 이닝 1~11회 · 점수 1~4점</div>`;
+}
+
 function h2hView(){
   const kb=Repo.all().filter(e=>e.type==='kbo');
   let body='';
@@ -402,13 +425,13 @@ function admin(){
   <label>승리투수</label><input id="f_winP" value="${esc(e.winP)}" placeholder="예: 곽빈">
   <label>패전투수</label><input id="f_loseP" value="${esc(e.loseP)}">
   <label>세이브투수</label><input id="f_saveP" value="${esc(e.saveP)}" placeholder="예: 김택연">
-  <label>홀드투수 (여러 명은 쉼표로 구분)</label><input id="f_holdP" value="${esc(e.holdP)}" placeholder="예: 선수A, 선수B">
+  <label>홀드투수 (여러 명은 쉼표로 구분)</label><input id="f_holdP" value="${esc(e.holdP)}" placeholder="예: 곽빈, 김택연">
   <label>결승타</label><input id="f_gwRbi" value="${esc(e.gwRbi)}" placeholder="예: 양의지">
   <label>2루타 (여러 개면 이름 반복)</label><input id="f_doubles" value="${esc(e.doubles)}" placeholder="예: 정수빈, 양의지">
   <label>3루타 (여러 개면 이름 반복)</label><input id="f_triples" value="${esc(e.triples)}" placeholder="예: 정수빈">
-  <label>안타 (여러 개면 이름 반복)</label><input id="f_hits" value="${esc(e.hits)}" placeholder="예: 양의지, 양의지, 정수빈">
-  <label>도루 (여러 개면 이름 반복)</label><input id="f_steals" value="${esc(e.steals)}" placeholder="예: 정수빈, 이유찬">
-  <label>홈런 기록 (한 줄에 하나)</label><textarea id="f_homeRuns" rows="3" placeholder="예: 양의지 3회 2점">${esc(e.homeRuns)}</textarea>
+  <label>안타 (여러 개면 이름 반복)</label><input id="f_hits" value="${esc(e.hits)}" placeholder="예: 양의지, 양의지, 김민석">
+  <label>도루 (여러 개면 이름 반복)</label><input id="f_steals" value="${esc(e.steals)}" placeholder="예: 정수빈, 김민석">
+  ${hrEditor(e)}
   <label>포스트시즌 단계 / 차전 / 시리즈 전적</label><div style="display:flex;gap:8px"><select id="f_stage"><option value="">정규시즌</option>${['시범경기','와일드카드','준플레이오프','플레이오프','한국시리즈','관련 없음'].map(x=>`<option${e.stage===x?' selected':''}>${x}</option>`).join('')}</select><input id="f_gno" type="number" min="1" placeholder="차전" value="${e.gameNo||''}"></div><input id="f_series" placeholder="1승 0패" value="${e.series||''}" style="margin-top:8px">
   <label>프로그램명</label><input id="f_program" value="${e.program||''}"><label>방송사</label><input id="f_channel" value="${e.channel||''}">
   <label>관련 선수 (쉼표 구분)</label><input id="f_players" value="${(e.players||[]).join(', ')}"><label>설명</label><textarea id="f_desc" rows="2">${e.desc||''}</textarea>
@@ -434,7 +457,7 @@ function route(){
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-lg],[data-rleague],[data-rkind],[data-edit],[data-del],#save,#saveo,#saveroster,#cancel,#login,#logout');if(!t)return;
+  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-lg],[data-rleague],[data-rkind],[data-hrdel],[data-edit],[data-del],#addhr,#save,#saveo,#saveroster,#cancel,#login,#logout');if(!t)return;
   const keep=()=>{const y=scrollY;route2();scrollTo(0,y)};
   if(t.dataset.d){sel=t.dataset.d;const d=new Date(sel+'T00:00:00');view=new Date(d.getFullYear(),d.getMonth(),1);keep()}
   else if(t.dataset.m!==undefined){const m=+t.dataset.m;if(m===0){sel=TS;view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1)}else view=new Date(view.getFullYear(),view.getMonth()+m,1);keep()}
@@ -444,6 +467,8 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.rkind){recKind=t.dataset.rkind;recSort=null;keep()}
   else if(t.dataset.lg){stLg=t.dataset.lg;keep()}
   else if(t.dataset.t){h2h=t.dataset.t;keep()}
+  else if(t.id==='addhr'){const box=$('#hr_rows');if(box)box.insertAdjacentHTML('beforeend',hrRowHTML({}))}
+  else if(t.dataset.hrdel!==undefined){const row=t.closest('.hr-row');if(row){const box=$('#hr_rows');row.remove();if(box&&!box.querySelector('.hr-row'))box.insertAdjacentHTML('beforeend',hrRowHTML({}))}}
   else if(t.id==='login'){SB.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value}).then(r=>{if(r.error)alert('로그인 실패: '+r.error.message)})}
   else if(t.id==='logout'){SB.auth.signOut()}
   else if(t.id==='saveo'){const rows=TEAMS.map(n=>{const g=k=>+(document.querySelector(`[data-o="${n}"][data-k="${k}"]`).value||0);return{n,w:g('w'),d:g('d'),l:g('l')}});
@@ -464,8 +489,10 @@ document.addEventListener('click',ev=>{
     const title=v('title')||(g&&opp?(type==='futures'?'FUTURES ':'')+'두산 vs '+opp:'');
     if(!title||!v('date')){alert('날짜와 제목(경기는 상대팀)은 필수입니다');return}
     const sd=v('sd'),so=v('so'),gn=v('gno'),id=editing?editing.id:'c'+Date.now();
+    const hrEntries=[...document.querySelectorAll('.hr-row')].map(row=>({player:S(row.querySelector('.hr-player')?.value),inning:+(row.querySelector('.hr-inning')?.value||0),runs:+(row.querySelector('.hr-runs')?.value||0)})).filter(x=>x.player&&x.inning&&x.runs);
+    const homeRuns=hrEntries.map(x=>`${x.player} ${x.inning}회 ${x.runs}점`).join('\n');
     const old=editing||{},f=k=>$('#f_'+k)?v(k):S(old[k]);
-    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:v('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp:v('opp'),venue:v('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),homeRuns:f('homeRuns')}).then(()=>{editing=null;keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
+    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:v('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp:v('opp'),venue:v('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
   }
   else if(t.id==='cancel'){editing=null;keep()}
   else if(t.dataset.edit){editing=Repo.custom().find(x=>x.id===t.dataset.edit);keep()}
