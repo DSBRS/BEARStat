@@ -96,16 +96,19 @@ const DEMO=[]; // 실제 일정은 관리자 화면에서 직접 등록
 
 /* 권한: 쓰기는 Supabase RLS(admins 테이블에 등록된 계정만)가 서버에서 강제합니다.
  * isOwner는 화면 표시용일 뿐 보안 경계가 아닙니다. */
-let isOwner=false,CUSTOM=[],SB=null,BEARS_ROSTER=[];
+let isOwner=false,CUSTOM=[],SB=null,BEARS_ROSTER=[],ROSTERS_BY_YEAR={},OTHERS_BY_YEAR={};
+let adminRosterYear=TODAY.getFullYear(),adminStandingsYear=TODAY.getFullYear();
 const live=()=>CUSTOM.some(e=>e.source==='kbo');
 const Repo={
   all(){const a=DEMO.concat(CUSTOM),k=e=>e.date+e.type,isG=e=>e.type==='kbo'||e.type==='futures',lv=CUSTOM.some(e=>e.source==='kbo'),real=new Set(a.filter(e=>!e.demo&&isG(e)).map(k));
     return a.filter(e=>!(e.demo&&isG(e)&&(lv||real.has(k(e)))))}, // 실제 수집 데이터가 있으면 DEMO 경기는 모두 숨김
   custom(){return CUSTOM},
-  async saveOthers(rows){if(!SB)throw new Error('Supabase 설정이 필요합니다');const r=await SB.from('kv').upsert({key:'standings_others',body:rows});if(r.error)throw r.error;OTHERS=rows;rerender()},
-  async saveRoster(rows){if(!SB)throw new Error('Supabase 설정이 필요합니다');rows=normRoster(rows);const r=await SB.from('kv').upsert({key:'bears_roster',body:rows});if(r.error)throw r.error;BEARS_ROSTER=rows;rerender()},
+  async saveOthers(rows,year=adminStandingsYear){if(!SB)throw new Error('Supabase 설정이 필요합니다');const y=+year||TODAY.getFullYear(),key='standings_others_'+y;const r=await SB.from('kv').upsert({key,body:rows});if(r.error)throw r.error;OTHERS_BY_YEAR[y]=rows;if(y===TODAY.getFullYear())OTHERS=rows;rerender()},
+  async saveRoster(rows,year=adminRosterYear){if(!SB)throw new Error('Supabase 설정이 필요합니다');rows=normRoster(rows);const y=+year||TODAY.getFullYear(),key='bears_roster_'+y;const r=await SB.from('kv').upsert({key,body:rows});if(r.error)throw r.error;ROSTERS_BY_YEAR[y]=rows;if(y===TODAY.getFullYear())BEARS_ROSTER=rows;rerender()},
   async load(){const r=await SB.from('events').select('body');if(!r.error)CUSTOM=r.data.map(x=>x.body);
-    const k=await SB.from('kv').select('body').eq('key','standings_others');if(!k.error&&k.data.length)OTHERS=k.data[0].body;const br=await SB.from('kv').select('body').eq('key','bears_roster');if(!br.error&&br.data.length)BEARS_ROSTER=normRoster(br.data[0].body);rerender()},
+    const ks=await SB.from('kv').select('key,body').like('key','standings_others%');if(!ks.error){let legacy=null;for(const x of ks.data||[]){if(x.key==='standings_others')legacy=x.body;else{const m=String(x.key).match(/^standings_others_(\d{4})$/);if(m)OTHERS_BY_YEAR[+m[1]]=x.body}}if(!OTHERS_BY_YEAR[TODAY.getFullYear()]&&legacy)OTHERS=legacy;else OTHERS=OTHERS_BY_YEAR[TODAY.getFullYear()]||[]}
+    const br=await SB.from('kv').select('key,body').like('key','bears_roster%');if(!br.error){let legacy=null;for(const x of br.data||[]){if(x.key==='bears_roster')legacy=normRoster(x.body);else{const m=String(x.key).match(/^bears_roster_(\d{4})$/);if(m)ROSTERS_BY_YEAR[+m[1]]=normRoster(x.body)}}BEARS_ROSTER=ROSTERS_BY_YEAR[TODAY.getFullYear()]||legacy||[]}
+    rerender()},
   async upsert(ev){if(!SB)throw new Error('Supabase 설정이 필요합니다');const r=await SB.from('events').upsert({id:ev.id,date:ev.date,body:ev});if(r.error)throw r.error;await this.load()},
   async remove(id){if(!SB)throw new Error('Supabase 설정이 필요합니다');const r=await SB.from('events').delete().eq('id',id);if(r.error)throw r.error;await this.load()}
 };
@@ -154,6 +157,8 @@ const S=v=>{if(v===undefined||v===null)return'';const x=String(v).trim();return(
 const esc=v=>S(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const names=v=>[...new Set(S(v).split(/[,，、\n]+/).map(x=>x.trim()).filter(Boolean))];
 const normRoster=v=>(Array.isArray(v)?v:[]).map(x=>typeof x==='string'?{n:S(x),t:''}:{n:S(x&&x.n),t:S(x&&x.t)}).filter(x=>x.n);
+const rosterForYear=y=>normRoster(ROSTERS_BY_YEAR[+y]||((+y===TODAY.getFullYear())?BEARS_ROSTER:[]));
+const othersForYear=y=>Array.isArray(OTHERS_BY_YEAR[+y])?OTHERS_BY_YEAR[+y]:((+y===TODAY.getFullYear())?OTHERS:[]);
 const hasScore=e=>{const c=e&&e.score;if(!c)return false;const a=S(c.d),b=S(c.v);return a!==''&&b!==''&&!isNaN(+a)&&!isNaN(+b)};
 const result=e=>!hasScore(e)?null:(+e.score.d>+e.score.v?'W':+e.score.d<+e.score.v?'L':'D');
 const RL={W:'승',L:'패',D:'무'};
@@ -216,12 +221,13 @@ function home(){
   <div class="card">${evs.length?evs.map(evRow).join(''):'<div class="empty">일정이 없습니다.</div>'}</div>
   <div class="foot"><a href="#/admin">관리자</a></div>`;
 }
-let stLg='kbo';
+let stLg='kbo',stYear=TODAY.getFullYear();
 const lgTabs=()=>`<div class="chips" style="margin-bottom:12px">${[['kbo','KBO'],['futures','FUTURES']].map(([k,l])=>`<button class="chip${stLg===k?' on':''}" data-lg="${k}">${l}</button>`).join('')}</div>`;
+const standingsYearNav=()=>`<div class="calhead" style="margin-bottom:10px"><button class="ib" data-syear="-1">‹</button><b>${stYear}년 ${stLg==='kbo'?'KBO':'FUTURES'}</b><button class="ib" data-syear="1"${stYear>=TODAY.getFullYear()?' disabled':''}>›</button></div>`;
 let OTHERS=[]; // 다른 구단 시즌 성적 [{n,w,d,l}] (관리자 입력)
 function standings(){
-  const yr=String(TODAY.getFullYear());
-  if(stLg==='futures')return `<div class="brand"><div class="logo">순위</div></div>${lgTabs()}<div class="card"><div class="empty">FUTURES 순위 데이터가 아직 없습니다.</div></div>`;
+  const yr=String(stYear);
+  if(stLg==='futures')return `<div class="brand"><div class="logo">순위</div></div>${standingsYearNav()}${lgTabs()}<div class="card"><div class="empty">${stYear}년 FUTURES 순위 데이터가 아직 없습니다.</div></div>`;
 
   const calc=games=>{
     const c={w:0,d:0,l:0};
@@ -252,7 +258,7 @@ function standings(){
 
   const rows=[{n:'두산',...c}]
     .concat(TEAMS.map(n=>{
-      const o=OTHERS.find(x=>x.n===n)||{};
+      const o=othersForYear(stYear).find(x=>x.n===n)||{};
       return {
         n,
         w:o.w||0,
@@ -271,6 +277,7 @@ function standings(){
     <div class="brand">
       <div class="logo">순위</div>
     </div>
+    ${standingsYearNav()}
     ${lgTabs()}
 
     <div class="card">
@@ -312,14 +319,14 @@ function standings(){
     </div>
 
     <div class="foot">
-      두산은 등록한 경기 결과로 자동 계산 · 다른 구단은 관리자가 입력한 성적 기준
+      ${stYear}년 · 두산은 등록한 경기 결과로 자동 계산 · 다른 구단은 관리자 입력 기준
     </div>
   `;
 }
-let recSort=null,recLeague='kbo',recKind='pitcher';
+let recSort=null,recLeague='kbo',recKind='pitcher',recYear=TODAY.getFullYear();
 
 function recStats(){
-  const yr=String(TODAY.getFullYear()),m={},roster=normRoster(BEARS_ROSTER),role=new Map(roster.map(x=>[x.n,x.t]));
+  const yr=String(recYear),m={},roster=rosterForYear(recYear),role=new Map(roster.map(x=>[x.n,x.t]));
   const row=(n,want)=>{if(role.get(n)!==want)return null;if(!m[n])m[n]={n,w:0,l:0,s:0,h:0,g:0,hr:0,d2:0,d3:0,hit:0,sb:0};return m[n]};
   const addNames=(v,k,want)=>names(v).forEach(n=>{const r=row(n,want);if(r)r[k]++});
   Repo.all().filter(e=>e.type===recLeague&&!e.stage&&S(e.date).slice(0,4)===yr&&hasScore(e)).forEach(e=>{
@@ -330,12 +337,14 @@ function recStats(){
 }
 
 function recordTabs(){
-  return `<div class="chips" style="margin-bottom:10px">${[['kbo','KBO'],['futures','FUTURES']].map(([k,l])=>`<button class="chip${recLeague===k?' on':''}" data-rleague="${k}">${l}</button>`).join('')}</div>
+  const maxYear=TODAY.getFullYear();
+  return `<div class="calhead" style="margin-bottom:10px"><button class="ib" data-ryear="-1">‹</button><b>${recYear}년 ${recLeague==='kbo'?'KBO':'FUTURES'}</b><button class="ib" data-ryear="1"${recYear>=maxYear?' disabled':''}>›</button></div>
+  <div class="chips" style="margin-bottom:10px">${[['kbo','KBO'],['futures','FUTURES']].map(([k,l])=>`<button class="chip${recLeague===k?' on':''}" data-rleague="${k}">${l}</button>`).join('')}</div>
   <div class="chips" style="margin-bottom:12px">${[['pitcher','투수'],['hitter','타자']].map(([k,l])=>`<button class="chip${recKind===k?' on':''}" data-rkind="${k}">${l}</button>`).join('')}</div>`;
 }
 
 function records(){
-  const roster=normRoster(BEARS_ROSTER);
+  const roster=rosterForYear(recYear);
   if(!roster.length)return `<div class="brand"><div class="logo">개인기록</div></div><div class="card"><div class="empty">두산 선수 명단이 아직 없습니다.<br>관리자에서 선수 명단을 저장하면 두산 선수만 집계됩니다.</div></div>`;
 
   const cols=recKind==='pitcher'
@@ -368,13 +377,14 @@ function records(){
   return `<div class="brand"><div class="logo">개인기록</div></div>
   ${recordTabs()}
   ${rows.length?`<div class="card"><table class="rec"><tr>${head}</tr>${rows.map(r=>`<tr>${cols.map(([k])=>`<td>${k==='n'?esc(r.n):r[k]}</td>`).join('')}</tr>`).join('')}</table></div>`:`<div class="card"><div class="empty">아직 집계할 ${recKind==='pitcher'?'투수':'타자'} 기록이 없습니다.</div></div>`}
-  <div class="foot">${TODAY.getFullYear()}년 ${recLeague==='kbo'?'KBO':'FUTURES'} · 두산 선수 명단 기준<br>${st}</div>`;
+  <div class="foot">${recYear}년 ${recLeague==='kbo'?'KBO':'FUTURES'} · 두산 선수 명단 기준<br>${st}</div>`;
 }
 
 
 function parseHrEntries(e){
   if(Array.isArray(e&&e.hrEntries))return e.hrEntries.map(x=>({player:S(x.player),inning:+x.inning||0,runs:+x.runs||0})).filter(x=>x.player&&x.inning&&x.runs);
-  const hitters=normRoster(BEARS_ROSTER).filter(x=>x.t==='hitter').map(x=>x.n).sort((a,b)=>b.length-a.length);
+  const y=+(S(e&&e.date).slice(0,4)||TODAY.getFullYear());
+  const hitters=rosterForYear(y).filter(x=>x.t==='hitter').map(x=>x.n).sort((a,b)=>b.length-a.length);
   return S(e&&e.homeRuns).split(/\n+/).map(line=>{
     const x=line.trim();if(!x)return null;
     const player=hitters.find(n=>x===n||x.startsWith(n+' '))||'';
@@ -382,8 +392,8 @@ function parseHrEntries(e){
     return player&&im&&rm?{player,inning:+im[1],runs:+rm[1]}:null;
   }).filter(Boolean);
 }
-function hrRowHTML(x={}){
-  const hitters=normRoster(BEARS_ROSTER).filter(p=>p.t==='hitter').map(p=>p.n);
+function hrRowHTML(x={},year=TODAY.getFullYear()){
+  const hitters=[...new Set([...rosterForYear(year).filter(p=>p.t==='hitter').map(p=>p.n),S(x.player)].filter(Boolean))];
   return `<div class="hr-row" style="display:grid;grid-template-columns:minmax(0,1fr) 78px 72px auto;gap:6px;align-items:center;margin-top:8px">
     <select class="hr-player"><option value="">선수</option>${hitters.map(n=>`<option value="${esc(n)}"${S(x.player)===n?' selected':''}>${esc(n)}</option>`).join('')}</select>
     <select class="hr-inning"><option value="">이닝</option>${Array.from({length:11},(_,i)=>i+1).map(n=>`<option value="${n}"${+x.inning===n?' selected':''}>${n}회</option>`).join('')}</select>
@@ -392,8 +402,8 @@ function hrRowHTML(x={}){
   </div>`;
 }
 function hrEditor(e){
-  const rows=parseHrEntries(e);
-  return `<label>홈런 기록</label><div id="hr_rows">${(rows.length?rows:[{}]).map(hrRowHTML).join('')}</div><button type="button" class="btn g" id="addhr">+ 홈런 추가</button><div class="note">선수는 등록된 타자 명단에서 선택 · 이닝 1~11회 · 점수 1~4점</div>`;
+  const rows=parseHrEntries(e),year=+(S(e&&e.date).slice(0,4)||TODAY.getFullYear());
+  return `<label>홈런 기록</label><div id="hr_rows">${(rows.length?rows:[{}]).map(x=>hrRowHTML(x,year)).join('')}</div><button type="button" class="btn g" id="addhr">+ 홈런 추가</button><div class="note">선수는 등록된 타자 명단에서 선택 · 이닝 1~11회 · 점수 1~4점</div>`;
 }
 
 function h2hView(){
@@ -448,14 +458,15 @@ function admin(){
   <button class="btn" id="save">${editing?'수정 저장':'추가'}</button>${editing?'<button class="btn g" id="cancel">취소</button>':''}</div>
   <h2>두산 선수 명단</h2>
   <div class="card">
+    <div class="calhead" style="margin-bottom:6px"><button class="ib" data-aroster="-1">‹</button><b>${adminRosterYear}년 선수 명단</b><button class="ib" data-aroster="1"${adminRosterYear>=TODAY.getFullYear()?' disabled':''}>›</button></div>
     <label>투수 명단</label>
-    <textarea id="f_pitchers" rows="10" placeholder="한 줄에 한 명씩 입력">${esc(normRoster(BEARS_ROSTER).filter(x=>x.t==='pitcher').map(x=>x.n).join('\n'))}</textarea>
+    <textarea id="f_pitchers" rows="10" placeholder="한 줄에 한 명씩 입력">${esc(rosterForYear(adminRosterYear).filter(x=>x.t==='pitcher').map(x=>x.n).join('\n'))}</textarea>
     <label>타자 명단</label>
-    <textarea id="f_hitters" rows="10" placeholder="한 줄에 한 명씩 입력">${esc(normRoster(BEARS_ROSTER).filter(x=>x.t==='hitter').map(x=>x.n).join('\n'))}</textarea>
-    <button class="btn" id="saveroster">선수 명단 저장</button>
-    <div class="note">투수/타자 칸에 한 줄에 한 명씩 입력하세요. 이 명단에 있는 선수만 개인기록에 집계됩니다.</div>
+    <textarea id="f_hitters" rows="10" placeholder="한 줄에 한 명씩 입력">${esc(rosterForYear(adminRosterYear).filter(x=>x.t==='hitter').map(x=>x.n).join('\n'))}</textarea>
+    <button class="btn" id="saveroster">${adminRosterYear}년 선수 명단 저장</button>
+    <div class="note">시즌별 명단을 따로 저장합니다. 기존 bears_roster는 현재 연도 명단이 없을 때만 호환용으로 사용됩니다.</div>
   </div>
-  <h2>다른 구단 시즌 성적 (순위표용)</h2><div class="card">${TEAMS.map(t=>{const o=OTHERS.find(x=>x.n===t)||{w:'',d:'',l:''};return `<div class="ev" style="align-items:center"><div class="tm" style="width:52px">${t}</div><div class="bd" style="display:flex;gap:6px"><input data-o="${t}" data-k="w" type="number" min="0" placeholder="승" value="${o.w}"><input data-o="${t}" data-k="d" type="number" min="0" placeholder="무" value="${o.d}"><input data-o="${t}" data-k="l" type="number" min="0" placeholder="패" value="${o.l}"></div></div>`}).join('')}<button class="btn" id="saveo">순위 성적 저장</button><div class="note">두산 성적은 등록한 경기 결과로 자동 계산됩니다. 순위·경기수·승률도 자동 계산됩니다.</div></div>
+  <h2>다른 구단 시즌 성적 (순위표용)</h2><div class="card"><div class="calhead" style="margin-bottom:6px"><button class="ib" data-astand="-1">‹</button><b>${adminStandingsYear}년 순위 입력</b><button class="ib" data-astand="1"${adminStandingsYear>=TODAY.getFullYear()?' disabled':''}>›</button></div>${TEAMS.map(t=>{const o=othersForYear(adminStandingsYear).find(x=>x.n===t)||{w:'',d:'',l:''};return `<div class="ev" style="align-items:center"><div class="tm" style="width:52px">${t}</div><div class="bd" style="display:flex;gap:6px"><input data-o="${t}" data-k="w" type="number" min="0" placeholder="승" value="${o.w}"><input data-o="${t}" data-k="d" type="number" min="0" placeholder="무" value="${o.d}"><input data-o="${t}" data-k="l" type="number" min="0" placeholder="패" value="${o.l}"></div></div>`}).join('')}<button class="btn" id="saveo">${adminStandingsYear}년 순위 성적 저장</button><div class="note">두산 성적은 해당 연도의 등록 경기 결과로 자동 계산됩니다. 다른 구단 성적은 연도별로 따로 저장됩니다.</div></div>
   <h2>직접 등록한 일정</h2><div class="card">${list.length?list.map(x=>`<div class="ev"><div class="tm">${x.date.slice(5)}</div><div class="bd"><div class="ti">${x.title}</div><div class="sb">${TYPES[x.type]}${x.kboGameId?' · KBO 자동연동':''}</div><button class="link" data-edit="${x.id}">수정</button>${x.kboGameId?'':`<button class="link" data-del="${x.id}">삭제</button>`}</div></div>`).join(''):'<div class="empty">등록한 일정이 없습니다.</div>'}</div>
   `;
 }
@@ -467,7 +478,7 @@ function route(){
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-lg],[data-rleague],[data-rkind],[data-hrdel],[data-edit],[data-del],#addhr,#save,#saveo,#saveroster,#cancel,#login,#logout');if(!t)return;
+  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-lg],[data-rleague],[data-rkind],[data-ryear],[data-syear],[data-aroster],[data-astand],[data-hrdel],[data-edit],[data-del],#addhr,#save,#saveo,#saveroster,#cancel,#login,#logout');if(!t)return;
   const keep=()=>{const y=scrollY;route2();scrollTo(0,y)};
   if(t.dataset.d){sel=t.dataset.d;const d=new Date(sel+'T00:00:00');view=new Date(d.getFullYear(),d.getMonth(),1);keep()}
   else if(t.dataset.m!==undefined){const m=+t.dataset.m;if(m===0){sel=TS;view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1)}else view=new Date(view.getFullYear(),view.getMonth()+m,1);keep()}
@@ -475,14 +486,18 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.sort){const k=t.dataset.sort;recSort=(recSort&&recSort.k===k)?{k,dir:recSort.dir==='desc'?'asc':'desc'}:{k,dir:k==='n'?'asc':'desc'};keep()}
   else if(t.dataset.rleague){recLeague=t.dataset.rleague;recSort=null;keep()}
   else if(t.dataset.rkind){recKind=t.dataset.rkind;recSort=null;keep()}
+  else if(t.dataset.ryear!==undefined){const y=recYear+(+t.dataset.ryear||0);recYear=Math.max(2000,Math.min(TODAY.getFullYear(),y));recSort=null;keep()}
+  else if(t.dataset.syear!==undefined){const y=stYear+(+t.dataset.syear||0);stYear=Math.max(2000,Math.min(TODAY.getFullYear(),y));keep()}
+  else if(t.dataset.aroster!==undefined){const y=adminRosterYear+(+t.dataset.aroster||0);adminRosterYear=Math.max(2000,Math.min(TODAY.getFullYear(),y));keep()}
+  else if(t.dataset.astand!==undefined){const y=adminStandingsYear+(+t.dataset.astand||0);adminStandingsYear=Math.max(2000,Math.min(TODAY.getFullYear(),y));keep()}
   else if(t.dataset.lg){stLg=t.dataset.lg;keep()}
   else if(t.dataset.t){h2h=t.dataset.t;keep()}
-  else if(t.id==='addhr'){const box=$('#hr_rows');if(box)box.insertAdjacentHTML('beforeend',hrRowHTML({}))}
+  else if(t.id==='addhr'){const box=$('#hr_rows'),y=+(S($('#f_date')?.value).slice(0,4)||TODAY.getFullYear());if(box)box.insertAdjacentHTML('beforeend',hrRowHTML({},y))}
   else if(t.dataset.hrdel!==undefined){const row=t.closest('.hr-row');if(row){const box=$('#hr_rows');row.remove();if(box&&!box.querySelector('.hr-row'))box.insertAdjacentHTML('beforeend',hrRowHTML({}))}}
   else if(t.id==='login'){SB.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value}).then(r=>{if(r.error)alert('로그인 실패: '+r.error.message)})}
   else if(t.id==='logout'){SB.auth.signOut()}
   else if(t.id==='saveo'){const rows=TEAMS.map(n=>{const g=k=>+(document.querySelector(`[data-o="${n}"][data-k="${k}"]`).value||0);return{n,w:g('w'),d:g('d'),l:g('l')}});
-    Repo.saveOthers(rows).then(()=>{alert('저장했습니다');keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'')))}
+    Repo.saveOthers(rows,adminStandingsYear).then(()=>{alert(adminStandingsYear+'년 순위 성적을 저장했습니다');keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'')))}
   else if(t.id==='saveroster'){
     const splitList=id=>[...new Set((document.querySelector(id)?.value||'').split(/[\n,，]+/).map(x=>x.trim()).filter(Boolean))];
     const rows=[
@@ -491,7 +506,7 @@ document.addEventListener('click',ev=>{
     ];
     const seen=new Set(),clean=[];
     rows.forEach(x=>{if(!seen.has(x.n)){seen.add(x.n);clean.push(x)}});
-    Repo.saveRoster(clean).then(()=>{alert('두산 선수 명단을 저장했습니다');keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'')))
+    Repo.saveRoster(clean,adminRosterYear).then(()=>{alert(adminRosterYear+'년 두산 선수 명단을 저장했습니다');keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'')))
   }
   else if(t.id==='save'){
     const v=k=>$('#f_'+k)?.value?.trim()||'',type=v('type'),opp=v('opp'),homeAway=v('homeAway'),g=type==='kbo'||type==='futures';
