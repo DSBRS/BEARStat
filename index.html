@@ -208,7 +208,7 @@ function batterTable(players,edit){
         <tr>
           <td style="text-align:left;white-space:nowrap">${esc(p.name)}</td>
           ${cols.map(([k])=>`
-            <td>
+            <td style="text-align:center">
               ${edit
                 ? `<input style="width:52px;padding:6px" type="number" min="0" step="1" data-batter="${i}" data-stat="${k}" value="${+p[k]||0}">`
                 : (+p[k]||0)}
