@@ -180,10 +180,43 @@ function detail(e){
     h+=row('승리투수',e.winP,1)+row('패전투수',e.loseP,1)+row('세이브',e.saveP,1)+row('홀드',e.holdP,1)+row('결승타',e.gwRbi,1)+(hr?`<span>홈런</span><span>${hr}</span>`:'')+row('경기시간',e.duration,1);
   }
   let out=`<div class="dt">${fin?`<div class="big2">두산 ${+e.score.d} : ${+e.score.v} ${esc(opp)}</div>`:''}<div class="meta">${h}</div></div>`;
-  if(e.kboGameId){const when=e.kbo?.fetchedAt?new Date(e.kbo.fetchedAt).toLocaleString('ko-KR'):'';out+=`<div class="note">${esc(e.statusText||'KBO 기록')} · ${e.manualOverride?'수동 수정 우선':'KBO 자동 기록'}${when?`<br>확인: ${esc(when)}`:''}</div>`;if(fin&&e.batting?.length)out+=batterTable(e.batting,false)}
-  return out;
+  if(e.kboGameId && fin && e.batting?.length){
+  out+=batterTable(e.batting,false)
 }
-function batterTable(players,edit){const cols=[['hits','안타'],['doubles','2루타'],['triples','3루타'],['homeRuns','홈런'],['stolenBases','도루']];return `<div style="overflow-x:auto"><table class="rec"><tr><th>두산 타자</th>${cols.map(c=>`<th>${c[1]}</th>`).join('')}</tr>${players.map((p,i)=>`<tr><td>${esc(p.name)}</td>${cols.map(([k])=>`<td>${edit?`<input style="width:52px;padding:6px" type="number" min="0" step="1" data-batter="${i}" data-stat="${k}" value="${+p[k]||0}">`:(+p[k]||0)}</td>`).join('')}</tr>`).join('')}</table></div>`}
+function batterTable(players,edit){
+  const cols=[
+    ['hits','안타'],
+    ['doubles','2루타'],
+    ['triples','3루타'],
+    ['homeRuns','홈런'],
+    ['stolenBases','도루']
+  ];
+
+  return `<div style="overflow-x:auto">
+    <table class="rec" style="table-layout:fixed;width:100%">
+      <colgroup>
+        <col style="width:24%">
+        ${cols.map(()=>'<col style="width:15.2%">').join('')}
+      </colgroup>
+      <tr>
+        <th style="text-align:left">두산 타자</th>
+        ${cols.map(c=>`<th>${c[1]}</th>`).join('')}
+      </tr>
+      ${players.map((p,i)=>`
+        <tr>
+          <td style="text-align:left;white-space:nowrap">${esc(p.name)}</td>
+          ${cols.map(([k])=>`
+            <td>
+              ${edit
+                ? `<input style="width:52px;padding:6px" type="number" min="0" step="1" data-batter="${i}" data-stat="${k}" value="${+p[k]||0}">`
+                : (+p[k]||0)}
+            </td>
+          `).join('')}
+        </tr>
+      `).join('')}
+    </table>
+  </div>`;
+}
 
 function gameCard(e,kind){
   if(!e)return `<div class="card"><div class="empty">오늘 경기가 없습니다.</div></div>`;
