@@ -412,7 +412,7 @@ function records(){
 
   return `<div class="brand"><div class="logo">개인기록</div></div>
   ${recordTabs()}
-  ${rows.length?`<div class="card"><table class="rec"><tr>${head}</tr>${rows.map(r=>`<tr>${cols.map(([k])=>`<td>${k==='n'?esc(r.n):r[k]}</td>`).join('')}</tr>`).join('')}</table></div>`:`<div class="card"><div class="empty">아직 집계할 ${recKind==='pitcher'?'투수':'타자'} 기록이 없습니다.</div></div>`}
+  ${rows.length?`<div class="card"><table class="rec" style="table-layout:fixed;width:100%"><tr>${head}</tr>${rows.map(r=>`<tr>${cols.map(([k])=>`<td>${k==='n'?esc(r.n):r[k]}</td>`).join('')}</tr>`).join('')}</table></div>`:`<div class="card"><div class="empty">아직 집계할 ${recKind==='pitcher'?'투수':'타자'} 기록이 없습니다.</div></div>`}
   <div class="foot">${recYear}년 ${recLeague==='kbo'?'KBO':'FUTURES'} · 두산 선수 명단 기준<br>${st}</div>`;
 }
 
