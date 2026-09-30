@@ -183,6 +183,8 @@ function detail(e){
   if(e.kboGameId && fin && e.batting?.length){
   out+=batterTable(e.batting,false)
 }
+  return out;
+}
 function batterTable(players,edit){
   const cols=[
     ['hits','안타'],
