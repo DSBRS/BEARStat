@@ -243,8 +243,8 @@ function evRow(e){
 function calendar(){
   const y=view.getFullYear(),m=view.getMonth(),first=new Date(y,m,1),start=addDays(first,-first.getDay());
   let cells='';
-  for(let i=0;i<42;i++){const d=addDays(start,i),ds=ymd(d),has=Repo.all().some(e=>e.date===ds);
-    cells+=`<button class="d${d.getMonth()!==m?' o':''}${d.getDay()===0?' sun':''}${ds===TS?' today':''}${ds===sel?' sel':''}" data-d="${ds}">${d.getDate()}${has?'<i></i>':''}</button>`;}
+  for(let i=0;i<42;i++){const d=addDays(start,i),ds=ymd(d),dayEvents=Repo.all().filter(e=>e.date===ds),has=dayEvents.length>0,game=dayEvents.find(e=>e.type==='kbo'||e.type==='futures');
+    cells+=`<button class="d${d.getMonth()!==m?' o':''}${d.getDay()===0?' sun':''}${ds===TS?' today':''}${ds===sel?' sel':''}" data-d="${ds}">${d.getDate()}${has?`<i style="background:${game?.homeAway==='home'?'#eb1d25':'#1A1748'}"></i>`:''}</button>`;}
   return `<div class="card"><div class="calhead"><button class="ib" data-m="-1">‹</button><b>${y}년 ${m+1}월</b><span><button class="ib" data-m="0">오늘</button> <button class="ib" data-m="1">›</button></span></div>
   <div class="grid">${'일월화수목금토'.split('').map(x=>`<div class="dow">${x}</div>`).join('')}${cells}</div></div>`;
 }
