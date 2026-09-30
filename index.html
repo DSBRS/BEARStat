@@ -167,7 +167,7 @@ const RL={W:'승',L:'패',D:'무'};
 
 /* ============ 2. UI ============ */
 const $=s=>document.querySelector(s);
-let sel=TS,view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1),h2h=null,editing=null;
+let sel=TS,view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1),h2h=null,editing=null,calLeague='kbo';
 const openIds=new Set();
 
 function detail(e){
@@ -240,11 +240,15 @@ function evRow(e){
   const g=e.type==='kbo'||e.type==='futures',o=g&&openIds.has(e.id);
   return `<div class="ev${g?' tap':''}"${g?` data-x="${esc(e.id)}"`:''}><div class="tm">${e.time||'--:--'}</div><div class="bd"><div class="ti"><span class="tag">${TYPES[e.type]||'기타'}</span>${e.title}${e.demo?' <span class="tag">DEMO</span>':''}</div>${sb?`<div class="sb">${sb}</div>`:''}${e.desc?`<div class="sb">${e.desc}</div>`:''}${g?`<div class="more">${o?'접기 ▴':'경기 상세 ▾'}</div>`:''}${o?detail(e):''}</div></div>`;
 }
-function calendar(){
+function calendar(type=calLeague){
   const y=view.getFullYear(),m=view.getMonth(),first=new Date(y,m,1),start=addDays(first,-first.getDay());
   let cells='';
-  for(let i=0;i<42;i++){const d=addDays(start,i),ds=ymd(d),dayEvents=Repo.all().filter(e=>e.date===ds),has=dayEvents.length>0,game=dayEvents.find(e=>e.type==='kbo'||e.type==='futures');
-    cells+=`<button class="d${d.getMonth()!==m?' o':''}${d.getDay()===0?' sun':''}${ds===TS?' today':''}${ds===sel?' sel':''}" data-d="${ds}">${d.getDate()}${has?`<i style="background:${game?.homeAway==='home'?'#eb1d25':'#1A1748'}"></i>`:''}</button>`;}
+  for(let i=0;i<42;i++){
+    const d=addDays(start,i),ds=ymd(d);
+    const game=Repo.all().find(e=>e.date===ds&&e.type===type);
+    const dot=game?`<i style="background:${game.homeAway==='home'?'#eb1d25':game.homeAway==='away'?'#1A1748':'var(--sub)'}"></i>`:'';
+    cells+=`<button class="d${d.getMonth()!==m?' o':''}${d.getDay()===0?' sun':''}${ds===TS?' today':''}${ds===sel?' sel':''}" data-d="${ds}">${d.getDate()}${dot}</button>`;
+  }
   return `<div class="card"><div class="calhead"><button class="ib" data-m="-1">‹</button><b>${y}년 ${m+1}월</b><span><button class="ib" data-m="0">오늘</button> <button class="ib" data-m="1">›</button></span></div>
   <div class="grid">${'일월화수목금토'.split('').map(x=>`<div class="dow">${x}</div>`).join('')}${cells}</div></div>`;
 }
@@ -253,7 +257,9 @@ function home(){
   const evs=byDate(sel),sd=new Date(sel+'T00:00:00');
   return `<div class="brand"><div class="logo">BEARS<b>chedule</b></div></div>
   <h2>KBO</h2>${gameCard(kbo,'kbo')}<h2>FUTURES</h2>${gameCard(fu,'futures')}
-  <h2>CALENDAR</h2>${calendar()}
+  <h2>CALENDAR</h2>
+  <div class="chips" style="margin-bottom:12px">${[['kbo','KBO'],['futures','FUTURES']].map(([k,l])=>`<button class="chip${calLeague===k?' on':''}" data-calleague="${k}">${l}</button>`).join('')}</div>
+  ${calendar(calLeague)}
   <h2>${sd.getMonth()+1}월 ${sd.getDate()}일 (${'일월화수목금토'[sd.getDay()]}) 일정</h2>
   <div class="card">${evs.length?evs.map(evRow).join(''):'<div class="empty">일정이 없습니다.</div>'}</div>
   <div class="foot"><a href="#/admin">관리자</a></div>`;
@@ -515,12 +521,13 @@ function route(){
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-lg],[data-rleague],[data-rkind],[data-ryear],[data-syear],[data-aroster],[data-astand],[data-hrdel],[data-edit],[data-del],#addhr,#save,#saveo,#saveroster,#cancel,#login,#logout');if(!t)return;
+  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-lg],[data-calleague],[data-rleague],[data-rkind],[data-ryear],[data-syear],[data-aroster],[data-astand],[data-hrdel],[data-edit],[data-del],#addhr,#save,#saveo,#saveroster,#cancel,#login,#logout');if(!t)return;
   const keep=()=>{const y=scrollY;route2();scrollTo(0,y)};
   if(t.dataset.d){sel=t.dataset.d;const d=new Date(sel+'T00:00:00');view=new Date(d.getFullYear(),d.getMonth(),1);keep()}
   else if(t.dataset.m!==undefined){const m=+t.dataset.m;if(m===0){sel=TS;view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1)}else view=new Date(view.getFullYear(),view.getMonth()+m,1);keep()}
   else if(t.dataset.x){const id=t.dataset.x;openIds.has(id)?openIds.delete(id):openIds.add(id);keep()}
   else if(t.dataset.sort){const k=t.dataset.sort;recSort=(recSort&&recSort.k===k)?{k,dir:recSort.dir==='desc'?'asc':'desc'}:{k,dir:k==='n'?'asc':'desc'};keep()}
+  else if(t.dataset.calleague){calLeague=t.dataset.calleague;keep()}
   else if(t.dataset.rleague){recLeague=t.dataset.rleague;recSort=null;keep()}
   else if(t.dataset.rkind){recKind=t.dataset.rkind;recSort=null;keep()}
   else if(t.dataset.ryear!==undefined){const y=recYear+(+t.dataset.ryear||0);recYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));recSort=null;keep()}
