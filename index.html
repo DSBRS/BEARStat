@@ -202,13 +202,13 @@ function batterTable(players,edit){
       </colgroup>
       <tr>
   <th style="text-align:left;font-size:14px;padding-bottom:8px">두산 타자</th>
-  ${cols.map(c=>`<th style="font-size:14px;padding-bottom:8px">${c[1]}</th>`).join('')}
+  ${cols.map(c=>`<th style="font-size:14px;padding:0 0 8px;text-align:center">${c[1]}</th>`).join('')}
 </tr>
       ${players.map((p,i)=>`
         <tr>
           <td style="text-align:left;white-space:nowrap">${esc(p.name)}</td>
           ${cols.map(([k])=>`
-            <td style="text-align:center">
+            <td style="text-align:center;padding-left:0;padding-right:0">
               ${edit
                 ? `<input style="width:52px;padding:6px" type="number" min="0" step="1" data-batter="${i}" data-stat="${k}" value="${+p[k]||0}">`
                 : (+p[k]||0)}
