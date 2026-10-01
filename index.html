@@ -75,6 +75,14 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 .recstats th,.recstats td{min-width:66px;white-space:nowrap}
 .recstats th:first-child,.recstats td:first-child{position:-webkit-sticky;position:sticky;left:0;z-index:2;background:var(--card);min-width:92px}
 .recstats th:first-child{z-index:3}
+
+.playerlink{border:0;background:none;color:inherit;font:inherit;font-weight:800;padding:0;cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.sheetback{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:min(520px,100%);max-height:78vh;overflow:auto;background:var(--card);border-radius:24px 24px 0 0;padding:10px 20px calc(24px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 32px rgba(0,0,0,.18)}
+.sheetbar{width:42px;height:5px;border-radius:99px;background:var(--line);margin:2px auto 16px}
+.sheethead{display:flex;align-items:center;justify-content:space-between;gap:12px}.sheethead b{font-size:22px}.sheetclose{border:0;background:var(--chip);color:var(--ink);width:34px;height:34px;border-radius:50%;font-size:18px}
+.ordergrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.orderbox{background:var(--bg);border-radius:14px;padding:13px 8px;text-align:center}.orderbox b{display:block;font-size:20px;color:var(--navy)}.orderbox span{font-size:12px;color:var(--sub)}
 </style>
 </head>
 <body>
@@ -391,6 +399,28 @@ function recordTabs(){
   ${recKind==='hitter'?`<div class="chips" style="margin-bottom:12px">${[['main','타격 기록'],['onbase','출루 기록']].map(([k,l])=>`<button class="chip${recBatTab===k?' on':''}" data-rbtab="${k}">${l}</button>`).join('')}</div>`:''}`;
 }
 
+
+let playerSheet=null;
+function battingOrders(name){
+  const counts=Array(10).fill(0),yr=String(recYear);
+  Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&S(e.date).slice(0,4)===yr).forEach(e=>{
+    if(!Array.isArray(e.batting))return;
+    const p=e.batting.find(x=>S(x.name)===S(name));
+    const o=+(p&&p.order);
+    if(o>=1&&o<=9)counts[o]++;
+  });
+  return counts;
+}
+function playerSheetHTML(){
+  if(!playerSheet)return '';
+  const c=battingOrders(playerSheet),rows=[];
+  for(let i=1;i<=9;i++)if(c[i])rows.push(`<div class="orderbox"><b>${c[i]}경기</b><span>${i}번 타자</span></div>`);
+  return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div>
+    <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 KBO · 타순별 선발 출전</div></div><button class="sheetclose" data-sheetclose>×</button></div>
+    ${rows.length?`<div class="ordergrid">${rows.join('')}</div>`:'<div class="empty" style="padding:28px 0">저장된 타순 기록이 없습니다.</div>'}
+  </div></div>`;
+}
+
 function records(){
   const roster=rosterForYear(recYear);
   if(!roster.length)return `<div class="brand"><div class="logo">개인기록</div></div><div class="card"><div class="empty">두산 선수 명단이 아직 없습니다.<br>관리자에서 선수 명단을 저장하면 두산 선수만 집계됩니다.</div></div>`;
@@ -426,8 +456,8 @@ function records(){
 
   return `<div class="brand"><div class="logo">개인기록</div></div>
   ${recordTabs()}
-  ${rows.length?`<div class="card"><div class="recscroll"><table class="rec recstats"><tr>${head}</tr>${rows.map(r=>`<tr>${cols.map(([k])=>`<td>${k==='n'?esc(r.n):k==='avg'?(r.avg>=1?'1.000':r.avg.toFixed(3).slice(1)):r[k]}</td>`).join('')}</tr>`).join('')}</table></div></div>`:`<div class="card"><div class="empty">아직 집계할 ${recKind==='pitcher'?'투수':'타자'} 기록이 없습니다.</div></div>`}
-  <div class="foot">${recYear}년 KBO · 두산 선수 명단 기준<br>${st}</div>`;
+  ${rows.length?`<div class="card"><div class="recscroll"><table class="rec recstats"><tr>${head}</tr>${rows.map(r=>`<tr>${cols.map(([k])=>`<td>${k==='n'?(recKind==='hitter'?`<button class="playerlink" data-player="${esc(r.n)}">${esc(r.n)}</button>`:esc(r.n)):k==='avg'?(r.avg>=1?'1.000':r.avg.toFixed(3).slice(1)):r[k]}</td>`).join('')}</tr>`).join('')}</table></div></div>`:`<div class="card"><div class="empty">아직 집계할 ${recKind==='pitcher'?'투수':'타자'} 기록이 없습니다.</div></div>`}
+  <div class="foot">${recYear}년 KBO · 두산 선수 명단 기준<br>${st}</div>${playerSheetHTML()}`;
 }
 
 
@@ -528,14 +558,17 @@ function route(){
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-rkind],[data-rbtab],[data-ryear],[data-syear],[data-aroster],[data-astand],[data-hrdel],[data-edit],[data-del],#addhr,#save,#saveo,#saveroster,#cancel,#login,#logout');if(!t)return;
+  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-player],[data-sheetclose],[data-sheetback],[data-rkind],[data-rbtab],[data-ryear],[data-syear],[data-aroster],[data-astand],[data-hrdel],[data-edit],[data-del],#addhr,#save,#saveo,#saveroster,#cancel,#login,#logout');if(!t)return;
   const keep=()=>{const y=scrollY;route2();scrollTo(0,y)};
   if(t.dataset.d){sel=t.dataset.d;const d=new Date(sel+'T00:00:00');view=new Date(d.getFullYear(),d.getMonth(),1);keep()}
   else if(t.dataset.m!==undefined){const m=+t.dataset.m;if(m===0){sel=TS;view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1)}else view=new Date(view.getFullYear(),view.getMonth()+m,1);keep()}
   else if(t.dataset.x){const id=t.dataset.x;openIds.has(id)?openIds.delete(id):openIds.add(id);keep()}
-  else if(t.dataset.sort){const k=t.dataset.sort;recSort=(recSort&&recSort.k===k)?{k,dir:recSort.dir==='desc'?'asc':'desc'}:{k,dir:k==='n'?'asc':'desc'};keep()}  else if(t.dataset.rkind){recKind=t.dataset.rkind;recSort=null;keep()}
-  else if(t.dataset.rbtab){recBatTab=t.dataset.rbtab;recSort=null;keep()}
-  else if(t.dataset.ryear!==undefined){const y=recYear+(+t.dataset.ryear||0);recYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));recSort=null;keep()}
+  else if(t.dataset.player){playerSheet=t.dataset.player;keep()}
+  else if(t.dataset.sheetclose!==undefined){playerSheet=null;keep()}
+  else if(t.dataset.sheetback!==undefined&&ev.target===t){playerSheet=null;keep()}
+  else if(t.dataset.sort){const k=t.dataset.sort;recSort=(recSort&&recSort.k===k)?{k,dir:recSort.dir==='desc'?'asc':'desc'}:{k,dir:k==='n'?'asc':'desc'};keep()}  else if(t.dataset.rkind){recKind=t.dataset.rkind;recSort=null;playerSheet=null;keep()}
+  else if(t.dataset.rbtab){recBatTab=t.dataset.rbtab;recSort=null;playerSheet=null;keep()}
+  else if(t.dataset.ryear!==undefined){const y=recYear+(+t.dataset.ryear||0);recYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));recSort=null;playerSheet=null;keep()}
   else if(t.dataset.syear!==undefined){const y=stYear+(+t.dataset.syear||0);stYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));keep()}
   else if(t.dataset.aroster!==undefined){const y=adminRosterYear+(+t.dataset.aroster||0);adminRosterYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));keep()}
   else if(t.dataset.astand!==undefined){const y=adminStandingsYear+(+t.dataset.astand||0);adminStandingsYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));keep()}  else if(t.dataset.t){h2h=t.dataset.t;keep()}
