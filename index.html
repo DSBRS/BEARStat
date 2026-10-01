@@ -94,6 +94,26 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 }
 </style>
 
+
+<style>
+/* 상대전적: 순위 | 선수 | 타수 | 안타 | 도루 | 홈런 | 타율 */
+.opp-record-table{
+  width:100%;
+  table-layout:fixed;
+}
+.opp-record-table th,
+.opp-record-table td{
+  text-align:center !important;
+  vertical-align:middle !important;
+}
+.opp-record-table th:nth-child(1),
+.opp-record-table td:nth-child(1){width:8%;}
+.opp-record-table th:nth-child(2),
+.opp-record-table td:nth-child(2){width:24%;}
+.opp-record-table th:nth-child(n+3),
+.opp-record-table td:nth-child(n+3){width:13.6%;}
+</style>
+
 </head>
 <body>
 <div id="app"></div>
@@ -617,7 +637,7 @@ function opponentStatsView(){
     const sortLabel={ab:'타수',hit:'안타',sb:'도루',hr:'홈런',avg:'타율'};
     body=`<div class="card" style="margin-top:14px"><div class="top"><span>${yr} 시즌 · 두산 vs ${h2h}</span></div>
       <div style="display:flex;align-items:center;gap:8px;margin:12px 0;flex-wrap:wrap"><span class="sb">정렬</span>${Object.entries(sortLabel).map(([k,l])=>`<button class="chip${oppSort===k?' on':''}" data-osort="${k}">${l}</button>`).join('')}</div>
-      ${rows.length?`<table class="opp-record-table"><thead><tr><th></th><th>선수</th><th>타수</th><th>안타</th><th>도루</th><th>홈런</th><th>타율</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.n)}</td><td>${r.ab}</td><td>${r.hit}</td><td>${r.sb}</td><td>${r.hr}</td><td><b>${avg(r)}</b></td></tr>`).join('')}</tbody></table>`:'<div class="empty">저장된 상대 타격 기록이 없습니다.</div>'}
+      ${rows.length?`<table class="opp-record-table"><thead><tr><th class="opp-rank">순위</th><th></th><th>선수</th><th>타수</th><th>안타</th><th>도루</th><th>홈런</th><th>타율</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.n)}</td><td>${r.ab}</td><td>${r.hit}</td><td>${r.sb}</td><td>${r.hr}</td><td><b>${avg(r)}</b></td></tr>`).join('')}</tbody></table>`:'<div class="empty">저장된 상대 타격 기록이 없습니다.</div>'}
     </div>`;
   }
   return `<div class="brand"><div class="logo">상대전적</div></div><div class="chips">${TEAMS.map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${t}</button>`).join('')}</div>${body||'<div class="empty">상대팀을 선택하세요.</div>'}`;
