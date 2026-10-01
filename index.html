@@ -660,7 +660,7 @@ function opponentStatsView(){
 <th><button class="opp-th${oppSort==='sb'?' active':''}" data-osort="sb">도루</button></th>
 <th><button class="opp-th${oppSort==='hr'?' active':''}" data-osort="hr">홈런</button></th>
 <th><button class="opp-th${oppSort==='avg'?' active':''}" data-osort="avg">타율</button></th>
-</tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.n)}</td><td>${r.ab}</td><td>${r.hit}</td><td>${r.sb}</td><td>${r.hr}</td><td><b>${avg(r)}</b></td></tr>`).join('')}</tbody></table>`:'<div class="empty">저장된 상대 타격 기록이 없습니다.</div>'}
+</tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.n)}</td><td>${r.ab}</td><td>${r.hit}</td><td>${r.sb}</td><td>${r.hr}</td><td>${avg(r)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">저장된 상대 타격 기록이 없습니다.</div>'}
     </div>`;
   }
   return `<div class="brand"><div class="logo">상대전적</div></div><div class="chips">${TEAMS.map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${t}</button>`).join('')}</div>${body||'<div class="empty">상대팀을 선택하세요.</div>'}`;
