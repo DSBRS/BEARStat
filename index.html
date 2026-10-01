@@ -138,7 +138,15 @@ function mergeEvents(manual,automatic){
 const _manualAll=Repo.all.bind(Repo),_manualLoad=Repo.load.bind(Repo),_manualUpsert=Repo.upsert.bind(Repo);
 Repo.all=function(){const x=mergeEvents(_manualAll(),KBO_AUTO);KBO_MERGE_WARNINGS=x.warnings;return x.rows};
 Repo.load=async function(){
-  if(SB){try{const rows=[];for(let start=0;;start+=500){const r=await SB.from('kbo_game_records').select('body').order('game_id').range(start,start+499);if(r.error)throw r.error;rows.push(...r.data.map(x=>x.body));if(r.data.length<500)break}KBO_AUTO=rows;KBO_WARNING=''}catch(e){KBO_WARNING='KBO 자동 기록을 갱신하지 못했습니다. 저장된 수동 일정은 계속 사용할 수 있습니다.'}}
+  if(SB){try{const rows=[];for(let start=0;;start+=500){const r=await SB.from('kbo_game_records').select('body').order('game_id').range(start,start+499);if(r.error)throw r.error;rows.push(...r.data.map(x=>x.body));if(r.data.length<500)break}
+    KBO_AUTO=rows.map(b=>{
+      if(!b||typeof b!=='object')return b;
+      const leagueId=S(b.kbo?.leagueId);
+      const type=leagueId==='2'?'futures':(b.type||'kbo');
+      return {...b,type};
+    });
+    KBO_WARNING=''
+  }catch(e){KBO_WARNING='KBO/FUTURES 자동 기록을 갱신하지 못했습니다. 저장된 수동 일정은 계속 사용할 수 있습니다.'}}
   await _manualLoad();
 };
 Repo.upsert=async function(ev){
