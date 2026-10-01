@@ -123,6 +123,25 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 .opp-record-table th:nth-child(n+3),.opp-record-table td:nth-child(n+3){width:13.6%}
 </style>
 
+
+<style>
+.opp-th{
+  appearance:none;
+  border:0;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  font-weight:inherit;
+  padding:0;
+  margin:0;
+  cursor:pointer;
+}
+.opp-th.active{
+  color:var(--navy);
+  font-weight:900;
+}
+</style>
+
 </head>
 <body>
 <div id="app"></div>
@@ -632,17 +651,15 @@ function opponentStatsView(){
       const d=(sortValue(a,oppSort)-sortValue(b,oppSort))*dir;
       return d || ((a.ab-b.ab)*dir) || ((a.hit-b.hit)*dir) || a.n.localeCompare(b.n,'ko');
     });
-    const sortLabel={ab:'타수',hit:'안타',sb:'도루',hr:'홈런',avg:'타율'};
     body=`<div class="card" style="margin-top:14px"><div class="top"><span>${yr} 시즌 · 두산 vs ${h2h}</span></div>
-      <div style="display:flex;align-items:center;gap:8px;margin:12px 0;flex-wrap:wrap"><span class="sb">정렬</span>${Object.entries(sortLabel).map(([k,l])=>`<button class="chip${oppSort===k?' on':''}" data-osort="${k}">${l}</button>`).join('')}</div>
       ${rows.length?`<table class="opp-record-table"><thead><tr>
 <th class="opp-rank">순위</th>
 <th>선수</th>
-<th>타수</th>
-<th>안타</th>
-<th>도루</th>
-<th>홈런</th>
-<th>타율</th>
+<th><button class="opp-th${oppSort==='ab'?' active':''}" data-osort="ab">타수</button></th>
+<th><button class="opp-th${oppSort==='hit'?' active':''}" data-osort="hit">안타</button></th>
+<th><button class="opp-th${oppSort==='sb'?' active':''}" data-osort="sb">도루</button></th>
+<th><button class="opp-th${oppSort==='hr'?' active':''}" data-osort="hr">홈런</button></th>
+<th><button class="opp-th${oppSort==='avg'?' active':''}" data-osort="avg">타율</button></th>
 </tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.n)}</td><td>${r.ab}</td><td>${r.hit}</td><td>${r.sb}</td><td>${r.hr}</td><td><b>${avg(r)}</b></td></tr>`).join('')}</tbody></table>`:'<div class="empty">저장된 상대 타격 기록이 없습니다.</div>'}
     </div>`;
   }
