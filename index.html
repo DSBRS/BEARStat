@@ -114,6 +114,15 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 .opp-record-table td:nth-child(n+3){width:13.6%;}
 </style>
 
+
+<style>
+.opp-record-table{width:100%;table-layout:fixed;border-collapse:collapse}
+.opp-record-table th,.opp-record-table td{text-align:center!important;vertical-align:middle!important;padding-left:4px!important;padding-right:4px!important}
+.opp-record-table th:nth-child(1),.opp-record-table td:nth-child(1){width:9%}
+.opp-record-table th:nth-child(2),.opp-record-table td:nth-child(2){width:23%}
+.opp-record-table th:nth-child(n+3),.opp-record-table td:nth-child(n+3){width:13.6%}
+</style>
+
 </head>
 <body>
 <div id="app"></div>
@@ -141,7 +150,7 @@ const DEMO=[]; // 실제 일정은 관리자 화면에서 직접 등록
 
 /* 권한: 쓰기는 Supabase RLS(admins 테이블에 등록된 계정만)가 서버에서 강제합니다.
  * isOwner는 화면 표시용일 뿐 보안 경계가 아닙니다. */
-let isOwner=false,CUSTOM=[],SB=null,BEARS_ROSTER=[],ROSTERS_BY_YEAR={},OTHERS_BY_YEAR={};
+let isOwner=false,CUSTOM=[],SB=null,BEARS_ROSTER=[],ROSTERS_BY_YEAR={},OTHERS_BY_YEAR={},AUTO_STANDINGS_BY_YEAR={};
 let adminRosterYear=TODAY.getFullYear(),adminStandingsYear=TODAY.getFullYear();
 const live=()=>CUSTOM.some(e=>e.source==='kbo');
 const Repo={
@@ -153,6 +162,7 @@ const Repo={
   async load(){const r=await SB.from('events').select('body');if(!r.error)CUSTOM=r.data.map(x=>x.body);
     const ks=await SB.from('kv').select('key,body').like('key','standings_others%');if(!ks.error){let legacy=null;for(const x of ks.data||[]){if(x.key==='standings_others')legacy=x.body;else{const m=String(x.key).match(/^standings_others_(\d{4})$/);if(m)OTHERS_BY_YEAR[+m[1]]=x.body}}if(!OTHERS_BY_YEAR[TODAY.getFullYear()]&&legacy)OTHERS=legacy;else OTHERS=OTHERS_BY_YEAR[TODAY.getFullYear()]||[]}
     const br=await SB.from('kv').select('key,body').like('key','bears_roster%');if(!br.error){let legacy=null;for(const x of br.data||[]){if(x.key==='bears_roster')legacy=normRoster(x.body);else{const m=String(x.key).match(/^bears_roster_(\d{4})$/);if(m)ROSTERS_BY_YEAR[+m[1]]=normRoster(x.body)}}BEARS_ROSTER=ROSTERS_BY_YEAR[TODAY.getFullYear()]||legacy||[]}
+    const asr=await SB.from('kv').select('key,body').like('key','standings_auto_%');if(!asr.error){for(const x of asr.data||[]){const m=String(x.key).match(/^standings_auto_(\d{4})$/);if(m&&Array.isArray(x.body))AUTO_STANDINGS_BY_YEAR[+m[1]]=x.body}}
     rerender()},
   async upsert(ev){if(!SB)throw new Error('Supabase 설정이 필요합니다');const r=await SB.from('events').upsert({id:ev.id,date:ev.date,body:ev});if(r.error)throw r.error;await this.load()},
   async remove(id){if(!SB)throw new Error('Supabase 설정이 필요합니다');const r=await SB.from('events').delete().eq('id',id);if(r.error)throw r.error;await this.load()}
@@ -335,20 +345,18 @@ function standings(){
   const yr=String(stYear);
   const calc=games=>{
     const c={w:0,d:0,l:0};
-
     games.forEach(e=>{
       const r=result(e);
       c[r==='W'?'w':r==='L'?'l':'d']++;
     });
-
     const g=c.w+c.d+c.l;
     const p=c.w+c.l ? c.w/(c.w+c.l) : 0;
-
     return {...c,g,p};
   };
 
   const games=Repo.all().filter(
     e=>e.type==='kbo' &&
+       !e.cancelReason &&
        hasScore(e) &&
        !e.stage &&
        e.date.slice(0,4)===yr
@@ -357,75 +365,61 @@ function standings(){
   const c=calc(games);
   const home=calc(games.filter(e=>e.homeAway==='home'));
   const away=calc(games.filter(e=>e.homeAway==='away'));
+  const fmt=p=>p>=1?'1.000':Number(p||0).toFixed(3).replace(/^0/,'');
 
-  const fmt=p=>p>=1?'1.000':p.toFixed(3).slice(1);
+  const auto=Array.isArray(AUTO_STANDINGS_BY_YEAR[stYear])?AUTO_STANDINGS_BY_YEAR[stYear]:[];
+  const rows=auto.length===10
+    ? auto.slice().sort((a,b)=>(+a.rank||99)-(+b.rank||99)).map(r=>({
+        rank:+r.rank||0,
+        n:S(r.n||r.team),
+        g:+r.g||0,
+        w:+r.w||0,
+        d:+r.d||0,
+        l:+r.l||0,
+        p:Number(r.p||0)
+      }))
+    : [{n:'두산',...c}]
+      .concat(TEAMS.map(n=>{
+        const o=othersForYear(stYear).find(x=>x.n===n)||{};
+        return {n,w:o.w||0,d:o.d||0,l:o.l||0};
+      }))
+      .map(r=>({...r,g:r.w+r.d+r.l,p:r.w+r.l?r.w/(r.w+r.l):0}))
+      .sort((a,b)=>b.p-a.p||b.w-a.w)
+      .map((r,i)=>({...r,rank:i+1}));
 
-  const rows=[{n:'두산',...c}]
-    .concat(TEAMS.map(n=>{
-      const o=othersForYear(stYear).find(x=>x.n===n)||{};
-      return {
-        n,
-        w:o.w||0,
-        d:o.d||0,
-        l:o.l||0
-      };
-    }))
-    .map(r=>({
-      ...r,
-      g:r.w+r.d+r.l,
-      p:r.w+r.l ? r.w/(r.w+r.l) : 0
-    }))
-    .sort((a,b)=>b.p-a.p||b.w-a.w);
+  const sync=auto.length===10 ? auto[0]?.fetchedAt : '';
 
   return `
-    <div class="brand">
-      <div class="logo">순위</div>
-    </div>
+    <div class="brand"><div class="logo">순위</div></div>
     ${standingsYearNav()}
-
     <div class="card">
       <table>
-        <tr>
-          <th>순위</th>
-          <th>팀</th>
-          <th>경기</th>
-          <th>승</th>
-          <th>무</th>
-          <th>패</th>
-          <th>승률</th>
-        </tr>
-
+        <tr><th>순위</th><th>팀</th><th>경기</th><th>승</th><th>무</th><th>패</th><th>승률</th></tr>
         ${rows.map((r,i)=>`
           <tr class="${r.n==='두산'?'me':''}">
-            <td>${i+1}</td>
-            <td>${r.n==='두산'?'두산베어스':r.n}</td>
-            <td>${r.g}</td>
-            <td>${r.w}</td>
-            <td>${r.d}</td>
-            <td>${r.l}</td>
-            <td>${fmt(r.p)}</td>
-          </tr>
-        `).join('')}
+            <td>${r.rank||i+1}</td>
+            <td>${r.n==='두산'?'두산베어스':esc(r.n)}</td>
+            <td>${r.g}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${fmt(r.p)}</td>
+          </tr>`).join('')}
       </table>
     </div>
 
     <h2>홈 / 원정 성적</h2>
-
     <div class="card">
       <div class="meta">
-        <span>홈</span>
-        <span>${home.w}승 ${home.d}무 ${home.l}패 · 승률 ${fmt(home.p)}</span>
-
-        <span>원정</span>
-        <span>${away.w}승 ${away.d}무 ${away.l}패 · 승률 ${fmt(away.p)}</span>
+        <span>홈</span><span>${home.w}승 ${home.d}무 ${home.l}패 · 승률 ${fmt(home.p)}</span>
+        <span>원정</span><span>${away.w}승 ${away.d}무 ${away.l}패 · 승률 ${fmt(away.p)}</span>
       </div>
     </div>
 
     <div class="foot">
-      ${stYear}년 · 두산은 등록한 경기 결과로 자동 계산 · 다른 구단은 관리자 입력 기준
+      ${auto.length===10
+        ? `${stYear}년 · KBO 공식 팀 순위 자동연동${sync?` · ${new Date(sync).toLocaleString('ko-KR')} 갱신`:''}`
+        : `${stYear}년 · 자동 순위 데이터가 없어서 기존 입력값으로 표시 중`}
     </div>
   `;
 }
+
 let recSort=null,recKind='pitcher',recBatTab='main',recYear=TODAY.getFullYear();
 
 // 투수 승/패/홀드/세이브의 단일 기준점:
@@ -637,7 +631,15 @@ function opponentStatsView(){
     const sortLabel={ab:'타수',hit:'안타',sb:'도루',hr:'홈런',avg:'타율'};
     body=`<div class="card" style="margin-top:14px"><div class="top"><span>${yr} 시즌 · 두산 vs ${h2h}</span></div>
       <div style="display:flex;align-items:center;gap:8px;margin:12px 0;flex-wrap:wrap"><span class="sb">정렬</span>${Object.entries(sortLabel).map(([k,l])=>`<button class="chip${oppSort===k?' on':''}" data-osort="${k}">${l}</button>`).join('')}</div>
-      ${rows.length?`<table class="opp-record-table"><thead><tr><th class="opp-rank">순위</th><th></th><th>선수</th><th>타수</th><th>안타</th><th>도루</th><th>홈런</th><th>타율</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.n)}</td><td>${r.ab}</td><td>${r.hit}</td><td>${r.sb}</td><td>${r.hr}</td><td><b>${avg(r)}</b></td></tr>`).join('')}</tbody></table>`:'<div class="empty">저장된 상대 타격 기록이 없습니다.</div>'}
+      ${rows.length?`<table class="opp-record-table"><thead><tr>
+<th class="opp-rank">순위</th>
+<th>선수</th>
+<th>타수</th>
+<th>안타</th>
+<th>도루</th>
+<th>홈런</th>
+<th>타율</th>
+</tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.n)}</td><td>${r.ab}</td><td>${r.hit}</td><td>${r.sb}</td><td>${r.hr}</td><td><b>${avg(r)}</b></td></tr>`).join('')}</tbody></table>`:'<div class="empty">저장된 상대 타격 기록이 없습니다.</div>'}
     </div>`;
   }
   return `<div class="brand"><div class="logo">상대전적</div></div><div class="chips">${TEAMS.map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${t}</button>`).join('')}</div>${body||'<div class="empty">상대팀을 선택하세요.</div>'}`;
