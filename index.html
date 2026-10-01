@@ -84,6 +84,16 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 .ordergrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
 .orderbox{background:var(--bg);border-radius:14px;padding:13px 8px;text-align:center}.orderbox b{display:block;font-size:20px;color:var(--navy)}.orderbox span{font-size:12px;color:var(--sub)}
 </style>
+
+<style>
+/* 상대전적 선수 기록 표 가운데 정렬 */
+.opp-record-table th,
+.opp-record-table td{
+  text-align:center !important;
+  vertical-align:middle;
+}
+</style>
+
 </head>
 <body>
 <div id="app"></div>
@@ -197,7 +207,7 @@ const RL={W:'승',L:'패',D:'무'};
 
 /* ============ 2. UI ============ */
 const $=s=>document.querySelector(s);
-let sel=TS,view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1),h2h=null,editing=null;
+let sel=TS,view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1),h2h=null,oppSort='ab',editing=null;
 const openIds=new Set();
 
 function detail(e){
@@ -600,10 +610,14 @@ function opponentStatsView(){
         const r=m[n];r.ab+=+p.atBats||0;r.hit+=+p.hits||0;r.hr+=+p.homeRuns||0;r.sb+=+p.stolenBases||0;
       });
     });
-    const rows=Object.values(m).sort((a,b)=>(b.ab-a.ab)||(b.hit-a.hit)||a.n.localeCompare(b.n,'ko'));
-    const avg=r=>r.ab?(r.hit/r.ab>=1?'1.000':(r.hit/r.ab).toFixed(3).slice(1)):'.000';
+    const avgNum=r=>r.ab?r.hit/r.ab:0;
+    const avg=r=>r.ab?(avgNum(r)>=1?'1.000':avgNum(r).toFixed(3).slice(1)):'.000';
+    const sortValue=(r,k)=>k==='avg'?avgNum(r):(+r[k]||0);
+    const rows=Object.values(m).sort((a,b)=>(sortValue(b,oppSort)-sortValue(a,oppSort))||(b.ab-a.ab)||(b.hit-a.hit)||a.n.localeCompare(b.n,'ko'));
+    const sortLabel={ab:'타수',hit:'안타',sb:'도루',hr:'홈런',avg:'타율'};
     body=`<div class="card" style="margin-top:14px"><div class="top"><span>${yr} 시즌 · 두산 vs ${h2h}</span></div>
-      ${rows.length?`<table><thead><tr><th></th><th>선수</th><th>타수</th><th>안타</th><th>도루</th><th>홈런</th><th>타율</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.n)}</td><td>${r.ab}</td><td>${r.hit}</td><td>${r.sb}</td><td>${r.hr}</td><td><b>${avg(r)}</b></td></tr>`).join('')}</tbody></table>`:'<div class="empty">저장된 상대 타격 기록이 없습니다.</div>'}
+      <div style="display:flex;align-items:center;gap:8px;margin:12px 0;flex-wrap:wrap"><span class="sb">정렬</span>${Object.entries(sortLabel).map(([k,l])=>`<button class="chip${oppSort===k?' on':''}" data-osort="${k}">${l}</button>`).join('')}</div>
+      ${rows.length?`<table class="opp-record-table"><thead><tr><th></th><th>선수</th><th>타수</th><th>안타</th><th>도루</th><th>홈런</th><th>타율</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.n)}</td><td>${r.ab}</td><td>${r.hit}</td><td>${r.sb}</td><td>${r.hr}</td><td><b>${avg(r)}</b></td></tr>`).join('')}</tbody></table>`:'<div class="empty">저장된 상대 타격 기록이 없습니다.</div>'}
     </div>`;
   }
   return `<div class="brand"><div class="logo">상대전적</div></div><div class="chips">${TEAMS.map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${t}</button>`).join('')}</div>${body||'<div class="empty">상대팀을 선택하세요.</div>'}`;
@@ -693,7 +707,7 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.ryear!==undefined){const y=recYear+(+t.dataset.ryear||0);recYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));recSort=null;playerSheet=null;keep()}
   else if(t.dataset.syear!==undefined){const y=stYear+(+t.dataset.syear||0);stYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));keep()}
   else if(t.dataset.aroster!==undefined){const y=adminRosterYear+(+t.dataset.aroster||0);adminRosterYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));keep()}
-  else if(t.dataset.astand!==undefined){const y=adminStandingsYear+(+t.dataset.astand||0);adminStandingsYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));keep()}  else if(t.dataset.t){h2h=t.dataset.t;keep()}
+  else if(t.dataset.astand!==undefined){const y=adminStandingsYear+(+t.dataset.astand||0);adminStandingsYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));keep()}  else if(t.dataset.osort){oppSort=t.dataset.osort;keep()}  else if(t.dataset.t){h2h=t.dataset.t;keep()}
   else if(t.id==='addhr'){const box=$('#hr_rows'),y=+(S($('#f_date')?.value).slice(0,4)||TODAY.getFullYear());if(box)box.insertAdjacentHTML('beforeend',hrRowHTML({},y))}
   else if(t.dataset.hrdel!==undefined){const row=t.closest('.hr-row');if(row){const box=$('#hr_rows');row.remove();if(box&&!box.querySelector('.hr-row'))box.insertAdjacentHTML('beforeend',hrRowHTML({}))}}
   else if(t.id==='login'){SB.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value}).then(r=>{if(r.error)alert('로그인 실패: '+r.error.message)})}
