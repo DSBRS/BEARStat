@@ -128,6 +128,11 @@ const Repo={
   async remove(id){if(!SB)throw new Error('Supabase 설정이 필요합니다');const r=await SB.from('events').delete().eq('id',id);if(r.error)throw r.error;await this.load()}
 };
 /* ============ KBO 자동 연동 ============ */
+/* 미래 경기 자동 표시:
+ * kbo_game_records에 미래 경기 일정이 저장되면 score가 없어도 캘린더/일정에 표시됩니다.
+ * 같은 game_id가 경기 종료 후 upsert되면 결과와 선수 기록으로 갱신됩니다.
+ */
+
 let KBO_AUTO=[],KBO_WARNING='',KBO_MERGE_WARNINGS=[];
 function mergeEvents(manual,automatic){
   const rows=manual.map(e=>({...e})),warnings=[];
@@ -147,7 +152,12 @@ const _manualAll=Repo.all.bind(Repo),_manualLoad=Repo.load.bind(Repo),_manualUps
 Repo.all=function(){const x=mergeEvents(_manualAll(),KBO_AUTO);KBO_MERGE_WARNINGS=x.warnings;return x.rows};
 Repo.load=async function(){
   if(SB){try{const rows=[];for(let start=0;;start+=500){const r=await SB.from('kbo_game_records').select('body').order('game_id').range(start,start+499);if(r.error)throw r.error;rows.push(...r.data.map(x=>x.body));if(r.data.length<500)break}
-    KBO_AUTO=rows.filter(b=>b&&typeof b==='object'&&S(b.kbo?.leagueId)!=='2').map(b=>({...b,type:'kbo'}));
+    KBO_AUTO=rows.filter(b=>b&&typeof b==='object'&&S(b.kbo?.leagueId)!=='2').map(b=>({
+      ...b,
+      type:'kbo',
+      source:b.source||'kbo',
+      status:b.status||((b.score&&S(b.score.d)!==''&&S(b.score.v)!=='')?'final':'scheduled')
+    }));
     KBO_WARNING=''
   }catch(e){KBO_WARNING='KBO 자동 기록을 갱신하지 못했습니다. 저장된 수동 일정은 계속 사용할 수 있습니다.'}}
   await _manualLoad();
@@ -156,6 +166,10 @@ Repo.upsert=async function(ev){
   if(ev.kboGameId){ev.manualOverride=!!document.querySelector('#kbo_manual')?.checked;if(ev.manualOverride&&Array.isArray(ev.batting))ev.batting=ev.batting.map((p,i)=>{const x={...p};for(const k of ['hits','doubles','triples','homeRuns','stolenBases']){const el=document.querySelector(`[data-batter="${i}"][data-stat="${k}"]`);if(el){const n=Number(el.value);if(!Number.isInteger(n)||n<0)throw new Error('타자 기록은 0 이상의 정수로 입력해주세요');x[k]=n}}if((+x.doubles||0)+(+x.triples||0)+(+x.homeRuns||0)>(+x.hits||0))throw new Error('장타 합계가 안타 수보다 많습니다');return x})}
   return _manualUpsert(ev);
 };
+
+function isUpcomingKbo(e){
+  return e&&e.type==='kbo'&&!e.cancelled&&!hasScore(e)&&S(e.date)>=TS;
+}
 
 function rerender(){const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;const y=scrollY;route2();scrollTo(0,y)}
 async function setUser(sess){
@@ -189,8 +203,11 @@ const openIds=new Set();
 function detail(e){
   if(!e||e.type!=='kbo')return '';
   const fin=hasScore(e),opp=S(e.opp)||'상대팀';
+  if(e.cancelReason){
+    return `<div class="dt"><div class="big2">두산 vs ${esc(opp)}</div><div class="sb" style="margin-top:6px">${esc(e.venue||e.place||'')}</div><div class="note" style="margin-top:18px;font-weight:800">이 경기는 ${esc(e.cancelReason)}으로 인해 취소 된 경기입니다.</div></div>`;
+  }
   const row=(l,v,hide)=>{const x=S(v);return x?`<span>${l}</span><span>${esc(x)}</span>`:(hide?'':`<span>${l}</span><span class="tbd">미정</span>`)};
-  const ha=e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':'';
+  const ha=e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':S(e.homeAway);
   let h=row('경기장',e.venue||e.place)+row('홈/원정',ha)+row('두산 선발',e.starter)+row(opp+' 선발',e.oppStarter);
   if(fin){
     const hrs=parseHrEntries(e);
@@ -243,14 +260,14 @@ function gameCard(e,kind){
   const r=result(e),sub=[e.stage,e.gameNo?e.gameNo+'차전':''].filter(Boolean).join(' · ');
   const st=e.starter||'';
   const o=openIds.has(e.id);
-  return `<div class="card tap" data-x="${esc(e.id)}"><div class="top"><span>${e.venue||''}${e.homeAway?` <span class="tag">${e.homeAway==='home'?'홈':'원정'}</span>`:''}</span><span>${e.stage?`<span class="badge">${sub}</span>`:'정규시즌'}${e.series?` <span class="tag" style="margin:0 0 0 4px">${e.series}</span>`:''}</span></div>
+  return `<div class="card tap" data-x="${esc(e.id)}"><div class="top"><span>${e.venue||''}${e.homeAway?` <span class="tag">${e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':esc(e.homeAway)}</span>`:''}</span><span>${e.stage?`<span class="badge">${sub}</span>`:'정규시즌'}${e.series?` <span class="tag" style="margin:0 0 0 4px">${e.series}</span>`:''}</span></div>
   <div class="vs"><span class="vh">vs</span><span class="t">${e.opp||'상대팀 미정'}</span></div>
-  ${r?`<div class="score">${e.score.d} : ${e.score.v}<span class="res ${r}">${RL[r]}</span></div>`:`<div class="time">${e.time||'<span class=tbd>시간 미정</span>'}</div>`}
-  <div class="meta"><span>경기장</span><span>${e.venue||'미정'}</span><span>두산 선발</span><span>${e.starter||'<span class=tbd>미정</span>'}</span><span>${e.opp||'상대팀'} 선발</span><span>${e.oppStarter||'<span class=tbd>미정</span>'}</span></div><div class="more">${o?'접기 ▴':'경기 상세 ▾'}</div>${o?detail(e):''}</div>`;
+  ${e.cancelReason?`<div class="sb" style="margin-top:8px">${esc(e.venue||e.place||'')}</div><div class="note" style="margin-top:16px;font-weight:800">이 경기는 ${esc(e.cancelReason)}으로 인해 취소 된 경기입니다.</div>`:(r?`<div class="score">${e.score.d} : ${e.score.v}<span class="res ${r}">${RL[r]}</span></div>`:`<div class="time">${e.time||'<span class=tbd>시간 미정</span>'}</div>`)}
+  ${e.cancelReason?'':`<div class="meta"><span>경기장</span><span>${e.venue||'미정'}</span><span>두산 선발</span><span>${e.starter||'<span class=tbd>미정</span>'}</span><span>${e.opp||'상대팀'} 선발</span><span>${e.oppStarter||'<span class=tbd>미정</span>'}</span></div><div class="more">${o?'접기 ▴':'경기 상세 ▾'}</div>${o?detail(e):''}`}</div>`;
 }
 function evRow(e){
   let sb='';
-  if(e.type==='kbo'||e.type==='edu'){const r=result(e);sb=[e.venue,hasScore(e)?`${e.score.d}:${e.score.v} ${RL[r]}`:'',e.stage?[e.stage,e.gameNo?e.gameNo+'차전':''].join(' '):'',e.starter].filter(Boolean).join(' · ');}
+  if(e.type==='kbo'||e.type==='edu'){const r=result(e);sb=e.cancelReason?[e.venue,`이 경기는 ${e.cancelReason}으로 인해 취소 된 경기입니다.`].filter(Boolean).join(' · '):[e.venue,hasScore(e)?`${e.score.d}:${e.score.v} ${RL[r]}`:'',e.stage?[e.stage,e.gameNo?e.gameNo+'차전':''].join(' '):'',e.starter].filter(Boolean).join(' · ');}
   else if(e.type==='broadcast'||e.type==='radio')sb=[e.program,e.players&&e.players.join(', '),e.channel].filter(Boolean).join(' · ');
   else sb=[e.place].filter(Boolean).join(' · ');
   const g=e.type==='kbo',o=g&&openIds.has(e.id);
@@ -381,13 +398,15 @@ function standings(){
 }
 let recSort=null,recKind='pitcher',recBatTab='main',recYear=TODAY.getFullYear();
 
+// 투수 승/패/홀드/세이브의 단일 기준점:
+// KBO 자동 경기 = kbo.doosanDecisions, 수동/오버라이드 경기 = 입력한 winP/loseP/holdP/saveP.
 function recStats(){
   const yr=String(recYear),m={},roster=rosterForYear(recYear),role=new Map(roster.map(x=>[x.n,x.t]));
-  const row=(n,want)=>{if(role.get(n)!==want)return null;if(!m[n])m[n]={n,w:0,l:0,s:0,h:0,g:0,hr:0,d2:0,d3:0,hit:0,sb:0,ab:0,bb:0,hbp:0,ibb:0,avg:0,o1:0,o2:0,o3:0,o4:0,o5:0,o6:0,o7:0,o8:0,o9:0};return m[n]};
+  const row=(n,want)=>{if(role.get(n)!==want)return null;if(!m[n])m[n]={n,w:0,l:0,s:0,h:0,g:0,hr:0,d2:0,d3:0,hit:0,sb:0,ab:0,bb:0,hbp:0,ibb:0,rbi:0,runs:0,avg:0,o1:0,o2:0,o3:0,o4:0,o5:0,o6:0,o7:0,o8:0,o9:0};return m[n]};
   const addNames=(v,k,want)=>names(v).forEach(n=>{const r=row(n,want);if(r)r[k]++});
-  Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&S(e.date).slice(0,4)===yr&&hasScore(e)).forEach(e=>{
+  Repo.all().filter(e=>e.type==='kbo'&&!e.cancelReason&&!e.stage&&S(e.date).slice(0,4)===yr&&hasScore(e)).forEach(e=>{
     if(e.kboGameId&&!e.manualOverride&&e.kbo?.doosanDecisions){const d=e.kbo.doosanDecisions;addNames(d.winP,'w','pitcher');addNames(d.loseP,'l','pitcher');addNames(d.saveP,'s','pitcher');addNames(d.holdP,'h','pitcher');addNames(d.gwRbi,'g','hitter')}else{addNames(e.winP,'w','pitcher');addNames(e.loseP,'l','pitcher');addNames(e.saveP,'s','pitcher');addNames(e.holdP,'h','pitcher');addNames(e.gwRbi,'g','hitter')}
-    if(e.kboGameId&&Array.isArray(e.batting)){e.batting.forEach(p=>{const r=row(S(p.name),'hitter');if(!r)return;r.ab+=+p.atBats||0;r.hit+=+p.hits||0;r.d2+=+p.doubles||0;r.d3+=+p.triples||0;r.hr+=+p.homeRuns||0;r.sb+=+p.stolenBases||0;r.bb+=+p.walks||0;r.hbp+=+p.hitByPitch||0;r.ibb+=+p.intentionalWalks||0;const o=+p.order;if(o>=1&&o<=9)r['o'+o]++})}
+    if(e.kboGameId&&Array.isArray(e.batting)){e.batting.forEach(p=>{const r=row(S(p.name),'hitter');if(!r)return;r.ab+=+p.atBats||0;r.hit+=+p.hits||0;r.d2+=+p.doubles||0;r.d3+=+p.triples||0;r.hr+=+p.homeRuns||0;r.sb+=+p.stolenBases||0;r.bb+=+p.walks||0;r.hbp+=+p.hitByPitch||0;r.ibb+=+p.intentionalWalks||0;r.rbi+=+p.rbi||0;r.runs+=+p.runs||0;const o=+p.order;if(o>=1&&o<=9)r['o'+o]++})}
     else{const hrs=parseHrEntries(e);if(hrs.length)hrs.forEach(x=>addNames(x.player,'hr','hitter'));else{const hitters=roster.filter(x=>x.t==='hitter').map(x=>x.n).sort((a,b)=>b.length-a.length);S(e.homeRuns).split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(line=>{const n=hitters.find(name=>line===name||line.startsWith(name+' '));if(n)addNames(n,'hr','hitter')})}const rep=(v,k)=>S(v).split(/[,，、\n]+/).map(x=>x.trim()).filter(Boolean).forEach(n=>{const r=row(n,'hitter');if(r)r[k]++});rep(e.doubles,'d2');rep(e.triples,'d3');rep(e.hits,'hit');rep(e.steals,'sb')}
   });Object.values(m).forEach(r=>{r.avg=r.ab?r.hit/r.ab:0});return Object.values(m);
 }
@@ -403,7 +422,7 @@ function recordTabs(){
 let playerSheet=null;
 function battingOrders(name){
   const counts=Array(10).fill(0),yr=String(recYear);
-  Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&S(e.date).slice(0,4)===yr).forEach(e=>{
+  Repo.all().filter(e=>e.type==='kbo'&&!e.cancelReason&&!e.stage&&S(e.date).slice(0,4)===yr).forEach(e=>{
     if(!Array.isArray(e.batting))return;
     const p=e.batting.find(x=>S(x.name)===S(name));
     const o=+(p&&p.order);
@@ -412,19 +431,30 @@ function battingOrders(name){
   return counts;
 }
 function pitcherDetail(name){
-  const yr=String(recYear),r={g:0,w:0,l:0,h:0,s:0};
-  Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&S(e.date).slice(0,4)===yr).forEach(e=>{
-    if(!Array.isArray(e.pitching))return;
-    const p=e.pitching.find(x=>S(x.name)===S(name));
-    if(!p)return;
-    r.g++;
-    const z=S(p.result);
-    if(z==='승')r.w++;
-    else if(z==='패')r.l++;
-    else if(z==='홀드')r.h++;
-    else if(z==='세'||z==='세이브')r.s++;
-  });
-  return r;
+  const yr=String(recYear);
+  let g=0;
+
+  // 경기수는 실제 pitching 배열에 해당 투수가 등장한 경기만 계산
+  Repo.all()
+    .filter(e=>e.type==='kbo'&&!e.cancelReason&&!e.stage&&S(e.date).slice(0,4)===yr&&hasScore(e))
+    .forEach(e=>{
+      if(Array.isArray(e.pitching)&&e.pitching.some(p=>S(p.name)===S(name)))g++;
+    });
+
+  // 승/패/홀드/세이브는 개인기록 표와 완전히 같은 기준 사용.
+  // 자동연동 경기는 kbo.doosanDecisions를 우선하므로 상대팀 투수 기록이 섞이지 않음.
+  const season=recStats().find(r=>S(r.n)===S(name))||{w:0,l:0,h:0,s:0};
+
+  return {
+    g,
+    w:+season.w||0,
+    l:+season.l||0,
+    h:+season.h||0,
+    s:+season.s||0
+  };
+}
+function hitterDetail(name){
+  return recStats().find(r=>S(r.n)===S(name))||null;
 }
 function playerSheetHTML(){
   if(!playerSheet)return '';
@@ -441,11 +471,40 @@ function playerSheetHTML(){
       </div>
     </div></div>`;
   }
-  const c=battingOrders(playerSheet),rows=[];
-  for(let i=1;i<=9;i++)if(c[i])rows.push(`<div class="orderbox"><b>${c[i]}경기</b><span>${i}번 타자</span></div>`);
+  if(recBatTab==='order'){
+    const c=battingOrders(playerSheet),rows=[];
+    for(let i=1;i<=9;i++)if(c[i])rows.push(`<div class="orderbox"><b>${c[i]}경기</b><span>${i}번 타자</span></div>`);
+    return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div>
+      <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 KBO · 타순별 출전 횟수<br><span style="font-size:11px">대타·대주자·대수비 포함</span></div></div><button class="sheetclose" data-sheetclose>×</button></div>
+      ${rows.length?`<div class="ordergrid">${rows.join('')}</div>`:'<div class="empty" style="padding:28px 0">저장된 타순 기록이 없습니다.</div>'}
+    </div></div>`;
+  }
+  const r=hitterDetail(playerSheet);
+  if(!r)return '';
+  if(recBatTab==='onbase'){
+    return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div>
+      <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 KBO · 출루 기록</div></div><button class="sheetclose" data-sheetclose>×</button></div>
+      <div class="ordergrid">
+        <div class="orderbox"><b>${r.bb}</b><span>볼넷</span></div>
+        <div class="orderbox"><b>${r.hbp}</b><span>사구</span></div>
+        <div class="orderbox"><b>${r.ibb}</b><span>고의4구</span></div>
+        <div class="orderbox"><b>${r.runs}</b><span>득점</span></div>
+      </div>
+    </div></div>`;
+  }
+  const avg=r.avg>=1?'1.000':r.avg.toFixed(3).slice(1);
   return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div>
-    <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 KBO · 타순별 출전 횟수<br><span style="font-size:11px">대타·대주자·대수비 포함</span></div></div><button class="sheetclose" data-sheetclose>×</button></div>
-    ${rows.length?`<div class="ordergrid">${rows.join('')}</div>`:'<div class="empty" style="padding:28px 0">저장된 타순 기록이 없습니다.</div>'}
+    <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 KBO · 타격 기록</div></div><button class="sheetclose" data-sheetclose>×</button></div>
+    <div class="ordergrid">
+      <div class="orderbox"><b>${r.ab}</b><span>타수</span></div>
+      <div class="orderbox"><b>${r.hit}</b><span>안타</span></div>
+      <div class="orderbox"><b>${r.rbi}</b><span>타점</span></div>
+      <div class="orderbox"><b>${avg}</b><span>타율</span></div>
+      <div class="orderbox"><b>${r.d2}</b><span>2루타</span></div>
+      <div class="orderbox"><b>${r.d3}</b><span>3루타</span></div>
+      <div class="orderbox"><b>${r.hr}</b><span>홈런</span></div>
+      <div class="orderbox"><b>${r.sb}</b><span>도루</span></div>
+    </div>
   </div></div>`;
 }
 
@@ -527,29 +586,62 @@ function h2hView(){
     <h2>진행된 경기</h2><div class="card">${done.length?done.slice().reverse().map(row).join(''):'<div class="empty">진행된 경기가 없습니다.</div>'}</div>
     <h2>남은 일정</h2><div class="card">${left.length?left.map(row).join(''):'<div class="empty">남은 경기가 없습니다.</div>'}</div>`;
   }
+  return `<div class="brand"><div class="logo">맞대결</div></div><div class="chips">${TEAMS.map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${t}</button>`).join('')}</div>${body||'<div class="empty">상대팀을 선택하세요.</div>'}`;
+}
+function opponentStatsView(){
+  const yr=TODAY.getFullYear();
+  let body='';
+  if(h2h){
+    const m={};
+    Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&hasScore(e)&&S(e.date).slice(0,4)===String(yr)&&e.opp===h2h&&Array.isArray(e.batting)).forEach(e=>{
+      e.batting.forEach(p=>{
+        const n=S(p.name);if(!n)return;
+        if(!m[n])m[n]={n,ab:0,hit:0,hr:0,sb:0};
+        const r=m[n];r.ab+=+p.atBats||0;r.hit+=+p.hits||0;r.hr+=+p.homeRuns||0;r.sb+=+p.stolenBases||0;
+      });
+    });
+    const rows=Object.values(m).sort((a,b)=>(b.ab-a.ab)||(b.hit-a.hit)||a.n.localeCompare(b.n,'ko'));
+    const avg=r=>r.ab?(r.hit/r.ab>=1?'1.000':(r.hit/r.ab).toFixed(3).slice(1)):'.000';
+    body=`<div class="card" style="margin-top:14px"><div class="top"><span>${yr} 시즌 · 두산 vs ${h2h}</span></div>
+      ${rows.length?`<table><thead><tr><th></th><th>선수</th><th>타수</th><th>안타</th><th>도루</th><th>홈런</th><th>타율</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.n)}</td><td>${r.ab}</td><td>${r.hit}</td><td>${r.sb}</td><td>${r.hr}</td><td><b>${avg(r)}</b></td></tr>`).join('')}</tbody></table>`:'<div class="empty">저장된 상대 타격 기록이 없습니다.</div>'}
+    </div>`;
+  }
   return `<div class="brand"><div class="logo">상대전적</div></div><div class="chips">${TEAMS.map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${t}</button>`).join('')}</div>${body||'<div class="empty">상대팀을 선택하세요.</div>'}`;
 }
+
 function admin(){
   const e=editing||{type:'kbo',date:TS,time:'',title:'',place:'',homeAway:'',program:'',channel:'',players:[],desc:''};
   const list=Repo.all().slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const placeCustom=!!e.place&&!VENUES.includes(e.place);
+  const oppCustom=!!e.opp&&!TEAMS.includes(e.opp);
+  const homeCustom=!!e.homeAway&&!['home','away'].includes(e.homeAway);
+  const cancelCustom=!!e.cancelReason&&!['우천','그라운드 사정','폭염'].includes(e.cancelReason);
 
   if(!isOwner)return `<div class="brand"><div class="logo">관리자</div></div><div class="card">${SB?`<label>이메일</label><input id="em" type="email" autocomplete="username"><label>비밀번호</label><input id="pw" type="password" autocomplete="current-password"><button class="btn" id="login">로그인</button>${SB&&document.body.dataset.r==='admin'&&isOwner===false?'':''}`:'<div class="empty">Supabase 설정 후 사용할 수 있습니다.</div>'}<div class="note">일정 수정은 관리자로 등록된 계정만 가능하며 서버에서 확인합니다. <a href="#/">← 돌아가기</a></div></div>`;
   const kboWarn=[KBO_WARNING,...KBO_MERGE_WARNINGS].filter(Boolean).join(' / ');
   const kboPanel=editing?.kboGameId?`<div class="note"><label><input id="kbo_manual" type="checkbox" style="width:auto" ${editing.manualOverride?'checked':''}> 이 경기의 수동 기록을 우선 사용</label>기록을 수정하면 자동으로 켜집니다. 해제 후 저장하면 KBO 자동 기록으로 돌아갑니다.</div>${editing.batting?.length?batterTable(editing.batting,true):''}`:'';
   return `${kboWarn?`<div class="note">${esc(kboWarn)}</div>`:''}<div class="brand"><div class="logo">관리자</div><a href="#/" class="demo" style="text-decoration:none">← 앱</a></div>
-  <button class="btn g" id="logout" style="margin:0 0 12px">로그아웃</button><div class="card"><b>${editing?'일정 수정':'일정 추가'}</b>
+  <button class="btn g" id="logout" style="margin:0 0 12px">로그아웃</button><div class="note">KBO 자동 일정은 kbo_game_records에 저장된 미래 경기까지 자동 표시됩니다. 같은 game_id가 경기 종료 후 갱신되면 결과와 선수 기록도 자동 반영됩니다.</div><div class="card"><b>${editing?'일정 수정':'일정 추가'}</b>
   ${kboPanel}
   <label>종류</label><select id="f_type"${editing?.kboGameId?' disabled':''}>${['kbo','club','fan','broadcast','radio','ticket','edu','etc'].map(k=>`<option value="${k}"${e.type===k?' selected':''}>${TYPES[k]}</option>`).join('')}</select>
   <label>날짜</label><input id="f_date" type="date"${editing?.kboGameId?' disabled':''} value="${e.date}"><label>시간</label><input id="f_time" type="time" value="${e.time||''}">
-  <label>장소</label><select id="f_place">${['',...VENUES].map(v=>`<option value="${v}" ${e.place===v?'selected':''}>${v||'장소 선택'}</option>`).join('')}</select>
-  <label>상대팀 (경기)</label><select id="f_opp"${editing?.kboGameId?' disabled':''}>${['',...TEAMS].map(t=>`<option value="${t}"${e.opp===t?' selected':''}>${t||'상대팀 선택'}</option>`).join('')}</select>
+  <label>장소</label><select id="f_place">${['',...VENUES].map(v=>`<option value="${v}" ${e.place===v?'selected':''}>${v||'장소 선택'}</option>`).join('')}<option value="__custom__"${placeCustom?' selected':''}>직접 입력</option></select>
+  <input id="f_place_custom" value="${placeCustom?esc(e.place):''}" placeholder="장소를 직접 입력" style="margin-top:8px;${placeCustom?'':'display:none'}">
+
+  <label>상대팀 (경기)</label><select id="f_opp"${editing?.kboGameId?' disabled':''}>${['',...TEAMS].map(t=>`<option value="${t}"${e.opp===t?' selected':''}>${t||'상대팀 선택'}</option>`).join('')}<option value="__custom__"${oppCustom?' selected':''}>직접 입력</option></select>
+  <input id="f_opp_custom" value="${oppCustom?esc(e.opp):''}" placeholder="상대팀을 직접 입력 (예: 요미우리)" style="margin-top:8px;${oppCustom?'':'display:none'}"${editing?.kboGameId?' disabled':''}>
+
 <label>홈 / 원정</label><select id="f_homeAway"${editing?.kboGameId?' disabled':''}>
 <option value="">홈/원정 선택</option>
 <option value="home"${e.homeAway==='home'?' selected':''}>홈</option>
 <option value="away"${e.homeAway==='away'?' selected':''}>원정</option>
+<option value="__custom__"${homeCustom?' selected':''}>직접 입력</option>
 </select>
+<input id="f_homeAway_custom" value="${homeCustom?esc(e.homeAway):''}" placeholder="예: 중립" style="margin-top:8px;${homeCustom?'':'display:none'}"${editing?.kboGameId?' disabled':''}>
 <label>두산 선발</label><input id="f_starter" value="${e.starter||''}" placeholder="예: 곽빈">
 <label>상대팀 선발</label><input id="f_oppStarter" value="${e.oppStarter||''}" placeholder="예: 임찬규">
+  <label>경기 취소</label><select id="f_cancelReason"><option value="">정상 경기</option>${['우천','그라운드 사정','폭염'].map(x=>`<option value="${x}"${e.cancelReason===x?' selected':''}>${x}</option>`).join('')}<option value="__custom__"${cancelCustom?' selected':''}>직접 입력</option></select>
+  <input id="f_cancelReason_custom" value="${cancelCustom?esc(e.cancelReason):''}" placeholder="취소 사유 직접 입력" style="margin-top:8px;${cancelCustom?'':'display:none'}">
   <label>스코어 두산 : 상대 (종료 시)</label><div style="display:flex;gap:8px"><input id="f_sd" type="number" min="0" value="${e.score?e.score.d:''}"><input id="f_so" type="number" min="0" value="${e.score?e.score.v:''}"></div>
   <label>경기시간</label><input id="f_duration" value="${esc(e.duration)}" placeholder="예: 3시간 12분">
   <label>승리투수</label><input id="f_winP" value="${esc(e.winP)}" placeholder="예: 곽빈">
@@ -577,14 +669,14 @@ function admin(){
     <div class="note">시즌별 명단을 따로 저장합니다. 기존 bears_roster는 현재 연도 명단이 없을 때만 호환용으로 사용됩니다.</div>
   </div>
   <h2>다른 구단 시즌 성적 (순위표용)</h2><div class="card"><div class="calhead" style="margin-bottom:6px"><button class="ib" data-astand="-1">‹</button><b>${adminStandingsYear}년 순위 입력</b><button class="ib" data-astand="1"${adminStandingsYear>=TODAY.getFullYear()+1?' disabled':''}>›</button></div>${TEAMS.map(t=>{const o=othersForYear(adminStandingsYear).find(x=>x.n===t)||{w:'',d:'',l:''};return `<div class="ev" style="align-items:center"><div class="tm" style="width:52px">${t}</div><div class="bd" style="display:flex;gap:6px"><input data-o="${t}" data-k="w" type="number" min="0" placeholder="승" value="${o.w}"><input data-o="${t}" data-k="d" type="number" min="0" placeholder="무" value="${o.d}"><input data-o="${t}" data-k="l" type="number" min="0" placeholder="패" value="${o.l}"></div></div>`}).join('')}<button class="btn" id="saveo">${adminStandingsYear}년 순위 성적 저장</button><div class="note">두산 성적은 해당 연도의 등록 경기 결과로 자동 계산됩니다. 다른 구단 성적은 연도별로 따로 저장됩니다.</div></div>
-  <h2>직접 등록한 일정</h2><div class="card">${list.length?list.map(x=>`<div class="ev"><div class="tm">${x.date.slice(5)}</div><div class="bd"><div class="ti">${x.title}</div><div class="sb">${TYPES[x.type]}${x.kboGameId?' · KBO 자동연동':''}</div><button class="link" data-edit="${x.id}">수정</button>${x.kboGameId?'':`<button class="link" data-del="${x.id}">삭제</button>`}</div></div>`).join(''):'<div class="empty">등록한 일정이 없습니다.</div>'}</div>
+  <h2>직접 등록한 일정</h2><div class="card">${list.length?list.map(x=>`<div class="ev"><div class="tm">${x.date.slice(5)}</div><div class="bd"><div class="ti">${x.title}</div><div class="sb">${TYPES[x.type]}${x.cancelReason?' · '+esc(x.cancelReason)+' 취소':''}${x.kboGameId?' · KBO 자동연동':''}</div><button class="link" data-edit="${x.id}">수정</button>${x.kboGameId?'':`<button class="link" data-del="${x.id}">삭제</button>`}</div></div>`).join(''):'<div class="empty">등록한 일정이 없습니다.</div>'}</div>
   `;
 }
 
 function route(){
   const r=location.hash.replace('#/','')||'home';
-  $('#app').innerHTML=r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='admin'?admin():home();
-  $('#nav').innerHTML=[['home','홈'],['standings','순위'],['records','개인기록'],['h2h','상대전적']].map(([k,l])=>`<a href="#/${k==='home'?'':k}" class="${r===k?'on':''}">${l}</a>`).join('');
+  $('#app').innerHTML=r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='admin'?admin():home();
+  $('#nav').innerHTML=[['home','홈'],['standings','순위'],['records','개인기록'],['h2h','맞대결'],['opponent','상대전적']].map(([k,l])=>`<a href="#/${k==='home'?'':k}" class="${r===k?'on':''}">${l}</a>`).join('');
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
 document.addEventListener('click',ev=>{
@@ -619,7 +711,12 @@ document.addEventListener('click',ev=>{
     Repo.saveRoster(clean,adminRosterYear).then(()=>{alert(adminRosterYear+'년 두산 선수 명단을 저장했습니다');keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'')))
   }
   else if(t.id==='save'){
-    const v=k=>$('#f_'+k)?.value?.trim()||'',type=v('type'),opp=v('opp'),homeAway=v('homeAway'),g=type==='kbo';
+    const v=k=>$('#f_'+k)?.value?.trim()||'';
+    const customVal=(k)=>{
+      const base=v(k);
+      return base==='__custom__' ? ($('#f_'+k+'_custom')?.value?.trim()||'') : base;
+    };
+    const type=v('type'),opp=customVal('opp'),homeAway=customVal('homeAway'),cancelReason=customVal('cancelReason'),g=type==='kbo';
     if(g&&!homeAway){alert('경기는 홈/원정을 선택해주세요');return}
     const title=v('title')||(g&&opp?'두산 vs '+opp:'');
     if(!title||!v('date')){alert('날짜와 제목(경기는 상대팀)은 필수입니다');return}
@@ -627,15 +724,27 @@ document.addEventListener('click',ev=>{
     const hrEntries=[...document.querySelectorAll('.hr-row')].map(row=>({player:S(row.querySelector('.hr-player')?.value),inning:+(row.querySelector('.hr-inning')?.value||0),runs:+(row.querySelector('.hr-runs')?.value||0)})).filter(x=>x.player&&x.inning&&x.runs);
     const homeRuns=hrEntries.map(x=>`${x.player} ${x.inning}회 ${x.runs}점`).join('\n');
     const old=editing||{},f=k=>$('#f_'+k)?v(k):S(old[k]);
-    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:v('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp:v('opp'),venue:v('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
+    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp, cancelReason,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
   }
   else if(t.id==='cancel'){editing=null;keep()}
   else if(t.dataset.edit){editing=Repo.all().find(x=>x.id===t.dataset.edit);keep()}
   else if(t.dataset.del){const target=Repo.all().find(x=>x.id===t.dataset.del);if(target?.kboGameId){alert('KBO 자동 기록은 여기서 삭제하지 않습니다.');return}if(confirm('삭제할까요?')){Repo.remove(t.dataset.del).catch(e=>alert('삭제하지 못했습니다: '+(e.message||''))).finally(keep)}}
 });
+
+document.addEventListener('change',ev=>{
+  const map={f_place:'f_place_custom',f_opp:'f_opp_custom',f_homeAway:'f_homeAway_custom',f_cancelReason:'f_cancelReason_custom'};
+  const id=map[ev.target?.id];
+  if(!id)return;
+  const input=document.getElementById(id);
+  if(!input)return;
+  const custom=ev.target.value==='__custom__';
+  input.style.display=custom?'':'none';
+  if(custom)input.focus();
+});
+
 document.addEventListener('input',ev=>{const box=document.querySelector('#kbo_manual'),el=ev.target;if(box&&(el.matches('[data-batter],.hr-player,.hr-inning,.hr-runs')||/^f_(sd|so|starter|oppStarter|winP|loseP|saveP|holdP|gwRbi|doubles|triples|hits|steals|duration)$/.test(el.id)))box.checked=true});
 
-function route2(){const r=document.body.dataset.r;$('#app').innerHTML=r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='admin'?admin():home();}
+function route2(){const r=document.body.dataset.r;$('#app').innerHTML=r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='admin'?admin():home();}
 addEventListener('hashchange',route);route();
 
 /* ============ 3. PWA (아이콘/manifest 런타임 생성) ============ */
