@@ -70,10 +70,10 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 .rec th{padding:0}.rec th,.rec td{text-align:right}.rec th:first-child,.rec td:first-child{text-align:left}
 .rec th:nth-child(2),.rec td:nth-child(2){text-align:right}.rec td:first-child{font-weight:700;padding-left:6px}
 .sh{border:0;background:none;font:inherit;font-size:12.5px;font-weight:700;color:var(--sub);padding:12px 6px;min-height:44px;width:100%;text-align:inherit;white-space:nowrap}.sh.on{color:var(--navy)}
-.recscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.recscroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;position:relative;contain:paint;clip-path:inset(0)}
 .recstats{width:max-content;min-width:100%;table-layout:auto}
 .recstats th,.recstats td{min-width:66px;white-space:nowrap}
-.recstats th:first-child,.recstats td:first-child{position:sticky;left:0;z-index:2;background:var(--card);min-width:92px}
+.recstats th:first-child,.recstats td:first-child{position:-webkit-sticky;position:sticky;left:0;z-index:2;background:var(--card);min-width:92px}
 .recstats th:first-child{z-index:3}
 </style>
 </head>
