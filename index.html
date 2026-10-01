@@ -137,15 +137,24 @@ function mergeEvents(manual,automatic){
 }
 const _manualAll=Repo.all.bind(Repo),_manualLoad=Repo.load.bind(Repo),_manualUpsert=Repo.upsert.bind(Repo);
 Repo.all=function(){const x=mergeEvents(_manualAll(),KBO_AUTO);KBO_MERGE_WARNINGS=x.warnings;return x.rows};
+function futuresEvent(row){
+  const b=row?.body||{},g=row?.raw?.game||{},teams=b.teams||{};
+  const ds=v=>{const x=String(v||'');return /^\d{8}$/.test(x)?x.slice(0,4)+'-'+x.slice(4,6)+'-'+x.slice(6,8):x};
+  const name=v=>String(v||'').trim();
+  const away=name(teams.away?.name||g.AWAY_NM||g.AWAY_TEAM_NM||g.T_NM1||g.AWAY_TEAM_NAME);
+  const home=name(teams.home?.name||g.HOME_NM||g.HOME_TEAM_NM||g.T_NM2||g.HOME_TEAM_NAME);
+  const isDoosan=n=>/두산|베어스|DOOSAN|BEARS/i.test(n);
+  if(!isDoosan(away)&&!isDoosan(home))return null;
+  const doosanHome=isDoosan(home),opp=doosanHome?away:home,score=b.score||{};
+  const dscore=doosanHome?score.home:score.away,oscore=doosanHome?score.away:score.home;
+  const finished=String(b.status?.state||g.GAME_STATE_SC||'')==='3'&&dscore!=null&&oscore!=null;
+  const rawTime=String(g.GAME_TIME||g.G_TM||g.START_TIME||g.TIME||'').replace(/[^0-9]/g,'');
+  const time=rawTime.length>=4?rawTime.slice(0,2)+':'+rawTime.slice(2,4):'';
+  return {id:'futures-'+(b.id||row.game_id),kboGameId:b.id||row.game_id,date:ds(row.date||b.date||g.GAME_DATE),type:'futures',source:'kbo',title:'FUTURES 두산 vs '+(opp||'상대팀'),opp:opp||'',homeAway:doosanHome?'home':'away',time,venue:name(g.STADIUM_NM||g.STADIUM||g.S_NM||g.PLACE_NM||''),score:finished?{d:+dscore,v:+oscore}:null,kbo:b};
+}
 Repo.load=async function(){
-  if(SB){try{const rows=[];for(let start=0;;start+=500){const r=await SB.from('kbo_game_records').select('body').order('game_id').range(start,start+499);if(r.error)throw r.error;rows.push(...r.data.map(x=>x.body));if(r.data.length<500)break}
-    KBO_AUTO=rows.map(b=>{
-      if(!b||typeof b!=='object')return b;
-      const leagueId=S(b.kbo?.leagueId);
-      const type=leagueId==='2'?'futures':(b.type||'kbo');
-      return {...b,type};
-    });
-    KBO_WARNING=''
+  if(SB){try{const rows=[];for(let start=0;;start+=500){const r=await SB.from('kbo_game_records').select('game_id,date,body,raw').order('game_id').range(start,start+499);if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<500)break}
+    KBO_AUTO=rows.map(row=>String(row.body?.kbo?.leagueId||'')==='2'?futuresEvent(row):row.body).filter(Boolean);KBO_WARNING=''
   }catch(e){KBO_WARNING='KBO/FUTURES 자동 기록을 갱신하지 못했습니다. 저장된 수동 일정은 계속 사용할 수 있습니다.'}}
   await _manualLoad();
 };
