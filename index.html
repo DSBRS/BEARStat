@@ -779,10 +779,10 @@ document.addEventListener('click',ev=>{
       const base=v(k);
       return base==='__custom__' ? ($('#f_'+k+'_custom')?.value?.trim()||'') : base;
     };
-    const type=v('type'),opp=customVal('opp'),homeAway=customVal('homeAway'),cancelReason=customVal('cancelReason'),g=type==='kbo';
-    if(g&&!homeAway){alert('경기는 홈/원정을 선택해주세요');return}
-    const title=v('title')||(g&&opp?'두산 vs '+opp:'');
-    if(!title||!v('date')){alert('날짜와 제목(경기는 상대팀)은 필수입니다');return}
+    const type=...
+if(g&&!homeAway)...
+const title=...
+if(!title||!v('date'))...
     const sd=v('sd'),so=v('so'),gn=v('gno'),id=editing?editing.id:'c'+Date.now();
     const hrEntries=[...document.querySelectorAll('.hr-row')].map(row=>({player:S(row.querySelector('.hr-player')?.value),inning:+(row.querySelector('.hr-inning')?.value||0),runs:+(row.querySelector('.hr-runs')?.value||0)})).filter(x=>x.player&&x.inning&&x.runs);
     const homeRuns=hrEntries.map(x=>`${x.player} ${x.inning}회 ${x.runs}점`).join('\n');
