@@ -411,12 +411,40 @@ function battingOrders(name){
   });
   return counts;
 }
+function pitcherDetail(name){
+  const yr=String(recYear),r={g:0,w:0,l:0,h:0,s:0};
+  Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&S(e.date).slice(0,4)===yr).forEach(e=>{
+    if(!Array.isArray(e.pitching))return;
+    const p=e.pitching.find(x=>S(x.name)===S(name));
+    if(!p)return;
+    r.g++;
+    const z=S(p.result);
+    if(z==='승')r.w++;
+    else if(z==='패')r.l++;
+    else if(z==='홀드')r.h++;
+    else if(z==='세'||z==='세이브')r.s++;
+  });
+  return r;
+}
 function playerSheetHTML(){
   if(!playerSheet)return '';
+  if(recKind==='pitcher'){
+    const r=pitcherDetail(playerSheet);
+    return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div>
+      <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 KBO · 투수 기록</div></div><button class="sheetclose" data-sheetclose>×</button></div>
+      <div class="ordergrid">
+        <div class="orderbox"><b>${r.g}</b><span>경기수</span></div>
+        <div class="orderbox"><b>${r.w}</b><span>승</span></div>
+        <div class="orderbox"><b>${r.l}</b><span>패</span></div>
+        <div class="orderbox"><b>${r.h}</b><span>홀드</span></div>
+        <div class="orderbox"><b>${r.s}</b><span>세이브</span></div>
+      </div>
+    </div></div>`;
+  }
   const c=battingOrders(playerSheet),rows=[];
   for(let i=1;i<=9;i++)if(c[i])rows.push(`<div class="orderbox"><b>${c[i]}경기</b><span>${i}번 타자</span></div>`);
   return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div>
-    <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 KBO · 타순별 선발 출전</div></div><button class="sheetclose" data-sheetclose>×</button></div>
+    <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 KBO · 타순별 출전 횟수<br><span style="font-size:11px">대타·대주자·대수비 포함</span></div></div><button class="sheetclose" data-sheetclose>×</button></div>
     ${rows.length?`<div class="ordergrid">${rows.join('')}</div>`:'<div class="empty" style="padding:28px 0">저장된 타순 기록이 없습니다.</div>'}
   </div></div>`;
 }
@@ -458,7 +486,7 @@ function records(){
 
   return `<div class="brand"><div class="logo">개인기록</div></div>
   ${recordTabs()}
-  ${rows.length?`<div class="card"><div class="recscroll"><table class="rec recstats"><tr>${head}</tr>${rows.map(r=>`<tr>${cols.map(([k])=>`<td>${k==='n'?(recKind==='hitter'?`<button class="playerlink" data-player="${esc(r.n)}">${esc(r.n)}</button>`:esc(r.n)):k==='avg'?(r.avg>=1?'1.000':r.avg.toFixed(3).slice(1)):r[k]}</td>`).join('')}</tr>`).join('')}</table></div></div>`:`<div class="card"><div class="empty">아직 집계할 ${recKind==='pitcher'?'투수':'타자'} 기록이 없습니다.</div></div>`}
+  ${rows.length?`<div class="card"><div class="recscroll"><table class="rec recstats"><tr>${head}</tr>${rows.map(r=>`<tr>${cols.map(([k])=>`<td>${k==='n'?`<button class="playerlink" data-player="${esc(r.n)}">${esc(r.n)}</button>`:k==='avg'?(r.avg>=1?'1.000':r.avg.toFixed(3).slice(1)):r[k]}</td>`).join('')}</tr>`).join('')}</table></div></div>`:`<div class="card"><div class="empty">아직 집계할 ${recKind==='pitcher'?'투수':'타자'} 기록이 없습니다.</div></div>`}
   <div class="foot">${recYear}년 KBO · 두산 선수 명단 기준<br>${st}</div>${playerSheetHTML()}`;
 }
 
