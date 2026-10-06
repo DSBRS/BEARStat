@@ -962,7 +962,31 @@ function admin(){
   const kboWarn=[KBO_WARNING,...KBO_MERGE_WARNINGS].filter(Boolean).join(' / ');
   const kboPanel=editing?.kboGameId?`<div class="note"><label><input id="kbo_manual" type="checkbox" style="width:auto" ${editing.manualOverride?'checked':''}> 이 경기의 수동 기록을 우선 사용</label>기록을 수정하면 자동으로 켜집니다. 해제 후 저장하면 KBO 자동 기록으로 돌아갑니다.</div>${editing.batting?.length?batterTable(editing.batting,true):''}`:'';
   return `${kboWarn?`<div class="note">${esc(kboWarn)}</div>`:''}<div class="brand"><div class="logo">관리자</div><a href="#/" class="demo" style="text-decoration:none">← 앱</a></div>
-  <button class="btn g" id="logout" style="margin:0 0 12px">로그아웃</button><div class="note">KBO 자동 일정은 kbo_game_records에 저장된 미래 경기까지 자동 표시됩니다. 같은 game_id가 경기 종료 후 갱신되면 결과와 선수 기록도 자동 반영됩니다.</div><div class="card"><b>${editing?'일정 수정':'일정 추가'}</b>
+  <button class="btn g" id="logout" style="margin:0 0 12px">로그아웃</button><h2>일정 관리</h2>
+  <div class="card">
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center">
+      <input id="admin_search" value="${esc(adminSearch)}" placeholder="날짜·상대팀·장소 검색">
+      <button class="ib" id="admin_search_btn" style="height:44px;padding:0 14px">검색</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="chip" id="admin_all">전체 일정</button>
+      ${adminSearch?`<button class="chip on" id="admin_search_clear">검색 초기화</button>`:''}
+    </div>
+  </div>
+
+  ${adminCalendar()}
+
+  <h2>${adminSearch?`검색 결과 · ${esc(adminSearch)}`:(adminCalDate?`${adminCalDate.slice(5).replace('-','월 ')}일 일정`:'전체 일정')}</h2>
+  <div class="card">
+    ${list.length?list.map(x=>`<div class="ev">
+      <div class="tm">${x.date.slice(5)}</div>
+      <div class="bd">
+        <div class="ti">${esc(x.title)}</div>
+        <div class="sb">${TYPES[x.type]}${x.cancelReason?' · '+esc(x.cancelReason)+'취소':''}${x.kboGameId?' · KBO 자동연동':''}${x.venue?' · '+esc(x.venue):''}</div>
+        <button class="link" data-edit="${x.id}">수정</button>${x.kboGameId?'':`<button class="link" data-del="${x.id}">삭제</button>`}
+      </div>
+    </div>`).join(''):'<div class="empty">해당 일정이 없습니다.</div>'}
+  </div><div class="note">KBO 자동 일정은 kbo_game_records에 저장된 미래 경기까지 자동 표시됩니다. 같은 game_id가 경기 종료 후 갱신되면 결과와 선수 기록도 자동 반영됩니다.</div><div class="card" id="admin_form"><b>${editing?'일정 수정':'일정 추가'}</b>
   ${kboPanel}
   ${e.type==='edu'?`<div class="note">교육리그 타자 기록은 아래 선수 명단에서 직접 입력합니다. 기록 없는 선수는 0으로 두면 됩니다.</div>${batterTable((Array.isArray(e.batting)&&e.batting.length?e.batting:rosterForYear(+(S(e.date).slice(0,4)||TODAY.getFullYear())).filter(x=>x.t==='hitter').map(x=>({name:x.n,atBats:0,hits:0,doubles:0,triples:0,homeRuns:0,stolenBases:0,rbi:0,runs:0,order:0}))),true)}`:''}
   <label>종류</label><select id="f_type"${editing?.kboGameId?' disabled':''}>${['kbo','club','fan','broadcast','radio','ticket','edu','etc'].map(k=>`<option value="${k}"${e.type===k?' selected':''}>${TYPES[k]}</option>`).join('')}</select>
@@ -988,13 +1012,13 @@ function admin(){
   <label>경기시간</label><input id="f_duration" value="${esc(e.duration)}" placeholder="예: 3시간 12분">
   <label>승리투수</label><input id="f_winP" value="${esc(e.winP)}" placeholder="예: 곽빈">
   <label>패전투수</label><input id="f_loseP" value="${esc(e.loseP)}">
-  <label>세이브투수</label><input id="f_saveP" value="${esc(e.saveP)}" placeholder="예: 이영하">
-  <label>홀드투수 (여러 명은 쉼표로 구분)</label><input id="f_holdP" value="${esc(e.holdP)}" placeholder="예: 타카다, 김택연">
-  <label>결승타</label><input id="f_gwRbi" value="${esc(e.gwRbi)}" placeholder="예: 박준순">
-  <label>2루 (여러 개면 이름 반복)</label><input id="f_doubles" value="${esc(e.doubles)}" placeholder="예: 박찬호">
+  <label>세이브투수</label><input id="f_saveP" value="${esc(e.saveP)}" placeholder="예: 김택연">
+  <label>홀드투수 (여러 명은 쉼표로 구분)</label><input id="f_holdP" value="${esc(e.holdP)}" placeholder="예: 곽빈, 김택연">
+  <label>결승타</label><input id="f_gwRbi" value="${esc(e.gwRbi)}" placeholder="예: 양의지">
+  <label>2루 (여러 개면 이름 반복)</label><input id="f_doubles" value="${esc(e.doubles)}" placeholder="예: 정수빈, 양의지">
   <label>3루 (여러 개면 이름 반복)</label><input id="f_triples" value="${esc(e.triples)}" placeholder="예: 정수빈">
-  <label>안타 (여러 개면 이름 반복)</label><input id="f_hits" value="${esc(e.hits)}" placeholder="예: 김민석">
-  <label>도루 (여러 개면 이름 반복)</label><input id="f_steals" value="${esc(e.steals)}" placeholder="예: 조수행">
+  <label>안타 (여러 개면 이름 반복)</label><input id="f_hits" value="${esc(e.hits)}" placeholder="예: 양의지, 양의지, 김민석">
+  <label>도루 (여러 개면 이름 반복)</label><input id="f_steals" value="${esc(e.steals)}" placeholder="예: 정수빈, 김민석">
   ${hrEditor(e)}
   <label>포스트시즌 단계 / 차전 / 시리즈 전적</label><div style="display:flex;gap:8px"><select id="f_stage"><option value="">정규시즌</option>${['시범경기','와일드카드','준플레이오프','플레이오프','한국시리즈','관련 없음'].map(x=>`<option${e.stage===x?' selected':''}>${x}</option>`).join('')}</select><input id="f_gno" type="number" min="1" placeholder="차전" value="${e.gameNo||''}"></div><input id="f_series" placeholder="1승 0패" value="${e.series||''}" style="margin-top:8px">
   <label>프로그램명</label><input id="f_program" value="${e.program||''}"><label>방송사</label><input id="f_channel" value="${e.channel||''}">
@@ -1011,31 +1035,7 @@ function admin(){
     <div class="note">시즌별 명단을 따로 저장합니다. 기존 bears_roster는 현재 연도 명단이 없을 때만 호환용으로 사용됩니다.</div>
   </div>
   <h2>다른 구단 시즌 성적 (순위표용)</h2><div class="card"><div class="calhead" style="margin-bottom:6px"><button class="ib" data-astand="-1">‹</button><b>${adminStandingsYear}년 순위 입력</b><button class="ib" data-astand="1"${adminStandingsYear>=TODAY.getFullYear()+1?' disabled':''}>›</button></div>${TEAMS.map(t=>{const o=othersForYear(adminStandingsYear).find(x=>x.n===t)||{w:'',d:'',l:''};return `<div class="ev" style="align-items:center"><div class="tm" style="width:52px">${t}</div><div class="bd" style="display:flex;gap:6px"><input data-o="${t}" data-k="w" type="number" min="0" placeholder="승" value="${o.w}"><input data-o="${t}" data-k="d" type="number" min="0" placeholder="무" value="${o.d}"><input data-o="${t}" data-k="l" type="number" min="0" placeholder="패" value="${o.l}"></div></div>`}).join('')}<button class="btn" id="saveo">${adminStandingsYear}년 순위 성적 저장</button><div class="note">두산 성적은 해당 연도의 등록 경기 결과로 자동 계산됩니다. 다른 구단 성적은 연도별로 따로 저장됩니다.</div></div>
-  <h2>일정 관리</h2>
-  <div class="card">
-    <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center">
-      <input id="admin_search" value="${esc(adminSearch)}" placeholder="날짜·상대팀·장소 검색">
-      <button class="ib" id="admin_search_btn" style="height:44px;padding:0 14px">검색</button>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-      <button class="chip" id="admin_all">전체 일정</button>
-      ${adminSearch?`<button class="chip on" id="admin_search_clear">검색 초기화</button>`:''}
-    </div>
-  </div>
-
-  ${adminCalendar()}
-
-  <h2>${adminSearch?`검색 결과 · ${esc(adminSearch)}`:(adminCalDate?`${adminCalDate.slice(5).replace('-','월 ')}일 일정`:'전체 일정')}</h2>
-  <div class="card">
-    ${list.length?list.map(x=>`<div class="ev">
-      <div class="tm">${x.date.slice(5)}</div>
-      <div class="bd">
-        <div class="ti">${esc(x.title)}</div>
-        <div class="sb">${TYPES[x.type]}${x.cancelReason?' · '+esc(x.cancelReason)+'취소':''}${x.kboGameId?' · KBO 자동연동':''}${x.venue?' · '+esc(x.venue):''}</div>
-        <button class="link" data-edit="${x.id}">수정</button>${x.kboGameId?'':`<button class="link" data-del="${x.id}">삭제</button>`}
-      </div>
-    </div>`).join(''):'<div class="empty">해당 일정이 없습니다.</div>'}
-  </div>
+  
   `;
 }
 
@@ -1179,7 +1179,7 @@ if(!v('date')){
     Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp, cancelReason,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
   }
   else if(t.id==='cancel'){editing=null;keep()}
-  else if(t.dataset.edit){editing=Repo.all().find(x=>x.id===t.dataset.edit);keep()}
+  else if(t.dataset.edit){editing=Repo.all().find(x=>x.id===t.dataset.edit);keep()requestAnimationFrame(()=>requestAnimationFrame(()=>document.querySelector('#admin_form')?.scrollIntoView({behavior:'smooth',block:'start'})));}
   else if(t.dataset.del){const target=Repo.all().find(x=>x.id===t.dataset.del);if(target?.kboGameId){alert('KBO 자동 기록은 여기서 삭제하지 않습니다.');return}if(confirm('삭제할까요?')){Repo.remove(t.dataset.del).catch(e=>alert('삭제하지 못했습니다: '+(e.message||''))).finally(keep)}}
 });
 
