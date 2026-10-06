@@ -553,7 +553,7 @@ function recordTabs(){
   return `<div class="calhead" style="margin-bottom:10px"><button class="ib" data-ryear="-1">‹</button><b>${recYear}년 ${recLeague==='edu'?'교육리그':'KBO'}</b><button class="ib" data-ryear="1"${recYear>=maxYear?' disabled':''}>›</button></div>
   <div class="chips" style="margin-bottom:12px">${[['kbo','KBO'],['edu','교육리그']].map(([k,l])=>`<button class="chip${recLeague===k?' on':''}" data-rleague="${k}">${l}</button>`).join('')}</div>
   <div class="chips" style="margin-bottom:12px">${[['pitcher','투수'],['hitter','타자']].map(([k,l])=>`<button class="chip${recKind===k?' on':''}" data-rkind="${k}">${l}</button>`).join('')}</div>
-  ${recKind==='pitcher'?`<div class="chips" style="margin-bottom:12px">${[['result','승패 기록'],['pitching','투구 기록']].map(([k,l])=>`<button class="chip${recPitchTab===k?' on':''}" data-rptab="${k}">${l}</button>`).join('')}</div>`:''}
+  ${recKind==='pitcher'?`<div class="chips" style="margin-bottom:12px">${[['result','투수 기록'],['pitching','투구 기록']].map(([k,l])=>`<button class="chip${recPitchTab===k?' on':''}" data-rptab="${k}">${l}</button>`).join('')}</div>`:''}
   ${recKind==='hitter'?`<div class="chips" style="margin-bottom:12px">${[['main','타격 기록'],['onbase','출루 기록'],['order','타순']].map(([k,l])=>`<button class="chip${recBatTab===k?' on':''}" data-rbtab="${k}">${l}</button>`).join('')}</div>`:''}`;
 }
 
@@ -602,20 +602,24 @@ function pitcherStatHistory(name,stat){
   const val=(p,ks)=>{for(const k of ks)if(p&&p[k]!==undefined&&p[k]!==null&&p[k]!=='')return +p[k]||0;return 0};
   Repo.all().filter(e=>e.type===recLeague&&!isCancelled(e)&&!e.stage&&S(e.date).slice(0,4)===yr&&hasScore(e)).forEach(e=>{
     const p=Array.isArray(e.pitching)?e.pitching.find(x=>S(x.name)===S(name)):null;
-    let value=null,detail='';
+    let value=null,detail='',summary='';
+    const o=ipOuts(p),ip=ipText(o),runs=val(p,['runs','runsAllowed','r']),er=val(p,['earnedRuns','er']);
+    const gameEra=o?((er*27)/o).toFixed(2):'0.00';
     if(['w','l','s','h'].includes(stat)){
       const d=(e.kboGameId&&!e.manualOverride&&e.kbo?.doosanDecisions)?e.kbo.doosanDecisions:e;
       const field={w:'winP',l:'loseP',s:'saveP',h:'holdP'}[stat];
       if(!names(d&&d[field]).includes(name))return;
       value=1;
+      summary=p?`${ip}이닝 · ${runs}실점`:'투구 기록 없음';
+      detail=p?`${er}자책 · ERA ${gameEra}`:'';
     }else{
       if(!p)return;
-      if(stat==='games')value=1;
-      else if(stat==='ip'){const o=ipOuts(p);value=ipText(o);detail=`${o}아웃`;}
-      else if(stat==='era'){const o=ipOuts(p),er=val(p,['earnedRuns','er']);value=o?((er*27)/o).toFixed(2):'0.00';detail=`${ipText(o)}이닝 · 자책 ${er}`;}
-      else{const keys=aliases[stat]||[];const n=val(p,keys);if(n<=0)return;value=n;const events=Array.isArray(p.events)?p.events:Array.isArray(p.playByPlay)?p.playByPlay:[];if(events.length){const by={};events.filter(x=>{const t=S(x.type||x.stat||x.event);return t===stat||keys.includes(t)}).forEach(x=>{const i=+(x.inning||0);if(i)by[i]=(by[i]||0)+1});detail=Object.entries(by).sort((a,b)=>+a[0]-+b[0]).map(([i,n])=>`${i}회 ${n}개`).join(' · ')}}
+      if(stat==='games'){value=1;summary=`${ip}이닝 · ${runs}실점`;detail=`${er}자책 · ERA ${gameEra}`;}
+      else if(stat==='ip'){value=ip;summary=`${ip}이닝 · ${runs}실점`;detail=`${er}자책 · ERA ${gameEra}`;}
+      else if(stat==='era'){value=gameEra;summary=`${ip}이닝 · ${runs}실점`;detail=`${er}자책 · ERA ${gameEra}`;}
+      else{const keys=aliases[stat]||[];const n=val(p,keys);if(n<=0)return;value=n;summary=`${ip}이닝 · ${runs}실점`;detail=`${er}자책 · ERA ${gameEra}`;const events=Array.isArray(p.events)?p.events:Array.isArray(p.playByPlay)?p.playByPlay:[];if(events.length){const by={};events.filter(x=>{const t=S(x.type||x.stat||x.event);return t===stat||keys.includes(t)}).forEach(x=>{const i=+(x.inning||0);if(i)by[i]=(by[i]||0)+1});const evDetail=Object.entries(by).sort((a,b)=>+a[0]-+b[0]).map(([i,n])=>`${i}회 ${n}개`).join(' · ');if(evDetail)detail+=` · ${evDetail}`}}
     }
-    out.push({date:S(e.date),opp:S(e.opp)||'상대팀',value,detail});
+    out.push({date:S(e.date),opp:S(e.opp)||'상대팀',value,detail,summary});
   });
   return out.sort((a,b)=>b.date.localeCompare(a.date));
 }
@@ -623,9 +627,9 @@ function pitcherHistoryHTML(name){
   if(!pitcherHistoryStat)return'';
   const label={games:'등판',w:'승리',l:'패전',s:'세이브',h:'홀드',ip:'이닝',era:'ERA',hits:'피안타',homeRuns:'피홈런',strikeouts:'탈삼진',walks:'볼넷',hitByPitch:'사구',runs:'실점',earnedRuns:'자책'}[pitcherHistoryStat]||'기록';
   const rows=pitcherStatHistory(name,pitcherHistoryStat);
-  const unit=['games','w','l','s','h'].includes(pitcherHistoryStat)?'경기':pitcherHistoryStat==='ip'?'이닝':pitcherHistoryStat==='era'?'':'개';
   const totalLabel=['games','w','l','s','h'].includes(pitcherHistoryStat)?`총 ${rows.length}경기`:'';
-  return `<div class="historybox"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${label} 경기별 기록</b>${totalLabel?`<span class="sb">${totalLabel}</span>`:''}</div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>${esc(x.date.slice(5).replace('-','.'))}</b> · vs ${esc(x.opp)}${x.detail?`<br><span class="sb">${esc(x.detail)}</span>`:''}</div><b style="white-space:nowrap">${x.value}${unit}</b></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`;
+  const valueText=x=>pitcherHistoryStat==='ip'?`${x.value}이닝`:pitcherHistoryStat==='era'?x.value:['games','w','l','s','h'].includes(pitcherHistoryStat)?x.summary:`${x.value}개`;
+  return `<div class="historybox"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${label} 경기별 기록</b>${totalLabel?`<span class="sb">${totalLabel}</span>`:''}</div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>${esc(x.date.slice(5).replace('-','.'))}</b> · vs ${esc(x.opp)}${x.detail?`<br><span class="sb">${esc(x.detail)}</span>`:''}</div><b style="white-space:nowrap">${esc(valueText(x))}</b></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`;
 }
 function hitterDetail(name){
   return recStats().find(r=>S(r.n)===S(name))||null;
