@@ -813,6 +813,25 @@ function hrEditor(e){
 
 function h2hView(){
   const kb=Repo.all().filter(e=>e.type==='kbo');
+  const winPct=c=>{
+    const n=(+c.W||0)+(+c.L||0);
+    return n?('.'+String(Math.round((c.W/n)*1000)).padStart(3,'0')):'.000';
+  };
+  const shortVenue=v=>{
+    const x=S(v);
+    const map={
+      '서울종합운동장 야구장':'잠실야구장',
+      '수원 케이티 위즈 파크':'위즈파크',
+      '인천 SSG 랜더스필드':'랜더스필드',
+      '창원NC파크':'창원NC파크',
+      '광주-기아 챔피언스 필드':'챔피언스필드',
+      '사직 야구장':'사직야구장',
+      '대구 삼성 라이온즈 파크':'라이온즈파크',
+      '대전 한화생명 볼파크':'한화생명 볼파크',
+      '고척 스카이돔':'고척돔'
+    };
+    return map[x]||x||'경기장 미정';
+  };
   let body='';
   if(h2h){
     const g=kb.filter(e=>e.opp===h2h).sort((a,b)=>a.date.localeCompare(b.date)),
@@ -820,9 +839,32 @@ function h2hView(){
           left=g.filter(e=>!hasScore(e)&&!isCancelled(e)&&S(e.date)>=TS),
           cancelled=g.filter(e=>isCancelled(e));
     const c={W:0,L:0,D:0};done.forEach(e=>c[result(e)]++);
+
+    const venueMap=new Map();
+    done.forEach(e=>{
+      let label=shortVenue(e.venue||e.place);
+      if(h2h==='LG' && label==='잠실야구장'){
+        label+=e.homeAway==='home'?' 홈':e.homeAway==='away'?' 원정':'';
+      }
+      if(!venueMap.has(label))venueMap.set(label,{W:0,L:0,D:0});
+      const vc=venueMap.get(label);
+      vc[result(e)]++;
+    });
+    const venueRows=[...venueMap.entries()].map(([name,vc])=>`
+      <div class="ev" style="align-items:center">
+        <div class="bd">
+          <div class="ti">${esc(name)}</div>
+          <div class="sb">${vc.W}승 ${vc.D}무 ${vc.L}패 · 승률 ${winPct(vc)}</div>
+        </div>
+      </div>`).join('');
+
     const row=e=>{const r=result(e);return `<div class="ev"><div class="tm">${e.date.slice(5).replace('-','.')}</div><div class="bd"><div class="ti">${hasScore(e)?`${e.score.d}:${e.score.v} <span class="res ${r}" style="margin:0">${RL[r]}</span>`:(e.time||'시간 미정')}</div><div class="sb">${e.venue||'경기장 미정'}${e.stage?' · '+e.stage:''}</div></div></div>`};
     const cancelRow=e=>`<div class="ev"><div class="tm">${e.date.slice(5).replace('-','.')}</div><div class="bd"><div class="ti">${e.cancelReason?`${esc(e.cancelReason)}취소`:'경기취소'}</div><div class="sb">${esc(e.venue||'경기장 미정')}</div></div></div>`;
-    body=`<div class="card" style="margin-top:14px"><div class="top"><span>시즌 상대전적 · 두산 vs ${h2h}</span></div><div class="big">${c.W}승 ${c.D}무 ${c.L}패</div></div>
+    body=`<div class="card" style="margin-top:14px">
+      <div class="top"><span>시즌 상대전적 · 두산 vs ${h2h}</span></div>
+      <div class="big">${c.W}승 ${c.D}무 ${c.L}패 <span class="sb" style="font-size:16px;font-weight:800">· 승률 ${winPct(c)}</span></div>
+      ${venueRows?`<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:6px">${venueRows}</div>`:''}
+    </div>
     <h2>진행된 경기</h2><div class="card">${done.length?done.slice().reverse().map(row).join(''):'<div class="empty">진행된 경기가 없습니다.</div>'}</div>
     <h2>남은 일정</h2><div class="card">${left.length?left.map(row).join(''):'<div class="empty">남은 경기가 없습니다.</div>'}</div>
     <h2>잔여경기</h2><div class="card">${cancelled.length?cancelled.slice().reverse().map(cancelRow).join(''):'<div class="empty">취소된 경기가 없습니다.</div>'}</div>`;
