@@ -244,6 +244,22 @@ async function setUser(sess){
   SB.auth.onAuthStateChange((_e,sess)=>{setUser(sess)});
   const {data}=await SB.auth.getSession();await setUser(data.session);
 }catch(e){}})();
+
+/* 최신 자동연동 데이터 갱신:
+ * - 페이지를 다시 볼 때 즉시 새로 읽기
+ * - 열린 상태에서는 60초마다 KBO/수동기록/명단을 다시 읽기
+ */
+let _lastAutoReload=0;
+async function refreshLatestData(force=false){
+  if(!SB)return;
+  const now=Date.now();
+  if(!force&&now-_lastAutoReload<15000)return;
+  _lastAutoReload=now;
+  try{await Repo.load()}catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshLatestData(true)});
+window.addEventListener('focus',()=>refreshLatestData(true));
+setInterval(()=>{if(!document.hidden)refreshLatestData(false)},60000);
 const byDate=ds=>Repo.all().filter(e=>e.date===ds).sort((a,b)=>(a.time||'99').localeCompare(b.time||'99'));
 const S=v=>{if(v===undefined||v===null)return'';const x=String(v).trim();return(x==='undefined'||x==='null'||x==='NaN')?'':x};
 const esc=v=>S(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -504,10 +520,66 @@ function hitterDetail(name){
   return recStats().find(r=>S(r.n)===S(name))||null;
 }
 function statHistory(name,stat){
-  const yr=String(recYear),key={hit:'hits',d2:'doubles',d3:'triples',hr:'homeRuns',sb:'stolenBases'}[stat];if(!key)return[];
-  const out=[];Repo.all().filter(e=>e.type===recLeague&&!isCancelled(e)&&S(e.date).slice(0,4)===yr&&hasScore(e)).forEach(e=>{const p=Array.isArray(e.batting)?e.batting.find(x=>S(x.name)===S(name)):null;let count=p?(+p[key]||0):0;if(stat==='hr'){const hrs=parseHrEntries(e).filter(x=>S(x.player)===S(name));if(hrs.length){hrs.forEach(x=>out.push({date:e.date,opp:S(e.opp),count:1,detail:`${x.inning}회 · ${x.runs}점 홈런`}));return}}if(count>0)out.push({date:e.date,opp:S(e.opp),count,detail:`${count}개`})});return out.sort((a,b)=>b.date.localeCompare(a.date));
+  const yr=String(recYear),
+        key={hit:'hits',d2:'doubles',d3:'triples',hr:'homeRuns',sb:'stolenBases'}[stat];
+  if(!key)return[];
+
+  const out=[];
+  const manualCount=(e,field)=>{
+    const list=S(e&&e[field]).split(/[,，、
+]+/).map(x=>x.trim()).filter(Boolean);
+    return list.filter(x=>x===name).length;
+  };
+
+  Repo.all()
+    .filter(e=>e.type===recLeague&&!isCancelled(e)&&S(e.date).slice(0,4)===yr&&hasScore(e))
+    .forEach(e=>{
+      const p=Array.isArray(e.batting)?e.batting.find(x=>S(x.name)===S(name)):null;
+
+      if(stat==='hr'){
+        const hrs=parseHrEntries(e).filter(x=>S(x.player)===S(name));
+        if(hrs.length){
+          hrs.forEach(x=>out.push({
+            date:e.date,
+            opp:S(e.opp),
+            count:1,
+            detail:`${x.inning}회 · ${x.runs}점 홈런`
+          }));
+          return;
+        }
+      }
+
+      let count=p?(+p[key]||0):0;
+
+      // Manual games may not have batting[] at all.
+      if(!p){
+        if(stat==='hit') count=manualCount(e,'hits');
+        else if(stat==='d2') count=manualCount(e,'doubles');
+        else if(stat==='d3') count=manualCount(e,'triples');
+        else if(stat==='sb') count=manualCount(e,'steals');
+        else if(stat==='hr'){
+          const hitters=rosterForYear(recYear).filter(x=>x.t==='hitter').map(x=>x.n).sort((a,b)=>b.length-a.length);
+          count=S(e.homeRuns).split(/
++/).map(x=>x.trim()).filter(Boolean).filter(line=>{
+            const n=hitters.find(h=>line===h||line.startsWith(h+' '));
+            return n===name;
+          }).length;
+        }
+      }
+
+      if(count>0){
+        out.push({
+          date:e.date,
+          opp:S(e.opp),
+          count,
+          detail:`${count}개`
+        });
+      }
+    });
+
+  return out.sort((a,b)=>b.date.localeCompare(a.date));
 }
-function historyHTML(name){if(!playerHistoryStat)return'';const label={hit:'안타',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루'}[playerHistoryStat],rows=statHistory(name,playerHistoryStat);return `<div class="historybox"><b>${label} 기록</b>${rows.length?rows.map(x=>`<div class="historyrow"><b>${esc(x.date)}</b> · vs ${esc(x.opp||'상대팀')}<br><span class="sb">${esc(x.detail)}</span></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`}
+function historyHTML(name){if(!playerHistoryStat)return'';const label={hit:'안타',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루'}[playerHistoryStat],rows=statHistory(name,playerHistoryStat);return `<div class="historybox"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${label} 경기별 기록</b><span class="sb">총 ${rows.reduce((s,x)=>s+(+x.count||0),0)}개</span></div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>${esc(x.date.slice(5).replace('-','.'))}</b> · vs ${esc(x.opp||'상대팀')}<br><span class="sb">${esc(x.detail)}</span></div><b style="white-space:nowrap">${x.count}개</b></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`}
 function playerSheetHTML(){
   if(!playerSheet)return '';
   if(recKind==='pitcher'){
@@ -755,7 +827,7 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.x){const id=t.dataset.x;openIds.has(id)?openIds.delete(id):openIds.add(id);keep()}
   else if(t.dataset.player){playerSheet=t.dataset.player;playerHistoryStat=null;keep()}
   else if(t.dataset.sheetclose!==undefined){playerSheet=null;playerHistoryStat=null;keep()}
-  else if(t.dataset.sheetback!==undefined&&ev.target===t){playerSheet=null;playerHistoryStat=null;keep()}
+  else if(t.dataset.sheetback!==undefined&&ev.target===t){playerSheet=null;keep()}
   else if(t.dataset.sort){const k=t.dataset.sort;recSort=(recSort&&recSort.k===k)?{k,dir:recSort.dir==='desc'?'asc':'desc'}:{k,dir:k==='n'?'asc':'desc'};keep()}  else if(t.dataset.rkind){recKind=t.dataset.rkind;recSort=null;playerSheet=null;keep()}
   else if(t.dataset.rbtab){recBatTab=t.dataset.rbtab;recSort=null;playerSheet=null;playerHistoryStat=null;keep()}
   else if(t.dataset.rleague){recLeague=t.dataset.rleague;recSort=null;playerSheet=null;playerHistoryStat=null;keep()}
