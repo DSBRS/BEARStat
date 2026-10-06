@@ -533,7 +533,7 @@ function hitterDetail(name){
 }
 function statHistory(name,stat){
   const yr=String(recYear),
-        key={hit:'hits',d2:'doubles',d3:'triples',hr:'homeRuns',sb:'stolenBases',bb:'walks',hbp:'hitByPitch',ibb:'intentionalWalks'}[stat];
+        key={hit:'hits',d2:'doubles',d3:'triples',hr:'homeRuns',sb:'stolenBases',bb:'walks',hbp:'hitByPitch',ibb:'intentionalWalks',rbi:'rbi',runs:'runs'}[stat];
   if(!key)return[];
 
   const out=[];
@@ -589,7 +589,7 @@ function statHistory(name,stat){
 
   return out.sort((a,b)=>b.date.localeCompare(a.date));
 }
-function historyHTML(name){if(!playerHistoryStat)return'';const label={hit:'안타',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루',bb:'볼넷',hbp:'사구',ibb:'고의4구'}[playerHistoryStat],rows=statHistory(name,playerHistoryStat);return `<div class="historybox"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${label} 경기별 기록</b><span class="sb">총 ${rows.reduce((s,x)=>s+(+x.count||0),0)}개</span></div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>${esc(x.date.slice(5).replace('-','.'))}</b> · vs ${esc(x.opp||'상대팀')}${x.detail?`<br><span class="sb">${esc(x.detail)}</span>`:''}</div><b style="white-space:nowrap">${x.count}개</b></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`}
+function historyHTML(name){if(!playerHistoryStat)return'';const label={hit:'안타',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루',bb:'볼넷',hbp:'사구',ibb:'고의4구',rbi:'타점',runs:'득점'}[playerHistoryStat],rows=statHistory(name,playerHistoryStat);return `<div class="historybox"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${label} 경기별 기록</b><span class="sb">총 ${rows.reduce((s,x)=>s+(+x.count||0),0)}개</span></div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>${esc(x.date.slice(5).replace('-','.'))}</b> · vs ${esc(x.opp||'상대팀')}${x.detail?`<br><span class="sb">${esc(x.detail)}</span>`:''}</div><b style="white-space:nowrap">${x.count}개</b></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`}
 function playerSheetHTML(){
   if(!playerSheet)return '';
   if(recKind==='pitcher'){
@@ -647,7 +647,7 @@ function playerSheetHTML(){
         <button class="orderbox statclick" data-hstat="bb"><b>${r.bb}</b><span>볼넷</span></button>
         <button class="orderbox statclick" data-hstat="hbp"><b>${r.hbp}</b><span>사구</span></button>
         <button class="orderbox statclick" data-hstat="ibb"><b>${r.ibb}</b><span>고의4구</span></button>
-        <div class="orderbox"><b>${r.runs}</b><span>득점</span></div>
+        <button class="orderbox statclick" data-hstat="runs"><b>${r.runs}</b><span>득점</span></button>
       </div>
       ${historyHTML(playerSheet)}
     </div></div>`;
@@ -658,7 +658,7 @@ function playerSheetHTML(){
     <div class="ordergrid">
       <div class="orderbox"><b>${r.ab}</b><span>타수</span></div>
       <button class="orderbox statclick" data-hstat="hit"><b>${r.hit}</b><span>안타</span></button>
-      <div class="orderbox"><b>${r.rbi}</b><span>타점</span></div>
+      <button class="orderbox statclick" data-hstat="rbi"><b>${r.rbi}</b><span>타점</span></button>
       <div class="orderbox"><b>${avg}</b><span>타율</span></div>
       <button class="orderbox statclick" data-hstat="d2"><b>${r.d2}</b><span>2루타</span></button>
       <button class="orderbox statclick" data-hstat="d3"><b>${r.d3}</b><span>3루타</span></button>
@@ -678,8 +678,8 @@ function records(){
     :recBatTab==='order'
       ?[['n','선수'],['o1','1번'],['o2','2번'],['o3','3번'],['o4','4번'],['o5','5번'],['o6','6번'],['o7','7번'],['o8','8번'],['o9','9번']]
       :recBatTab==='onbase'
-        ?[['n','선수'],['bb','볼넷(4구)'],['hbp','사구'],['ibb','고의4구']]
-        :[['n','선수'],['ab','타수'],['hit','안타'],['avg','타율'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['sb','도루']];
+        ?[['n','선수'],['bb','볼넷(4구)'],['hbp','사구'],['ibb','고의4구'],['runs','득점']]
+        :[['n','선수'],['ab','타수'],['hit','안타'],['avg','타율'],['rbi','타점'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['sb','도루']];
 
   const rows=recStats().filter(r=>{
     const p=roster.find(x=>x.n===r.n);
