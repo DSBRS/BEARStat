@@ -1179,7 +1179,13 @@ if(!v('date')){
     Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp, cancelReason,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
   }
   else if(t.id==='cancel'){editing=null;keep()}
-  else if(t.dataset.edit){editing=Repo.all().find(x=>x.id===t.dataset.edit);keep()requestAnimationFrame(()=>requestAnimationFrame(()=>document.querySelector('#admin_form')?.scrollIntoView({behavior:'smooth',block:'start'})));}
+  else if(t.dataset.edit){
+    editing=Repo.all().find(x=>x.id===t.dataset.edit);
+    keep();
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      document.querySelector('#admin_form')?.scrollIntoView({behavior:'smooth',block:'start'});
+    }));
+  }
   else if(t.dataset.del){const target=Repo.all().find(x=>x.id===t.dataset.del);if(target?.kboGameId){alert('KBO 자동 기록은 여기서 삭제하지 않습니다.');return}if(confirm('삭제할까요?')){Repo.remove(t.dataset.del).catch(e=>alert('삭제하지 못했습니다: '+(e.message||''))).finally(keep)}}
 });
 
