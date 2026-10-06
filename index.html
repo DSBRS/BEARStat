@@ -958,18 +958,17 @@ function admin(){
   const homeCustom=!!e.homeAway&&!['home','away'].includes(e.homeAway);
   const cancelCustom=!!e.cancelReason&&!['우천','그라운드 사정','폭염'].includes(e.cancelReason);
 
-  if(!isOwner)return `<div class="brand"><div class="logo">관리자</div><a href="#/" class="demo" style="text-decoration:none">← 앱</a></div>
+  if(!isOwner)return `<div class="brand"><div class="logo">관리자</div></div><div class="card">${SB?`<label>이메일</label><input id="em" type="email" autocomplete="username"><label>비밀번호</label><input id="pw" type="password" autocomplete="current-password"><button class="btn" id="login">로그인</button>${SB&&document.body.dataset.r==='admin'&&isOwner===false?'':''}`:'<div class="empty">Supabase 설정 후 사용할 수 있습니다.</div>'}<div class="note">일정 수정은 관리자로 등록된 계정만 가능하며 서버에서 확인합니다. <a href="#/">← 돌아가기</a></div></div>`;
+  if(adminView==='manage')return `<div class="brand"><div class="logo">관리자</div><a href="#/" class="demo" style="text-decoration:none">← 앱</a></div>
   <button class="btn g" id="logout" style="margin:0 0 12px">로그아웃</button>
-  ${adminView==='manage'
-    ? `<h2>일정 관리</h2>
+  <h2>일정 관리</h2>
   <div class="card">
     <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center">
       <input id="admin_search" value="${esc(adminSearch)}" placeholder="날짜·상대팀·장소 검색">
       <button class="ib" id="admin_search_btn" style="height:44px;padding:0 14px">검색</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-      <button class="chip" id="admin_all">전체 일정</button>
-      <button class="chip" id="admin_new">+ 일정 추가</button>
+      <button class="chip" id="admin_all">전체 일정</button><button class="chip" id="admin_new">+ 일정 추가</button>
       ${adminSearch?`<button class="chip on" id="admin_search_clear">검색 초기화</button>`:''}
     </div>
   </div>
@@ -986,8 +985,11 @@ function admin(){
         <button class="link" data-edit="${x.id}">수정</button>${x.kboGameId?'':`<button class="link" data-del="${x.id}">삭제</button>`}
       </div>
     </div>`).join(''):'<div class="empty">해당 일정이 없습니다.</div>'}
-  </div>`
-    : `<button class="btn g" id="admin_back" style="margin:0 0 12px">← 일정 관리로</button><div class="note">KBO 자동 일정은 kbo_game_records에 저장된 미래 경기까지 자동 표시됩니다. 같은 game_id가 경기 종료 후 갱신되면 결과와 선수 기록도 자동 반영됩니다.</div><div class="card" id="admin_form"><b>${editing?'일정 수정':'일정 추가'}</b>
+  </div>`;
+  const kboWarn=[KBO_WARNING,...KBO_MERGE_WARNINGS].filter(Boolean).join(' / ');
+  const kboPanel=editing?.kboGameId?`<div class="note"><label><input id="kbo_manual" type="checkbox" style="width:auto" ${editing.manualOverride?'checked':''}> 이 경기의 수동 기록을 우선 사용</label>기록을 수정하면 자동으로 켜집니다. 해제 후 저장하면 KBO 자동 기록으로 돌아갑니다.</div>${editing.batting?.length?batterTable(editing.batting,true):''}`:'';
+  return `${kboWarn?`<div class="note">${esc(kboWarn)}</div>`:''}<div class="brand"><div class="logo">관리자</div><a href="#/" class="demo" style="text-decoration:none">← 앱</a></div>
+  <button class="btn g" id="admin_back" style="margin:0 0 12px">← 일정 관리로</button><button class="btn g" id="logout" style="margin:0 0 12px">로그아웃</button><div class="note">KBO 자동 일정은 kbo_game_records에 저장된 미래 경기까지 자동 표시됩니다. 같은 game_id가 경기 종료 후 갱신되면 결과와 선수 기록도 자동 반영됩니다.</div><div class="card"><b>${editing?'일정 수정':'일정 추가'}</b>
   ${kboPanel}
   ${e.type==='edu'?`<div class="note">교육리그 타자 기록은 아래 선수 명단에서 직접 입력합니다. 기록 없는 선수는 0으로 두면 됩니다.</div>${batterTable((Array.isArray(e.batting)&&e.batting.length?e.batting:rosterForYear(+(S(e.date).slice(0,4)||TODAY.getFullYear())).filter(x=>x.t==='hitter').map(x=>({name:x.n,atBats:0,hits:0,doubles:0,triples:0,homeRuns:0,stolenBases:0,rbi:0,runs:0,order:0}))),true)}`:''}
   <label>종류</label><select id="f_type"${editing?.kboGameId?' disabled':''}>${['kbo','club','fan','broadcast','radio','ticket','edu','etc'].map(k=>`<option value="${k}"${e.type===k?' selected':''}>${TYPES[k]}</option>`).join('')}</select>
@@ -1036,9 +1038,10 @@ function admin(){
     <div class="note">시즌별 명단을 따로 저장합니다. 기존 bears_roster는 현재 연도 명단이 없을 때만 호환용으로 사용됩니다.</div>
   </div>
   <h2>다른 구단 시즌 성적 (순위표용)</h2><div class="card"><div class="calhead" style="margin-bottom:6px"><button class="ib" data-astand="-1">‹</button><b>${adminStandingsYear}년 순위 입력</b><button class="ib" data-astand="1"${adminStandingsYear>=TODAY.getFullYear()+1?' disabled':''}>›</button></div>${TEAMS.map(t=>{const o=othersForYear(adminStandingsYear).find(x=>x.n===t)||{w:'',d:'',l:''};return `<div class="ev" style="align-items:center"><div class="tm" style="width:52px">${t}</div><div class="bd" style="display:flex;gap:6px"><input data-o="${t}" data-k="w" type="number" min="0" placeholder="승" value="${o.w}"><input data-o="${t}" data-k="d" type="number" min="0" placeholder="무" value="${o.d}"><input data-o="${t}" data-k="l" type="number" min="0" placeholder="패" value="${o.l}"></div></div>`}).join('')}<button class="btn" id="saveo">${adminStandingsYear}년 순위 성적 저장</button><div class="note">두산 성적은 해당 연도의 등록 경기 결과로 자동 계산됩니다. 다른 구단 성적은 연도별로 따로 저장됩니다.</div></div>
-  `}
+  
   `;
 }
+
 function route(){
   const r=location.hash.replace('#/','')||'home';
   $('#app').innerHTML=r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='admin'?admin():home();
@@ -1046,7 +1049,7 @@ function route(){
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppclose],[data-oppback],[data-rkind],[data-rbtab],[data-rleague],[data-hstat],[data-orderhist],[data-ryear],[data-syear],[data-aroster],[data-astand],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],#admin_search_btn,#admin_search_clear,#admin_all,#admin_back,#admin_new,#addhr,#save,#saveo,#saveroster,#cancel,#login,#logout');if(!t)return;
+  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppclose],[data-oppback],[data-rkind],[data-rbtab],[data-rleague],[data-hstat],[data-orderhist],[data-ryear],[data-syear],[data-aroster],[data-astand],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveo,#saveroster,#cancel,#login,#logout');if(!t)return;
   const keep=()=>{const y=scrollY;route2();scrollTo(0,y)};
   if(t.dataset.d){sel=t.dataset.d;const d=new Date(sel+'T00:00:00');view=new Date(d.getFullYear(),d.getMonth(),1);keep()}
   else if(t.dataset.m!==undefined){const m=+t.dataset.m;if(m===0){sel=TS;view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1)}else view=new Date(view.getFullYear(),view.getMonth()+m,1);keep()}
@@ -1122,16 +1125,8 @@ document.addEventListener('click',ev=>{
     adminCalDate='';
     keep()
   }
-  else if(t.id==='admin_new'){
-    editing=null;
-    adminView='form';
-    keep()
-  }
-  else if(t.id==='admin_back'){
-    editing=null;
-    adminView='manage';
-    keep()
-  }
+  else if(t.id==='admin_new'){editing=null;adminView='form';keep()}
+  else if(t.id==='admin_back'){editing=null;adminView='manage';keep()}
   else if(t.dataset.osort){
     const k=t.dataset.osort;
     if(oppSort===k)oppSortDir=oppSortDir==='desc'?'asc':'desc';
@@ -1189,11 +1184,7 @@ if(!v('date')){
     Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp, cancelReason,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
   }
   else if(t.id==='cancel'){editing=null;adminView='manage';keep()}
-  else if(t.dataset.edit){
-    editing=Repo.all().find(x=>x.id===t.dataset.edit);
-    adminView='form';
-    keep()
-  }
+  else if(t.dataset.edit){editing=Repo.all().find(x=>x.id===t.dataset.edit);adminView='form';keep()}
   else if(t.dataset.del){const target=Repo.all().find(x=>x.id===t.dataset.del);if(target?.kboGameId){alert('KBO 자동 기록은 여기서 삭제하지 않습니다.');return}if(confirm('삭제할까요?')){Repo.remove(t.dataset.del).catch(e=>alert('삭제하지 못했습니다: '+(e.message||''))).finally(keep)}}
 });
 
