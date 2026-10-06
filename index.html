@@ -557,6 +557,7 @@ function playerSheetHTML(){
       <button class="orderbox statclick" data-hstat="hr"><b>${r.hr}</b><span>홈런</span></button>
       <button class="orderbox statclick" data-hstat="sb"><b>${r.sb}</b><span>도루</span></button>
     </div>
+    ${historyHTML(playerSheet)}
   </div></div>`;
 }
 
@@ -754,7 +755,7 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.x){const id=t.dataset.x;openIds.has(id)?openIds.delete(id):openIds.add(id);keep()}
   else if(t.dataset.player){playerSheet=t.dataset.player;playerHistoryStat=null;keep()}
   else if(t.dataset.sheetclose!==undefined){playerSheet=null;playerHistoryStat=null;keep()}
-  else if(t.dataset.sheetback!==undefined&&ev.target===t){playerSheet=null;keep()}
+  else if(t.dataset.sheetback!==undefined&&ev.target===t){playerSheet=null;playerHistoryStat=null;keep()}
   else if(t.dataset.sort){const k=t.dataset.sort;recSort=(recSort&&recSort.k===k)?{k,dir:recSort.dir==='desc'?'asc':'desc'}:{k,dir:k==='n'?'asc':'desc'};keep()}  else if(t.dataset.rkind){recKind=t.dataset.rkind;recSort=null;playerSheet=null;keep()}
   else if(t.dataset.rbtab){recBatTab=t.dataset.rbtab;recSort=null;playerSheet=null;playerHistoryStat=null;keep()}
   else if(t.dataset.rleague){recLeague=t.dataset.rleague;recSort=null;playerSheet=null;playerHistoryStat=null;keep()}
