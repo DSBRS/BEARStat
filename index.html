@@ -322,7 +322,7 @@ function batterTable(players,edit,game=null){
           <td style="text-align:left;white-space:nowrap">${
             edit
               ? esc(p.name)
-              : `<button class="playerlink" data-gamebatter="${esc(p.name)}" data-gameab="${+p.atBats||0}" data-gamehit="${+p.hits||0}" data-gamedate="${esc(game?.date||'')}" data-gameopp="${esc(game?.opp||'')}">${esc(p.name)}</button>`
+              : `<button class="playerlink" data-gamebatter="${esc(p.name)}" data-gameab="${+p.atBats||0}" data-gamehit="${+p.hits||0}" data-gamedate="${esc(game?.date||'')}" data-gameopp="${esc(game?.opp||'')}" data-gameha="${esc(game?.homeAway||'')}">${esc(p.name)}</button>`
           }</td>
           ${cols.map(([k])=>`
             <td style="text-align:center;padding-left:0;padding-right:0">
@@ -337,22 +337,70 @@ function batterTable(players,edit,game=null){
   </div>`;
 }
 
+function seriesBattingForGame(gameDate,opp,homeAway,name){
+  const games=Repo.all()
+    .filter(e=>e.type==='kbo'&&!e.stage&&!isCancelled(e)&&hasScore(e)&&S(e.opp)===S(opp)&&S(e.homeAway)===S(homeAway)&&Array.isArray(e.batting))
+    .sort((a,b)=>S(a.date).localeCompare(S(b.date)));
+
+  const idx=games.findIndex(e=>S(e.date)===S(gameDate));
+  if(idx<0)return null;
+
+  let start=idx,end=idx;
+  const dayDiff=(a,b)=>Math.round((Date.parse(b+'T00:00:00')-Date.parse(a+'T00:00:00'))/86400000);
+
+  while(start>0 && dayDiff(S(games[start-1].date),S(games[start].date))<=3) start--;
+  while(end<games.length-1 && dayDiff(S(games[end].date),S(games[end+1].date))<=3) end++;
+
+  const series=games.slice(start,end+1);
+  let ab=0,hit=0,played=0;
+  series.forEach(e=>{
+    const p=e.batting.find(x=>S(x.name)===S(name));
+    if(!p)return;
+    ab+=+p.atBats||0;
+    hit+=+p.hits||0;
+    played++;
+  });
+
+  if(!played)return null;
+  return {ab,hit,games:series.length,played,from:S(series[0].date),to:S(series[series.length-1].date)};
+}
+
 function gameBatterSheetHTML(){
   if(!gameBatterSheet)return '';
   const ab=+gameBatterSheet.ab||0,hit=+gameBatterSheet.hit||0;
   const avg=ab?hit/ab:0;
   const avgText=avg>=1?'1.000':avg.toFixed(3).slice(1);
   const sub=[gameBatterSheet.date?gameBatterSheet.date.slice(5).replace('-','.'):'',gameBatterSheet.opp?`vs ${esc(gameBatterSheet.opp)}`:''].filter(Boolean).join(' · ');
+
+  const sr=seriesBattingForGame(gameBatterSheet.date,gameBatterSheet.opp,gameBatterSheet.homeAway,gameBatterSheet.name);
+  const savg=sr&&sr.ab?sr.hit/sr.ab:0;
+  const savgText=savg>=1?'1.000':savg.toFixed(3).slice(1);
+  const seriesDate=sr
+    ? (sr.from===sr.to
+        ? sr.from.slice(5).replace('-','.')
+        : `${sr.from.slice(5).replace('-','.')} ~ ${sr.to.slice(5).replace('-','.')}`)
+    : '';
+
   return `<div class="sheetback" data-gameback><div class="sheet"><div class="sheetbar"></div>
     <div class="sheethead">
       <div><b>${esc(gameBatterSheet.name)}</b><div class="sb">${sub||'경기 타격 기록'}</div></div>
       <button class="sheetclose" data-gameclose>×</button>
     </div>
-    <div class="ordergrid">
+
+    <div style="margin-top:16px"><b>오늘 기록</b></div>
+    <div class="ordergrid" style="margin-top:8px">
       <div class="orderbox"><b>${ab}</b><span>타수</span></div>
       <div class="orderbox"><b>${hit}</b><span>안타</span></div>
       <div class="orderbox"><b>${avgText}</b><span>경기 타율</span></div>
     </div>
+
+    ${sr?`
+      <div style="margin-top:20px"><b>이번 시리즈</b><div class="sb" style="margin-top:2px">${esc(seriesDate)} · ${sr.games}경기 시리즈</div></div>
+      <div class="ordergrid" style="margin-top:8px">
+        <div class="orderbox"><b>${sr.ab}</b><span>타수</span></div>
+        <div class="orderbox"><b>${sr.hit}</b><span>안타</span></div>
+        <div class="orderbox"><b>${savgText}</b><span>시리즈 타율</span></div>
+      </div>`:''}
   </div></div>`;
 }
 
@@ -955,7 +1003,8 @@ document.addEventListener('click',ev=>{
       ab:+t.dataset.gameab||0,
       hit:+t.dataset.gamehit||0,
       date:t.dataset.gamedate||'',
-      opp:t.dataset.gameopp||''
+      opp:t.dataset.gameopp||'',
+      homeAway:t.dataset.gameha||''
     };
     keep()
   }
