@@ -666,11 +666,7 @@ function playerSheetHTML(){
     const r=pitcherDetail(playerSheet);
     return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div>
       <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 ${recLeague==='edu'?'교육리그':'KBO'} · 투수 기록</div></div><button class="sheetclose" data-sheetclose>×</button></div>
-      <div class="ordergrid"><div class="orderbox"><b>${r.g}</b><span>경기수</span></div><div class="orderbox"><b>${r.w}</b><span>승</span></div><div class="orderbox"><b>${r.l}</b><span>패</span></div><div class="orderbox"><b>${r.h}</b><span>홀드</span></div><div class="orderbox"><b>${r.s}</b><span>세이브</span></div></div>
-      <div style="margin-top:22px"><b>투구 기록</b></div><div class="ordergrid" style="margin-top:8px">
-      <div class="orderbox"><b>${r.ip}</b><span>이닝</span></div><div class="orderbox"><b>${r.era}</b><span>ERA</span></div>
-      ${[['hits','피안타'],['homeRuns','피홈런'],['strikeouts','탈삼진'],['walks','볼넷'],['hitByPitch','사구'],['runs','실점'],['earnedRuns','자책']].map(([k,l])=>`<button class="orderbox statclick" data-pstat="${k}"><b>${r[k]}</b><span>${l}</span></button>`).join('')}
-      </div>${pitcherHistoryHTML(playerSheet)}</div></div>`;
+      <div class="ordergrid"><div class="orderbox"><b>${r.g}</b><span>경기수</span></div><div class="orderbox"><b>${r.w}</b><span>승</span></div><div class="orderbox"><b>${r.l}</b><span>패</span></div><div class="orderbox"><b>${r.h}</b><span>홀드</span></div><div class="orderbox"><b>${r.s}</b><span>세이브</span></div><div class="orderbox"><b>${r.ip}</b><span>이닝</span></div><div class="orderbox"><b>${r.era}</b><span>ERA</span></div>${[['hits','피안타'],['homeRuns','피홈런'],['strikeouts','탈삼진'],['walks','볼넷'],['hitByPitch','사구'],['runs','실점'],['earnedRuns','자책']].map(([k,l])=>`<button class="orderbox statclick" data-pstat="${k}"><b>${r[k]}</b><span>${l}</span></button>`).join('')}</div>${pitcherHistoryHTML(playerSheet)}</div></div>`;
   }
   if(recBatTab==='order'){
     const c=battingOrders(playerSheet),rows=[],history=battingOrderHistory(playerSheet);
