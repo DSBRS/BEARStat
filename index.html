@@ -533,7 +533,7 @@ function standings(){
   `;
 }
 
-let recSort=null,recKind='pitcher',recBatTab='main',recYear=TODAY.getFullYear(),recLeague='kbo',playerHistoryStat=null,playerOrderHistory=null;
+let recSort=null,recKind='pitcher',recBatTab='main',recYear=TODAY.getFullYear(),recLeague='kbo',playerHistoryStat=null,playerOrderHistory=null,pitcherHistoryStat=null;
 
 // 투수 승/패/홀드/세이브의 단일 기준점:
 // KBO 자동 경기 = kbo.doosanDecisions, 수동/오버라이드 경기 = 입력한 winP/loseP/holdP/saveP.
@@ -582,27 +582,22 @@ function battingOrderHistory(name){
 }
 function pitcherDetail(name){
   const yr=String(recYear);
-  let g=0;
-
-  // 경기수는 실제 pitching 배열에 해당 투수가 등장한 경기만 계산
-  Repo.all()
-    .filter(e=>e.type===recLeague&&!isCancelled(e)&&!e.stage&&S(e.date).slice(0,4)===yr&&hasScore(e))
-    .forEach(e=>{
-      if(Array.isArray(e.pitching)&&e.pitching.some(p=>S(p.name)===S(name)))g++;
-    });
-
-  // 승/패/홀드/세이브는 개인기록 표와 완전히 같은 기준 사용.
-  // 자동연동 경기는 kbo.doosanDecisions를 우선하므로 상대팀 투수 기록이 섞이지 않음.
-  const season=recStats().find(r=>S(r.n)===S(name))||{w:0,l:0,h:0,s:0};
-
-  return {
-    g,
-    w:+season.w||0,
-    l:+season.l||0,
-    h:+season.h||0,
-    s:+season.s||0
-  };
+  const r={g:0,w:0,l:0,h:0,s:0,ipOuts:0,hits:0,homeRuns:0,strikeouts:0,walks:0,hitByPitch:0,runs:0,earnedRuns:0};
+  Repo.all().filter(e=>e.type===recLeague&&!isCancelled(e)&&!e.stage&&S(e.date).slice(0,4)===yr&&hasScore(e)).forEach(e=>{
+    if(!Array.isArray(e.pitching))return;
+    const p=e.pitching.find(x=>S(x.name)===S(name));if(!p)return;r.g++;
+    if(Number.isFinite(+p.outs))r.ipOuts+=+p.outs;else{const ip=S(p.innings??p.inningsPitched??p.ip);if(ip){const [w,f='0']=ip.split('.');r.ipOuts+=(+w||0)*3+(f==='1'?1:f==='2'?2:0)}}
+    const val=ks=>{for(const k of ks)if(p[k]!==undefined&&p[k]!==null&&p[k]!=='')return +p[k]||0;return 0};
+    r.hits+=val(['hits','hitsAllowed','h']);r.homeRuns+=val(['homeRuns','homeRunsAllowed','hr']);r.strikeouts+=val(['strikeouts','strikeOuts','so','k']);r.walks+=val(['walks','basesOnBalls','bb']);r.hitByPitch+=val(['hitByPitch','hitBatters','hbp']);r.runs+=val(['runs','runsAllowed','r']);r.earnedRuns+=val(['earnedRuns','er']);
+  });
+  const season=recStats().find(x=>S(x.n)===S(name))||{w:0,l:0,h:0,s:0};r.w=+season.w||0;r.l=+season.l||0;r.h=+season.h||0;r.s=+season.s||0;
+  const whole=Math.floor(r.ipOuts/3),rem=r.ipOuts%3;r.ip=rem?`${whole}.${rem}`:String(whole);r.era=r.ipOuts?((r.earnedRuns*27)/r.ipOuts).toFixed(2):'0.00';return r;
 }
+function pitcherStatHistory(name,stat){
+  const yr=String(recYear),aliases={hits:['hits','hitsAllowed','h'],homeRuns:['homeRuns','homeRunsAllowed','hr'],strikeouts:['strikeouts','strikeOuts','so','k'],walks:['walks','basesOnBalls','bb'],hitByPitch:['hitByPitch','hitBatters','hbp'],runs:['runs','runsAllowed','r'],earnedRuns:['earnedRuns','er']},keys=aliases[stat]||[],out=[];
+  Repo.all().filter(e=>e.type===recLeague&&!isCancelled(e)&&!e.stage&&S(e.date).slice(0,4)===yr&&hasScore(e)&&Array.isArray(e.pitching)).forEach(e=>{const p=e.pitching.find(x=>S(x.name)===S(name));if(!p)return;let count=0;for(const k of keys)if(p[k]!==undefined&&p[k]!==null&&p[k]!==''){count=+p[k]||0;break}if(count<=0)return;let detail='';const events=Array.isArray(p.events)?p.events:Array.isArray(p.playByPlay)?p.playByPlay:[];if(events.length){const by={};events.filter(x=>{const t=S(x.type||x.stat||x.event);return t===stat||keys.includes(t)}).forEach(x=>{const i=+(x.inning||0);if(i)by[i]=(by[i]||0)+1});detail=Object.entries(by).sort((a,b)=>+a[0]-+b[0]).map(([i,n])=>`${i}회 ${n}개`).join(' · ')}out.push({date:S(e.date),opp:S(e.opp)||'상대팀',count,detail})});return out.sort((a,b)=>b.date.localeCompare(a.date));
+}
+function pitcherHistoryHTML(name){if(!pitcherHistoryStat)return'';const label={hits:'피안타',homeRuns:'피홈런',strikeouts:'탈삼진',walks:'볼넷',hitByPitch:'사구',runs:'실점',earnedRuns:'자책'}[pitcherHistoryStat]||'기록',rows=pitcherStatHistory(name,pitcherHistoryStat),total=rows.reduce((s,x)=>s+(+x.count||0),0);return `<div class="historybox"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${label} 경기별 기록</b><span class="sb">총 ${total}개</span></div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>${esc(x.date.slice(5).replace('-','.'))}</b> · vs ${esc(x.opp)}${x.detail?`<br><span class="sb">${esc(x.detail)}</span>`:''}</div><b style="white-space:nowrap">${x.count}개</b></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`}
 function hitterDetail(name){
   return recStats().find(r=>S(r.n)===S(name))||null;
 }
@@ -664,21 +659,18 @@ function statHistory(name,stat){
 
   return out.sort((a,b)=>b.date.localeCompare(a.date));
 }
-function historyHTML(name){if(!playerHistoryStat)return'';const label={hit:'안타',d2:'2루',d3:'3루',hr:'홈런',sb:'도루',bb:'볼넷',hbp:'사구',ibb:'고의4구',rbi:'타점',runs:'득점'}[playerHistoryStat],rows=statHistory(name,playerHistoryStat);return `<div class="historybox"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${label} 경기별 기록</b><span class="sb">총 ${rows.reduce((s,x)=>s+(+x.count||0),0)}개</span></div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>${esc(x.date.slice(5).replace('-','.'))}</b> · vs ${esc(x.opp||'상대팀')}${x.detail?`<br><span class="sb">${esc(x.detail)}</span>`:''}</div><b style="white-space:nowrap">${x.count}개</b></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`}
+function historyHTML(name){if(!playerHistoryStat)return'';const label={hit:'안타',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루',bb:'볼넷',hbp:'사구',ibb:'고의4구',rbi:'타점',runs:'득점'}[playerHistoryStat],rows=statHistory(name,playerHistoryStat);return `<div class="historybox"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${label} 경기별 기록</b><span class="sb">총 ${rows.reduce((s,x)=>s+(+x.count||0),0)}개</span></div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>${esc(x.date.slice(5).replace('-','.'))}</b> · vs ${esc(x.opp||'상대팀')}${x.detail?`<br><span class="sb">${esc(x.detail)}</span>`:''}</div><b style="white-space:nowrap">${x.count}개</b></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`}
 function playerSheetHTML(){
   if(!playerSheet)return '';
   if(recKind==='pitcher'){
     const r=pitcherDetail(playerSheet);
     return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div>
       <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 ${recLeague==='edu'?'교육리그':'KBO'} · 투수 기록</div></div><button class="sheetclose" data-sheetclose>×</button></div>
-      <div class="ordergrid">
-        <div class="orderbox"><b>${r.g}</b><span>경기수</span></div>
-        <div class="orderbox"><b>${r.w}</b><span>승</span></div>
-        <div class="orderbox"><b>${r.l}</b><span>패</span></div>
-        <div class="orderbox"><b>${r.h}</b><span>홀드</span></div>
-        <div class="orderbox"><b>${r.s}</b><span>세이브</span></div>
-      </div>
-    </div></div>`;
+      <div class="ordergrid"><div class="orderbox"><b>${r.g}</b><span>경기수</span></div><div class="orderbox"><b>${r.w}</b><span>승</span></div><div class="orderbox"><b>${r.l}</b><span>패</span></div><div class="orderbox"><b>${r.h}</b><span>홀드</span></div><div class="orderbox"><b>${r.s}</b><span>세이브</span></div></div>
+      <div style="margin-top:22px"><b>투구 기록</b></div><div class="ordergrid" style="margin-top:8px">
+      <div class="orderbox"><b>${r.ip}</b><span>이닝</span></div><div class="orderbox"><b>${r.era}</b><span>ERA</span></div>
+      ${[['hits','피안타'],['homeRuns','피홈런'],['strikeouts','탈삼진'],['walks','볼넷'],['hitByPitch','사구'],['runs','실점'],['earnedRuns','자책']].map(([k,l])=>`<button class="orderbox statclick" data-pstat="${k}"><b>${r[k]}</b><span>${l}</span></button>`).join('')}
+      </div>${pitcherHistoryHTML(playerSheet)}</div></div>`;
   }
   if(recBatTab==='order'){
     const c=battingOrders(playerSheet),rows=[],history=battingOrderHistory(playerSheet);
@@ -735,8 +727,8 @@ function playerSheetHTML(){
       <button class="orderbox statclick" data-hstat="hit"><b>${r.hit}</b><span>안타</span></button>
       <button class="orderbox statclick" data-hstat="rbi"><b>${r.rbi}</b><span>타점</span></button>
       <div class="orderbox"><b>${avg}</b><span>타율</span></div>
-      <button class="orderbox statclick" data-hstat="d2"><b>${r.d2}</b><span>2루</span></button>
-      <button class="orderbox statclick" data-hstat="d3"><b>${r.d3}</b><span>3루</span></button>
+      <button class="orderbox statclick" data-hstat="d2"><b>${r.d2}</b><span>2루타</span></button>
+      <button class="orderbox statclick" data-hstat="d3"><b>${r.d3}</b><span>3루타</span></button>
       <button class="orderbox statclick" data-hstat="hr"><b>${r.hr}</b><span>홈런</span></button>
       <button class="orderbox statclick" data-hstat="sb"><b>${r.sb}</b><span>도루</span></button>
     </div>
@@ -1104,7 +1096,7 @@ function route(){
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppclose],[data-oppback],[data-rkind],[data-rbtab],[data-rleague],[data-hstat],[data-orderhist],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-astand],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveo,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
+  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppclose],[data-oppback],[data-rkind],[data-rbtab],[data-rleague],[data-hstat],[data-pstat],[data-orderhist],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-astand],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveo,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
   const keep=()=>{const y=scrollY;route2();scrollTo(0,y)};
   if(t.dataset.d){sel=t.dataset.d;const d=new Date(sel+'T00:00:00');view=new Date(d.getFullYear(),d.getMonth(),1);keep()}
   else if(t.dataset.m!==undefined){const m=+t.dataset.m;if(m===0){sel=TS;view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1)}else view=new Date(view.getFullYear(),view.getMonth()+m,1);keep()}
@@ -1132,13 +1124,14 @@ document.addEventListener('click',ev=>{
   }
   else if(t.dataset.oppclose!==undefined){oppHistorySheet=null;keep()}
   else if(t.dataset.oppback!==undefined&&ev.target===t){oppHistorySheet=null;keep()}
-  else if(t.dataset.player){playerSheet=t.dataset.player;playerHistoryStat=null;playerOrderHistory=null;keep()}
-  else if(t.dataset.sheetclose!==undefined){playerSheet=null;playerHistoryStat=null;playerOrderHistory=null;keep()}
+  else if(t.dataset.player){playerSheet=t.dataset.player;playerHistoryStat=null;playerOrderHistory=null;pitcherHistoryStat=null;keep()}
+  else if(t.dataset.sheetclose!==undefined){playerSheet=null;playerHistoryStat=null;playerOrderHistory=null;pitcherHistoryStat=null;keep()}
   else if(t.dataset.sheetback!==undefined&&ev.target===t){playerSheet=null;keep()}
   else if(t.dataset.sort){const k=t.dataset.sort;recSort=(recSort&&recSort.k===k)?{k,dir:recSort.dir==='desc'?'asc':'desc'}:{k,dir:k==='n'?'asc':'desc'};keep()}  else if(t.dataset.rkind){recKind=t.dataset.rkind;recSort=null;playerSheet=null;keep()}
   else if(t.dataset.rbtab){recBatTab=t.dataset.rbtab;recSort=null;playerSheet=null;playerHistoryStat=null;playerOrderHistory=null;keep()}
   else if(t.dataset.rleague){recLeague=t.dataset.rleague;recSort=null;playerSheet=null;playerHistoryStat=null;playerOrderHistory=null;keep()}
   else if(t.dataset.hstat){playerHistoryStat=playerHistoryStat===t.dataset.hstat?null:t.dataset.hstat;keep()}
+  else if(t.dataset.pstat){pitcherHistoryStat=pitcherHistoryStat===t.dataset.pstat?null:t.dataset.pstat;keep()}
   else if(t.dataset.orderhist!==undefined){
     const n=+t.dataset.orderhist;
     playerOrderHistory=playerOrderHistory===n?null:n;
