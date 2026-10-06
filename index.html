@@ -533,7 +533,7 @@ function hitterDetail(name){
 }
 function statHistory(name,stat){
   const yr=String(recYear),
-        key={hit:'hits',d2:'doubles',d3:'triples',hr:'homeRuns',sb:'stolenBases'}[stat];
+        key={hit:'hits',d2:'doubles',d3:'triples',hr:'homeRuns',sb:'stolenBases',bb:'walks',hbp:'hitByPitch',ibb:'intentionalWalks'}[stat];
   if(!key)return[];
 
   const out=[];
@@ -582,14 +582,14 @@ function statHistory(name,stat){
           date:e.date,
           opp:S(e.opp),
           count,
-          detail:`${count}개`
+          detail:''
         });
       }
     });
 
   return out.sort((a,b)=>b.date.localeCompare(a.date));
 }
-function historyHTML(name){if(!playerHistoryStat)return'';const label={hit:'안타',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루'}[playerHistoryStat],rows=statHistory(name,playerHistoryStat);return `<div class="historybox"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${label} 경기별 기록</b><span class="sb">총 ${rows.reduce((s,x)=>s+(+x.count||0),0)}개</span></div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>${esc(x.date.slice(5).replace('-','.'))}</b> · vs ${esc(x.opp||'상대팀')}<br><span class="sb">${esc(x.detail)}</span></div><b style="white-space:nowrap">${x.count}개</b></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`}
+function historyHTML(name){if(!playerHistoryStat)return'';const label={hit:'안타',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루',bb:'볼넷',hbp:'사구',ibb:'고의4구'}[playerHistoryStat],rows=statHistory(name,playerHistoryStat);return `<div class="historybox"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${label} 경기별 기록</b><span class="sb">총 ${rows.reduce((s,x)=>s+(+x.count||0),0)}개</span></div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>${esc(x.date.slice(5).replace('-','.'))}</b> · vs ${esc(x.opp||'상대팀')}${x.detail?`<br><span class="sb">${esc(x.detail)}</span>`:''}</div><b style="white-space:nowrap">${x.count}개</b></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`}
 function playerSheetHTML(){
   if(!playerSheet)return '';
   if(recKind==='pitcher'){
@@ -644,11 +644,12 @@ function playerSheetHTML(){
     return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div>
       <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 ${recLeague==='edu'?'교육리그':'KBO'} · 출루 기록</div></div><button class="sheetclose" data-sheetclose>×</button></div>
       <div class="ordergrid">
-        <div class="orderbox"><b>${r.bb}</b><span>볼넷</span></div>
-        <div class="orderbox"><b>${r.hbp}</b><span>사구</span></div>
-        <div class="orderbox"><b>${r.ibb}</b><span>고의4구</span></div>
+        <button class="orderbox statclick" data-hstat="bb"><b>${r.bb}</b><span>볼넷</span></button>
+        <button class="orderbox statclick" data-hstat="hbp"><b>${r.hbp}</b><span>사구</span></button>
+        <button class="orderbox statclick" data-hstat="ibb"><b>${r.ibb}</b><span>고의4구</span></button>
         <div class="orderbox"><b>${r.runs}</b><span>득점</span></div>
       </div>
+      ${historyHTML(playerSheet)}
     </div></div>`;
   }
   const avg=r.avg>=1?'1.000':r.avg.toFixed(3).slice(1);
