@@ -543,7 +543,7 @@ function recStats(){
   const addNames=(v,k,want)=>names(v).forEach(n=>{const r=row(n,want);if(r)r[k]++});
   Repo.all().filter(e=>e.type===recLeague&&!isCancelled(e)&&!e.stage&&S(e.date).slice(0,4)===yr&&hasScore(e)).forEach(e=>{
     if(e.kboGameId&&!e.manualOverride&&e.kbo?.doosanDecisions){const d=e.kbo.doosanDecisions;addNames(d.winP,'w','pitcher');addNames(d.loseP,'l','pitcher');addNames(d.saveP,'s','pitcher');addNames(d.holdP,'h','pitcher');addNames(d.gwRbi,'g','hitter')}else{addNames(e.winP,'w','pitcher');addNames(e.loseP,'l','pitcher');addNames(e.saveP,'s','pitcher');addNames(e.holdP,'h','pitcher');addNames(e.gwRbi,'g','hitter')}
-    if(Array.isArray(e.batting)){e.batting.forEach(p=>{const r=row(S(p.name),'hitter');if(!r)return;r.ab+=+p.atBats||0;r.hit+=+p.hits||0;r.d2+=+p.doubles||0;r.d3+=+p.triples||0;r.hr+=+p.homeRuns||0;r.sb+=+p.stolenBases||0;r.bb+=+p.walks||0;r.hbp+=+p.hitByPitch||0;r.ibb+=+p.intentionalWalks||0;r.rbi+=+p.rbi||0;r.runs+=+p.runs||0;const o=+p.order;if(o>=1&&o<=9)r['o'+o]++})}
+    if(Array.isArray(e.batting)){e.batting.forEach(p=>{const r=row(S(p.name),'hitter');if(!r)return;r.ab+=+p.atBats||0;r.hit+=+p.hits||0;r.d2+=+p.doubles||0;r.d3+=+p.triples||0;r.hr+=+p.homeRuns||0;r.sb+=+p.stolenBases||0;r.bb+=(+p.walks||0)+(+p.intentionalWalks||0);r.hbp+=+p.hitByPitch||0;r.ibb+=+p.intentionalWalks||0;r.rbi+=+p.rbi||0;r.runs+=+p.runs||0;const o=+p.order;if(o>=1&&o<=9)r['o'+o]++})}
     else{const hrs=parseHrEntries(e);if(hrs.length)hrs.forEach(x=>addNames(x.player,'hr','hitter'));else{const hitters=roster.filter(x=>x.t==='hitter').map(x=>x.n).sort((a,b)=>b.length-a.length);S(e.homeRuns).split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(line=>{const n=hitters.find(name=>line===name||line.startsWith(name+' '));if(n)addNames(n,'hr','hitter')})}const rep=(v,k)=>S(v).split(/[,，、\n]+/).map(x=>x.trim()).filter(Boolean).forEach(n=>{const r=row(n,'hitter');if(r)r[k]++});rep(e.doubles,'d2');rep(e.triples,'d3');rep(e.hits,'hit');rep(e.steals,'sb')}
   });Object.values(m).forEach(r=>{r.avg=r.ab?r.hit/r.ab:0});return Object.values(m);
 }
@@ -630,7 +630,7 @@ function statHistory(name,stat){
         }
       }
 
-      let count=p?(+p[key]||0):0;
+      let count=p?(stat==='bb'?((+p.walks||0)+(+p.intentionalWalks||0)):(+p[key]||0)):0;
 
       // Manual games may not have batting[] at all.
       if(!p){
