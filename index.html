@@ -526,7 +526,7 @@ function statHistory(name,stat){
 
   const out=[];
   const manualCount=(e,field)=>{
-    const list=S(e&&e[field]).split(/[,，、\\n]+/).map(x=>x.trim()).filter(Boolean);
+    const list=S(e&&e[field]).split(/[,，、\n]+/).map(x=>x.trim()).filter(Boolean);
     return list.filter(x=>x===name).length;
   };
 
@@ -558,7 +558,7 @@ function statHistory(name,stat){
         else if(stat==='sb') count=manualCount(e,'steals');
         else if(stat==='hr'){
           const hitters=rosterForYear(recYear).filter(x=>x.t==='hitter').map(x=>x.n).sort((a,b)=>b.length-a.length);
-          count=S(e.homeRuns).split(/\\n+/).map(x=>x.trim()).filter(Boolean).filter(line=>{
+          count=S(e.homeRuns).split(/\n+/).map(x=>x.trim()).filter(Boolean).filter(line=>{
             const n=hitters.find(h=>line===h||line.startsWith(h+' '));
             return n===name;
           }).length;
@@ -825,7 +825,7 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.x){const id=t.dataset.x;openIds.has(id)?openIds.delete(id):openIds.add(id);keep()}
   else if(t.dataset.player){playerSheet=t.dataset.player;playerHistoryStat=null;keep()}
   else if(t.dataset.sheetclose!==undefined){playerSheet=null;playerHistoryStat=null;keep()}
-  else if(t.dataset.sheetback!==undefined&&ev.target===t){playerSheet=null;keep()}
+  else if(t.dataset.sheetback!==undefined&&ev.target===t){playerSheet=null;playerHistoryStat=null;keep()}
   else if(t.dataset.sort){const k=t.dataset.sort;recSort=(recSort&&recSort.k===k)?{k,dir:recSort.dir==='desc'?'asc':'desc'}:{k,dir:k==='n'?'asc':'desc'};keep()}  else if(t.dataset.rkind){recKind=t.dataset.rkind;recSort=null;playerSheet=null;keep()}
   else if(t.dataset.rbtab){recBatTab=t.dataset.rbtab;recSort=null;playerSheet=null;playerHistoryStat=null;keep()}
   else if(t.dataset.rleague){recLeague=t.dataset.rleague;recSort=null;playerSheet=null;playerHistoryStat=null;keep()}
