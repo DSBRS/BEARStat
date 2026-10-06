@@ -526,8 +526,7 @@ function statHistory(name,stat){
 
   const out=[];
   const manualCount=(e,field)=>{
-    const list=S(e&&e[field]).split(/[,，、
-]+/).map(x=>x.trim()).filter(Boolean);
+    const list=S(e&&e[field]).split(/[,，、\\n]+/).map(x=>x.trim()).filter(Boolean);
     return list.filter(x=>x===name).length;
   };
 
@@ -559,8 +558,7 @@ function statHistory(name,stat){
         else if(stat==='sb') count=manualCount(e,'steals');
         else if(stat==='hr'){
           const hitters=rosterForYear(recYear).filter(x=>x.t==='hitter').map(x=>x.n).sort((a,b)=>b.length-a.length);
-          count=S(e.homeRuns).split(/
-+/).map(x=>x.trim()).filter(Boolean).filter(line=>{
+          count=S(e.homeRuns).split(/\\n+/).map(x=>x.trim()).filter(Boolean).filter(line=>{
             const n=hitters.find(h=>line===h||line.startsWith(h+' '));
             return n===name;
           }).length;
