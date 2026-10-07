@@ -563,8 +563,8 @@ let playerSheet=null;
 let playerDefensePosition=null;
 function defensePositions(name){
   const yr=String(recYear);
-  const labels={'포':'포수','1':'1루수','2':'2루수','3':'3루수','유':'유격수','좌':'좌익수','중':'중견수','우':'우익수'};
-  const order=['포','1','2','3','유','좌','중','우'],counts=Object.fromEntries(order.map(k=>[k,0]));
+  const labels={'포':'포수','一':'1루수','二':'2루수','三':'3루수','유':'유격수','좌':'좌익수','중':'중견수','우':'우익수'};
+  const order=['포','一','二','三','유','좌','중','우'],counts=Object.fromEntries(order.map(k=>[k,0]));
   Repo.all().filter(e=>e.type===recLeague&&!isCancelled(e)&&!e.stage&&hasScore(e)&&S(e.date).slice(0,4)===yr&&Array.isArray(e.batting)).forEach(e=>{
     const seen=new Set();
     e.batting.filter(p=>S(p.name)===S(name)).forEach(p=>{for(const ch of S(p.position))if(labels[ch])seen.add(ch)});
@@ -573,7 +573,7 @@ function defensePositions(name){
   return order.filter(k=>counts[k]>0).map(k=>({key:k,label:labels[k],games:counts[k]}));
 }
 function defensePositionHistory(name,key){
-  if(!['포','1','2','3','유','좌','중','우'].includes(key))return [];
+  if(!['포','一','二','三','유','좌','중','우'].includes(key))return [];
   const yr=String(recYear),rows=[];
   Repo.all().filter(e=>e.type===recLeague&&!isCancelled(e)&&!e.stage&&hasScore(e)&&S(e.date).slice(0,4)===yr&&Array.isArray(e.batting)).forEach(e=>{
     const entries=e.batting.filter(p=>S(p.name)===S(name));
@@ -582,11 +582,15 @@ function defensePositionHistory(name,key){
   });
   return rows.sort((a,b)=>b.date.localeCompare(a.date));
 }
+// 저장된 수비 포지션 키는 유지하고, 화면에 표시할 때만 숫자로 변환합니다.
+function defensePositionLabel(value){
+  return S(value).replace(/[一二三]/g,ch=>({'一':'1','二':'2','三':'3'}[ch]));
+}
 function defenseHistoryHTML(name,positions){
   const selected=positions.find(p=>p.key===playerDefensePosition);
   if(!selected)return '';
   const rows=defensePositionHistory(name,selected.key);
-  return `<div class="historybox" id="defense-history" aria-live="polite"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${esc(selected.label)} 출전 경기</b><span class="sb">총 ${rows.length}경기</span></div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>${esc(x.date.replace(/-/g,'.'))}</b> · vs ${esc(x.opp)}</div><span class="sb" style="overflow-wrap:anywhere">${esc(x.position)}</span></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`;
+  return `<div class="historybox" id="defense-history" aria-live="polite"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${esc(selected.label)} 출전 경기</b><span class="sb">총 ${rows.length}경기</span></div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>${esc(x.date.replace(/-/g,'.'))}</b> · vs ${esc(x.opp)}</div><span class="sb" style="overflow-wrap:anywhere">${esc(defensePositionLabel(x.position))}</span></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`;
 }
 function battingOrders(name){
   const counts=Array(10).fill(0),yr=String(recYear);
@@ -735,7 +739,7 @@ function playerSheetHTML(){
   }
   if(recBatTab==='defense'){
     const positions=defensePositions(playerSheet);
-    const totalGames=new Set(Repo.all().filter(e=>e.type===recLeague&&!isCancelled(e)&&!e.stage&&hasScore(e)&&S(e.date).slice(0,4)===String(recYear)&&Array.isArray(e.batting)&&e.batting.some(p=>S(p.name)===S(playerSheet)&&/[포123유좌중우]/.test(S(p.position)))).map(e=>S(e.kboGameId||e.id||e.date))).size;
+    const totalGames=new Set(Repo.all().filter(e=>e.type===recLeague&&!isCancelled(e)&&!e.stage&&hasScore(e)&&S(e.date).slice(0,4)===String(recYear)&&Array.isArray(e.batting)&&e.batting.some(p=>S(p.name)===S(playerSheet)&&/[포一二三유좌중우]/.test(S(p.position)))).map(e=>S(e.kboGameId||e.id||e.date))).size;
     return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div>
       <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 ${recLeague==='edu'?'교육리그':'KBO'} · 수비 기록</div></div><button class="sheetclose" data-sheetclose>×</button></div>
       ${positions.length?`<div style="margin-top:16px"><b>수비 출전 ${totalGames}경기</b></div><div class="ordergrid" style="margin-top:8px">${positions.map(p=>`<button type="button" class="orderbox statclick${playerDefensePosition===p.key?' on':''}" data-defensepos="${p.key}" aria-pressed="${playerDefensePosition===p.key}"${playerDefensePosition===p.key?' aria-controls="defense-history"':''}><b>${p.games}경기</b><span>${p.label}</span></button>`).join('')}</div><div class="note" style="margin-top:14px">한 경기에서 여러 수비 포지션을 소화한 경우 각 포지션에 각각 1경기로 기록됩니다.<br>여러 포지션이 함께 표시된 경우, 경기 중 역할 또는 수비 위치가 변경된 것을 의미합니다.<br>대주자: 주, 대타: 타</div>${defenseHistoryHTML(playerSheet,positions)}`:'<div class="empty" style="padding:28px 0">저장된 수비 기록이 없습니다.</div>'}
