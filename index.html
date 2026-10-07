@@ -951,7 +951,7 @@ function h2hView(){
   return `<div class="brand"><div class="logo">맞대결</div></div><div class="chips">${TEAMS.map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${t}</button>`).join('')}</div>${body||'<div class="empty">상대팀을 선택하세요.</div>'}`;
 }
 function opponentStatHistory(name,stat,opp){
-  const yr=String(TODAY.getFullYear()),key={hit:'hits',sb:'stolenBases',hr:'homeRuns'}[stat];
+  const yr=String(TODAY.getFullYear()),key={hit:'hits',sb:'stolenBases',hr:'homeRuns',rbi:'rbi',d2:'doubles',d3:'triples'}[stat];
   if(!key)return [];
   const rows=[];
   Repo.all()
@@ -979,33 +979,32 @@ function opponentStatHistory(name,stat,opp){
 }
 
 function opponentNameSummaryHTML(){
-  const {name,opp}=oppHistorySheet,yr=String(TODAY.getFullYear());
-  const rows=[];
+  const {name,opp,detail}=oppHistorySheet,yr=String(TODAY.getFullYear());
+  const total={ab:0,hit:0,rbi:0,d2:0,d3:0,hr:0,sb:0};
+  const fields={ab:'atBats',hit:'hits',rbi:'rbi',d2:'doubles',d3:'triples',hr:'homeRuns',sb:'stolenBases'};
   Repo.all()
     .filter(e=>e.type==='kbo'&&!e.stage&&hasScore(e)&&S(e.date).slice(0,4)===yr&&S(e.opp)===S(opp)&&Array.isArray(e.batting))
-    .forEach(e=>{
-      const players=e.batting.filter(p=>S(p.name)===S(name));
-      if(!players.length)return;
-      const row={date:S(e.date),ab:0,hit:0,sb:0,hr:0};
-      players.forEach(p=>{row.ab+=+p.atBats||0;row.hit+=+p.hits||0;row.sb+=+p.stolenBases||0;row.hr+=+p.homeRuns||0});
-      rows.push(row);
-    });
-  rows.sort((a,b)=>b.date.localeCompare(a.date));
-  const total=rows.reduce((s,r)=>{s.ab+=r.ab;s.hit+=r.hit;s.sb+=r.sb;s.hr+=r.hr;return s},{ab:0,hit:0,sb:0,hr:0});
-  const avg=r=>r.ab?(r.hit/r.ab>=1?'1.000':(r.hit/r.ab).toFixed(3).slice(1)):'.000';
+    .forEach(e=>e.batting.filter(p=>S(p.name)===S(name)).forEach(p=>{
+      Object.entries(fields).forEach(([k,field])=>total[k]+=+p[field]||0);
+    }));
+  const avg=total.ab?(total.hit/total.ab>=1?'1.000':(total.hit/total.ab).toFixed(3).slice(1)):'.000';
+  const boxes=[['ab','타수',total.ab],['hit','안타',total.hit],['rbi','타점',total.rbi],['avg','타율',avg],['d2','2루타',total.d2],['d3','3루타',total.d3],['hr','홈런',total.hr],['sb','도루',total.sb]];
+  const rows=detail?opponentStatHistory(name,detail,opp):[];
+  const label=boxes.find(([k])=>k===detail)?.[1]||'';
   return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div>
     <div class="sheethead">
-      <div><b>${esc(name)}</b><div class="sb">${yr} 시즌 · ${esc(opp)}전 기록 요약</div></div>
+      <div><b>${esc(name)}</b><div class="sb">${yr}년 KBO · ${esc(opp)}전 타격 기록</div></div>
       <button class="sheetclose" data-oppclose>×</button>
     </div>
-    <div class="historybox" style="border-top:0;margin-top:8px;padding-top:0;max-height:50vh">
-      <b>타수 ${total.ab} · 안타 ${total.hit} · 도루 ${total.sb} · 홈런 ${total.hr}</b>
-      <div class="sb">타율 ${avg(total)} · 기록이 저장된 경기 ${rows.length}경기</div>
-      ${rows.length?rows.map(r=>`<div class="historyrow">
-        <b>${esc(r.date.slice(5).replace('-','.'))}</b> · vs ${esc(opp)}
-        <div class="sb">타수 ${r.ab} · 안타 ${r.hit} · 도루 ${r.sb} · 홈런 ${r.hr} · 타율 ${avg(r)}</div>
+    <div class="ordergrid">${boxes.map(([k,label,value])=>k==='ab'||k==='avg'
+      ?`<div class="orderbox"><b>${value}</b><span>${label}</span></div>`
+      :`<button type="button" class="orderbox statclick${detail===k?' on':''}" data-oppsummarystat="${k}" aria-pressed="${detail===k}"><b>${value}</b><span>${label}</span></button>`).join('')}</div>
+    ${detail?`<div class="historybox">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${label} 경기별 기록</b><span class="sb">총 ${rows.reduce((sum,r)=>sum+r.count,0)}개</span></div>
+      ${rows.length?rows.map(r=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+        <div><b>${esc(r.date.slice(5).replace('-','.'))}</b> · vs ${esc(r.opp)}${r.detail?`<br><span class="sb">${esc(r.detail)}</span>`:''}</div><b style="white-space:nowrap">${r.count}개</b>
       </div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}
-    </div>
+    </div>`:''}
   </div></div>`;
 }
 
@@ -1215,7 +1214,7 @@ function route(){
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-rleague],[data-hstat],[data-pstat],[data-orderhist],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-astand],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveo,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
+  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppsummarystat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-rleague],[data-hstat],[data-pstat],[data-orderhist],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-astand],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveo,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
   const keep=()=>{const y=scrollY;route2();scrollTo(0,y)};
   if(t.dataset.d){sel=t.dataset.d;const d=new Date(sel+'T00:00:00');view=new Date(d.getFullYear(),d.getMonth(),1);keep()}
   else if(t.dataset.m!==undefined){const m=+t.dataset.m;if(m===0){sel=TS;view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1)}else view=new Date(view.getFullYear(),view.getMonth()+m,1);keep()}
@@ -1239,6 +1238,10 @@ document.addEventListener('click',ev=>{
       stat:t.dataset.opphist||'',
       opp:t.dataset.oppteam||h2h||''
     };
+    keep()
+  }
+  else if(t.dataset.oppsummarystat!==undefined&&oppHistorySheet?.stat==='summary'){
+    oppHistorySheet.detail=oppHistorySheet.detail===t.dataset.oppsummarystat?null:t.dataset.oppsummarystat;
     keep()
   }
   else if(t.dataset.oppclose!==undefined){oppHistorySheet=null;keep()}
