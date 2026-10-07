@@ -582,15 +582,11 @@ function defensePositionHistory(name,key){
   });
   return rows.sort((a,b)=>b.date.localeCompare(a.date));
 }
-// 저장된 수비 포지션 키는 유지하고, 화면에 표시할 때만 숫자로 변환합니다.
-function defensePositionLabel(value){
-  return S(value).replace(/[一二三]/g,ch=>({'一':'1','二':'2','三':'3'}[ch]));
-}
 function defenseHistoryHTML(name,positions){
   const selected=positions.find(p=>p.key===playerDefensePosition);
   if(!selected)return '';
   const rows=defensePositionHistory(name,selected.key);
-  return `<div class="historybox" id="defense-history" aria-live="polite"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${esc(selected.label)} 출전 경기</b><span class="sb">총 ${rows.length}경기</span></div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>${esc(x.date.replace(/-/g,'.'))}</b> · vs ${esc(x.opp)}</div><span class="sb" style="overflow-wrap:anywhere">${esc(defensePositionLabel(x.position))}</span></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`;
+  return `<div class="historybox" id="defense-history" aria-live="polite"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${esc(selected.label)} 출전 경기</b><span class="sb">총 ${rows.length}경기</span></div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>${esc(x.date.replace(/-/g,'.'))}</b> · vs ${esc(x.opp)}</div><span class="sb" style="overflow-wrap:anywhere">${esc(x.position)}</span></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`;
 }
 function battingOrders(name){
   const counts=Array(10).fill(0),yr=String(recYear);
