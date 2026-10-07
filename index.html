@@ -82,7 +82,7 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 .sheetbar{width:42px;height:5px;border-radius:99px;background:var(--line);margin:2px auto 16px}
 .sheethead{display:flex;align-items:center;justify-content:space-between;gap:12px}.sheethead b{font-size:22px}.sheetclose{border:0;background:var(--chip);color:var(--ink);width:34px;height:34px;border-radius:50%;font-size:18px}
 .ordergrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
-.orderbox{background:var(--bg);border-radius:14px;padding:13px 8px;text-align:center}.orderbox b{display:block;font-size:20px;color:var(--navy)}.orderbox span{font-size:12px;color:var(--sub)}.orderbox.statclick{border:0;font:inherit;cursor:pointer;width:100%;color:inherit}.orderbox[data-defensepos].on{box-shadow:inset 0 0 0 2px var(--acc);background:color-mix(in srgb,var(--acc) 10%,var(--bg))}.orderbox[data-defensepos]:focus-visible{outline:2px solid var(--acc);outline-offset:2px}.historybox{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;max-height:220px;overflow-y:auto}.historyrow{padding:9px 2px;border-top:1px solid var(--line);font-size:13px}.historyrow:first-child{border-top:0}
+.orderbox{background:var(--bg);border-radius:14px;padding:13px 8px;text-align:center}.orderbox b{display:block;font-size:20px;color:var(--navy)}.orderbox span{font-size:12px;color:var(--sub)}.orderbox.statclick{border:0;font:inherit;cursor:pointer;width:100%;color:inherit}.orderbox.statclick.on{box-shadow:inset 0 0 0 1.5px var(--navy);background:var(--chip)}.orderbox.statclick:focus-visible{outline:2px solid var(--navy);outline-offset:2px}.historybox{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;max-height:220px;overflow-y:auto}.historyrow{padding:9px 2px;border-top:1px solid var(--line);font-size:13px}.historyrow:first-child{border-top:0}
 </style>
 
 <style>
@@ -731,7 +731,7 @@ function playerSheetHTML(){
       : [['ip','이닝',r.ip],['era','ERA',r.era],['hits','피안타',r.hits],['homeRuns','피홈런',r.homeRuns],['strikeouts','탈삼진',r.strikeouts],['walks','볼넷',r.walks],['hitByPitch','사구',r.hitByPitch],['runs','실점',r.runs],['earnedRuns','자책',r.earnedRuns]];
     return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div>
       <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 ${recLeague==='edu'?'교육리그':'KBO'} · ${recPitchTab==='result'?'승패 기록':'투구 기록'}</div></div><button class="sheetclose" data-sheetclose>×</button></div>
-      <div class="ordergrid">${boxes.map(([k,l,v])=>`<button class="orderbox statclick" data-pstat="${k}"><b>${v}</b><span>${l}</span></button>`).join('')}</div>${pitcherHistoryHTML(playerSheet)}</div></div>`;
+      <div class="ordergrid">${boxes.map(([k,l,v])=>`<button type="button" class="orderbox statclick${pitcherHistoryStat===k?' on':''}" data-pstat="${k}" aria-pressed="${pitcherHistoryStat===k}"><b>${v}</b><span>${l}</span></button>`).join('')}</div>${pitcherHistoryHTML(playerSheet)}</div></div>`;
   }
   if(recBatTab==='defense'){
     const positions=defensePositions(playerSheet);
@@ -746,7 +746,7 @@ function playerSheetHTML(){
     const c=battingOrders(playerSheet),rows=[],history=battingOrderHistory(playerSheet);
     for(let i=1;i<=9;i++){
       if(c[i]){
-        rows.push(`<button class="orderbox statclick" data-orderhist="${i}"><b>${c[i]}경기</b><span>${i}번 타자</span></button>`);
+        rows.push(`<button type="button" class="orderbox statclick${+playerOrderHistory===i?' on':''}" data-orderhist="${i}" aria-pressed="${+playerOrderHistory===i}"><b>${c[i]}경기</b><span>${i}번 타자</span></button>`);
       }
     }
 
@@ -781,10 +781,10 @@ function playerSheetHTML(){
     return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div>
       <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 ${recLeague==='edu'?'교육리그':'KBO'} · 출루 기록</div></div><button class="sheetclose" data-sheetclose>×</button></div>
       <div class="ordergrid">
-        <button class="orderbox statclick" data-hstat="bb"><b>${r.bb}</b><span>볼넷</span></button>
-        <button class="orderbox statclick" data-hstat="hbp"><b>${r.hbp}</b><span>사구</span></button>
-        <button class="orderbox statclick" data-hstat="ibb"><b>${r.ibb}</b><span>고의4구</span></button>
-        <button class="orderbox statclick" data-hstat="runs"><b>${r.runs}</b><span>득점</span></button>
+        <button type="button" class="orderbox statclick${playerHistoryStat==='bb'?' on':''}" data-hstat="bb" aria-pressed="${playerHistoryStat==='bb'}"><b>${r.bb}</b><span>볼넷</span></button>
+        <button type="button" class="orderbox statclick${playerHistoryStat==='hbp'?' on':''}" data-hstat="hbp" aria-pressed="${playerHistoryStat==='hbp'}"><b>${r.hbp}</b><span>사구</span></button>
+        <button type="button" class="orderbox statclick${playerHistoryStat==='ibb'?' on':''}" data-hstat="ibb" aria-pressed="${playerHistoryStat==='ibb'}"><b>${r.ibb}</b><span>고의4구</span></button>
+        <button type="button" class="orderbox statclick${playerHistoryStat==='runs'?' on':''}" data-hstat="runs" aria-pressed="${playerHistoryStat==='runs'}"><b>${r.runs}</b><span>득점</span></button>
       </div>
       ${historyHTML(playerSheet)}
     </div></div>`;
@@ -794,13 +794,13 @@ function playerSheetHTML(){
     <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 ${recLeague==='edu'?'교육리그':'KBO'} · 타격 기록</div></div><button class="sheetclose" data-sheetclose>×</button></div>
     <div class="ordergrid">
       <div class="orderbox"><b>${r.ab}</b><span>타수</span></div>
-      <button class="orderbox statclick" data-hstat="hit"><b>${r.hit}</b><span>안타</span></button>
-      <button class="orderbox statclick" data-hstat="rbi"><b>${r.rbi}</b><span>타점</span></button>
+      <button type="button" class="orderbox statclick${playerHistoryStat==='hit'?' on':''}" data-hstat="hit" aria-pressed="${playerHistoryStat==='hit'}"><b>${r.hit}</b><span>안타</span></button>
+      <button type="button" class="orderbox statclick${playerHistoryStat==='rbi'?' on':''}" data-hstat="rbi" aria-pressed="${playerHistoryStat==='rbi'}"><b>${r.rbi}</b><span>타점</span></button>
       <div class="orderbox"><b>${avg}</b><span>타율</span></div>
-      <button class="orderbox statclick" data-hstat="d2"><b>${r.d2}</b><span>2루타</span></button>
-      <button class="orderbox statclick" data-hstat="d3"><b>${r.d3}</b><span>3루타</span></button>
-      <button class="orderbox statclick" data-hstat="hr"><b>${r.hr}</b><span>홈런</span></button>
-      <button class="orderbox statclick" data-hstat="sb"><b>${r.sb}</b><span>도루</span></button>
+      <button type="button" class="orderbox statclick${playerHistoryStat==='d2'?' on':''}" data-hstat="d2" aria-pressed="${playerHistoryStat==='d2'}"><b>${r.d2}</b><span>2루타</span></button>
+      <button type="button" class="orderbox statclick${playerHistoryStat==='d3'?' on':''}" data-hstat="d3" aria-pressed="${playerHistoryStat==='d3'}"><b>${r.d3}</b><span>3루타</span></button>
+      <button type="button" class="orderbox statclick${playerHistoryStat==='hr'?' on':''}" data-hstat="hr" aria-pressed="${playerHistoryStat==='hr'}"><b>${r.hr}</b><span>홈런</span></button>
+      <button type="button" class="orderbox statclick${playerHistoryStat==='sb'?' on':''}" data-hstat="sb" aria-pressed="${playerHistoryStat==='sb'}"><b>${r.sb}</b><span>도루</span></button>
     </div>
     ${historyHTML(playerSheet)}
   </div></div>`;
