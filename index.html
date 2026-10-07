@@ -205,6 +205,7 @@ function mergeEvents(manual,automatic){
     if(matches.length>1){warnings.push(`${auto.kboGameId}: 중복 연결`);continue}
     if(!matches.length){rows.push({...auto});continue}
     const old=matches[0],index=rows.indexOf(old),merged=old.manualOverride?{...auto,...old}:{...old,...auto};
+    if(old.manualOverride&&Array.isArray(old.pitching)&&Array.isArray(auto.pitching))merged.pitching=old.pitching.map(p=>{const base=auto.pitching.find(x=>S(x.name)===S(p.name)&&(!S(p.teamId)||S(x.teamId)===S(p.teamId)));return base?{...base,...p}:p});
     for(const key of ['title','desc','channel','program','players','series'])if(old[key]!==undefined&&old[key]!=='')merged[key]=old[key];
     merged.id=old.id;merged.kboGameId=auto.kboGameId;merged.kbo=auto.kbo;merged.manualOverride=!!old.manualOverride;rows[index]=merged;
   }
