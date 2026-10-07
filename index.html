@@ -978,8 +978,40 @@ function opponentStatHistory(name,stat,opp){
   return rows.sort((a,b)=>b.date.localeCompare(a.date));
 }
 
+function opponentNameSummaryHTML(){
+  const {name,opp}=oppHistorySheet,yr=String(TODAY.getFullYear());
+  const rows=[];
+  Repo.all()
+    .filter(e=>e.type==='kbo'&&!e.stage&&hasScore(e)&&S(e.date).slice(0,4)===yr&&S(e.opp)===S(opp)&&Array.isArray(e.batting))
+    .forEach(e=>{
+      const players=e.batting.filter(p=>S(p.name)===S(name));
+      if(!players.length)return;
+      const row={date:S(e.date),ab:0,hit:0,sb:0,hr:0};
+      players.forEach(p=>{row.ab+=+p.atBats||0;row.hit+=+p.hits||0;row.sb+=+p.stolenBases||0;row.hr+=+p.homeRuns||0});
+      rows.push(row);
+    });
+  rows.sort((a,b)=>b.date.localeCompare(a.date));
+  const total=rows.reduce((s,r)=>{s.ab+=r.ab;s.hit+=r.hit;s.sb+=r.sb;s.hr+=r.hr;return s},{ab:0,hit:0,sb:0,hr:0});
+  const avg=r=>r.ab?(r.hit/r.ab>=1?'1.000':(r.hit/r.ab).toFixed(3).slice(1)):'.000';
+  return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div>
+    <div class="sheethead">
+      <div><b>${esc(name)}</b><div class="sb">${yr} 시즌 · ${esc(opp)}전 기록 요약</div></div>
+      <button class="sheetclose" data-oppclose>×</button>
+    </div>
+    <div class="historybox" style="border-top:0;margin-top:8px;padding-top:0;max-height:50vh">
+      <b>타수 ${total.ab} · 안타 ${total.hit} · 도루 ${total.sb} · 홈런 ${total.hr}</b>
+      <div class="sb">타율 ${avg(total)} · 기록이 저장된 경기 ${rows.length}경기</div>
+      ${rows.length?rows.map(r=>`<div class="historyrow">
+        <b>${esc(r.date.slice(5).replace('-','.'))}</b> · vs ${esc(opp)}
+        <div class="sb">타수 ${r.ab} · 안타 ${r.hit} · 도루 ${r.sb} · 홈런 ${r.hr} · 타율 ${avg(r)}</div>
+      </div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}
+    </div>
+  </div></div>`;
+}
+
 function opponentHistorySheetHTML(){
   if(!oppHistorySheet)return '';
+  if(oppHistorySheet.stat==='summary')return opponentNameSummaryHTML();
   const label={hit:'안타',sb:'도루',hr:'홈런'}[oppHistorySheet.stat]||'기록';
   const rows=opponentStatHistory(oppHistorySheet.name,oppHistorySheet.stat,oppHistorySheet.opp);
   const total=rows.reduce((s,x)=>s+(+x.count||0),0);
@@ -1038,7 +1070,7 @@ function opponentStatsView(){
 <th><button class="opp-th${oppSort==='avg'?' active':''}" data-osort="avg">타율</button></th>
 </tr></thead><tbody>${rows.map((r,i)=>`<tr>
 <td>${i+1}</td>
-<td>${esc(r.n)}</td>
+<td><button class="playerlink" data-opphist="summary" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${esc(r.n)}</button></td>
 <td>${r.ab}</td>
 <td><button class="playerlink" data-opphist="hit" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${r.hit}</button></td>
 <td><button class="playerlink" data-opphist="sb" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${r.sb}</button></td>
