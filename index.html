@@ -738,7 +738,7 @@ function playerSheetHTML(){
     const totalGames=new Set(Repo.all().filter(e=>e.type===recLeague&&!isCancelled(e)&&!e.stage&&hasScore(e)&&S(e.date).slice(0,4)===String(recYear)&&Array.isArray(e.batting)&&e.batting.some(p=>S(p.name)===S(playerSheet)&&/[포一二三유좌중우]/.test(S(p.position)))).map(e=>S(e.kboGameId||e.id||e.date))).size;
     return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div>
       <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 ${recLeague==='edu'?'교육리그':'KBO'} · 수비 기록</div></div><button class="sheetclose" data-sheetclose>×</button></div>
-      ${positions.length?`<div style="margin-top:16px"><b>수비 출전 ${totalGames}경기</b></div><div class="ordergrid" style="margin-top:8px">${positions.map(p=>`<button type="button" class="orderbox statclick${playerDefensePosition===p.key?' on':''}" data-defensepos="${p.key}" aria-pressed="${playerDefensePosition===p.key}"${playerDefensePosition===p.key?' aria-controls="defense-history"':''}><b>${p.games}경기</b><span>${p.label}</span></button>`).join('')}</div><div class="note" style="margin-top:14px">한 경기에서 여러 수비 포지션을 소화한 경우 각 포지션에 각각 1경기로 기록됩니다.</div>`:'<div class="empty" style="padding:28px 0">저장된 수비 기록이 없습니다.</div>'}
+      ${positions.length?`<div style="margin-top:16px"><b>수비 출전 ${totalGames}경기</b></div><div class="ordergrid" style="margin-top:8px">${positions.map(p=>`<button type="button" class="orderbox statclick${playerDefensePosition===p.key?' on':''}" data-defensepos="${p.key}" aria-pressed="${playerDefensePosition===p.key}"${playerDefensePosition===p.key?' aria-controls="defense-history"':''}><b>${p.games}경기</b><span>${p.label}</span></button>`).join('')}</div><div class="note" style="margin-top:14px">한 경기에서 여러 수비 포지션을 소화한 경우 각 포지션에 각각 1경기로 기록됩니다.<br>여러 포지션이 함께 표시된 경우, 경기 중 역할 또는 수비 위치가 변경된 것을 의미합니다.<br>대주자: 주, 대타: 타
     ${defenseHistoryHTML(playerSheet,positions)}
     </div></div>`;
   }
@@ -831,9 +831,9 @@ function records(){
           중:by['중']||0,
           우:by['우']||0,
           유:by['유']||0,
-          삼:by['三']||0,
-          이:by['二']||0,
-          일:by['一']||0,
+          삼:by['3']||0,
+          이:by['2']||0,
+          일:by['1']||0,
           포:by['포']||0
         };
       })).filter(r=>{
