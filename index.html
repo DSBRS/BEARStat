@@ -492,17 +492,15 @@ ${manualLineup?`      <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bo
   return `<div style="margin-top:18px;width:100%;min-width:0">
     <table class="rec batter-fit" style="table-layout:fixed;width:100%;min-width:0">
       <colgroup>
-        <col style="width:18%">${manualLineup?'<col style="width:14%">':''}
-        ${cols.map(()=>`<col style="width:${manualLineup?8.5:10.25}%">`).join('')}
+        <col style="width:20%">
+        ${cols.map(()=>'<col style="width:10%">').join('')}
       </colgroup>
       <tr>
         <th style="padding:10px 0;white-space:normal;line-height:1.3">두산 타자</th>
-        ${manualLineup?'<th style="padding:10px 0;text-align:center;white-space:normal;line-height:1.3">타순</th>':''}
         ${cols.map(c=>`<th style="padding:10px 0;text-align:center;white-space:normal;line-height:1.3">${c[0]==='reachedOnError'?'실책<br>출루':c[1]}</th>`).join('')}
       </tr>
       ${players.map(p=>`<tr>
-        <td style="padding:12px 0;white-space:nowrap"><button class="playerlink" data-gamebatter="${esc(p.name)}" data-gameab="${+p.atBats||0}" data-gamehit="${+p.hits||0}" data-gamedate="${esc(game?.date||'')}" data-gameopp="${esc(game?.opp||'')}" data-gameha="${esc(game?.homeAway||'')}">${esc(p.name)}</button>${batterReplacementLabel(p)?`<div style="font-size:11px;font-weight:400;color:var(--sub);white-space:normal;line-height:1.5;margin-top:4px">${esc(batterReplacementLabel(p))}</div>`:''}</td>
-        ${manualLineup?`<td style="text-align:center;padding:12px 0;white-space:normal;line-height:1.5;overflow-wrap:anywhere">${batterOrderLabel(p)}</td>`:''}
+        <td style="padding:12px 0;white-space:nowrap"><button class="playerlink" data-gamebatter="${esc(p.name)}" data-gameab="${+p.atBats||0}" data-gamehit="${+p.hits||0}" data-gamedate="${esc(game?.date||'')}" data-gameopp="${esc(game?.opp||'')}" data-gameha="${esc(game?.homeAway||'')}">${esc(p.name)}</button></td>
         ${cols.map(([k])=>`<td style="text-align:center;padding:12px 0;white-space:nowrap">${+p[k]||0}</td>`).join('')}
       </tr>`).join('')}
     </table>
