@@ -354,6 +354,19 @@ function batterTable(players,edit,game=null){
     ['walks','볼넷']
   ];
 
+  if(edit)return `<div style="display:grid;gap:14px;margin-top:18px">
+    ${players.map((p,i)=>`<div data-batter-row style="border:1px solid #e2e4ef;border-radius:16px;padding:16px;background:#fff">
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+        <strong style="font-size:17px;margin-right:auto">${esc(p.name)}</strong>
+        <label style="display:flex;align-items:center;gap:7px;margin:0;font-size:14px;white-space:nowrap"><input type="checkbox" style="width:20px;height:20px;margin:0" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="participated" ${p.participated!==false?'checked':''}>출전</label>
+        <label style="display:flex;align-items:center;gap:7px;margin:0;font-size:14px">타순<select style="width:130px;padding:8px;font-size:14px" aria-label="${esc(p.name)} 타순" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="order"><option value="0" ${!(+p.order>=1&&+p.order<=9)?'selected':''}>교체/미지정</option>${Array.from({length:9},(_,n)=>n+1).map(n=>`<option value="${n}" ${+p.order===n?'selected':''}>${n}번</option>`).join('')}</select></label>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(68px,1fr));gap:12px">
+        ${cols.map(([k,label])=>`<label style="display:block;min-width:0;margin:0;font-size:13px">${label}<input style="display:block;width:100%;min-width:0;box-sizing:border-box;padding:10px;margin-top:6px;font-size:16px" type="number" min="0" step="1" aria-label="${esc(p.name)} ${label}" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="${k}" value="${+p[k]||0}"></label>`).join('')}
+      </div>
+    </div>`).join('')}
+  </div>`;
+
   return `<div style="overflow-x:auto;margin-top:18px">
     <table class="rec" style="table-layout:fixed;width:96%">
       <colgroup>
@@ -1157,7 +1170,7 @@ function restoreAdminDraft(){
     if(el.type==='checkbox')el.checked=!!draft.fields[el.id];else el.value=draft.fields[el.id];
   });
   card.querySelectorAll('[data-batter]').forEach(el=>{
-    const name=S(el.closest('tr')?.querySelector('td')?.textContent).trim();
+    const name=el.dataset.batterName||S(el.closest('tr')?.querySelector('td')?.textContent).trim();
     const p=(draft.batters||[]).find(x=>x.name===name);
     if(p&&Object.prototype.hasOwnProperty.call(p,el.dataset.stat)){if(el.type==='checkbox')el.checked=!!p[el.dataset.stat];else el.value=p[el.dataset.stat];}
   });
@@ -1476,7 +1489,7 @@ document.addEventListener('input',ev=>{const box=document.querySelector('#kbo_ma
 function selectBatterOnEntry(ev){
   const el=ev.target;
   if(!el?.dataset?.batterName||el.dataset.stat==='participated'||!(+el.value>0))return;
-  const box=el.closest('tr')?.querySelector('[data-stat="participated"]');
+  const box=el.closest('[data-batter-row],tr')?.querySelector('[data-stat="participated"]');
   if(box)box.checked=true;
 }
 document.addEventListener('input',selectBatterOnEntry);
