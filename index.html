@@ -198,6 +198,7 @@ const Repo={
     const saved=r.data?.body;
     if(!saved||S(saved.id)!==S(ev.id))throw new Error('저장 결과를 확인하지 못했습니다. 입력값은 임시 보관되어 있습니다.');
     if(Array.isArray(ev.batting)&&recordJSON(saved.batting)!==recordJSON(ev.batting))throw new Error('타자 기록의 저장 결과가 입력값과 다릅니다. 입력값은 임시 보관되어 있습니다.');
+    if(Array.isArray(ev.pitching)&&recordJSON(saved.pitching)!==recordJSON(ev.pitching))throw new Error('투수 기록의 저장 결과가 입력값과 다릅니다. 입력값은 임시 보관되어 있습니다.');
     CUSTOM=CUSTOM.filter(x=>S(x.id)!==S(saved.id)).concat(saved);
     await this.load();
     CUSTOM=CUSTOM.filter(x=>S(x.id)!==S(saved.id)).concat(saved);
@@ -235,11 +236,14 @@ function applyKboLineupDetails(players,overrides){
   rows.forEach(p=>inheritOrder(p));
   return rows;
 }
-function saveKboLineupDetails(ev){
-  if(!Array.isArray(ev.batting)||!document.querySelector('[data-stat="role_pinchHitter"]'))return;
-  const original=ev.batting,previous=Array.isArray(ev.lineupOverrides)?ev.lineupOverrides:[];
-  const edited=readBatterLineup(original);
-  ev.lineupOverrides=original.map(p=>{
+function saveKboLineupDetails(ev,sourcePlayers=ev.batting){
+  if(!Array.isArray(ev.batting)||!document.querySelector('[data-stat="role_pinchHitter"]')){ev.batting=sourcePlayers;return;}
+  const original=sourcePlayers,previous=Array.isArray(ev.lineupOverrides)?ev.lineupOverrides:[];
+  const edited=readBatterLineup(ev.batting);
+  const candidates=original.concat(edited.filter(x=>!original.some(p=>S(p.name)===S(x.name))));
+  const autoPlayers=KBO_AUTO.find(x=>S(x.kboGameId)===S(ev.kboGameId))?.batting||original.filter(p=>!(ev.lineupExtras||[]).some(x=>S(x.name)===S(p.name)));
+  ev.lineupExtras=edited.filter(p=>!autoPlayers.some(x=>S(x.name)===S(p.name)));
+  ev.lineupOverrides=candidates.map(p=>{
     const x=edited.find(x=>S(x.name)===S(p.name)&&(!S(p.teamId)||S(x.teamId)===S(p.teamId)));
     const old=previous.find(x=>S(x.name)===S(p.name)&&(!S(x.teamId)||S(x.teamId)===S(p.teamId)));
     const detail={name:p.name,teamId:p.teamId||'',participated:!!x,entryRoles:x?batterEntryRoles(x):[],entryRole:x?.entryRole||'',replacedPlayer:x?.replacedPlayer||'',defensePosition:x?.defensePosition||'',startingPosition:x?.startingPosition||'',defenseChanged:!!x?.defenseChanged,defenseFrom:x?.defenseFrom||'',defenseTo:x?.defenseTo||''};
@@ -247,7 +251,7 @@ function saveKboLineupDetails(ev){
     else if(x&&+x.order>=1&&+x.order<=9&&old?.orderOverride&&!x.replacedPlayer)detail.orderOverride=old.orderOverride;
     return detail;
   });
-  ev.batting=ev.manualOverride?edited:applyKboLineupDetails(original,ev.lineupOverrides);
+  ev.batting=ev.manualOverride?edited:applyKboLineupDetails(candidates,ev.lineupOverrides);
 }
 function mergeEvents(manual,automatic){
   const rows=manual.map(e=>({...e})),warnings=[];
@@ -262,8 +266,14 @@ function mergeEvents(manual,automatic){
     for(const key of ['title','desc','channel','program','players','series'])if(old[key]!==undefined&&old[key]!=='')merged[key]=old[key];
     if(Array.isArray(old.lineupOverrides)){
       merged.lineupOverrides=old.lineupOverrides;
-      if(!old.manualOverride)merged.batting=applyKboLineupDetails(auto.batting,old.lineupOverrides);
+      if(!old.manualOverride){
+        const extras=(old.lineupExtras||[]).filter(p=>!(auto.batting||[]).some(x=>S(x.name)===S(p.name)));
+        merged.lineupExtras=old.lineupExtras||[];
+        merged.batting=applyKboLineupDetails((auto.batting||[]).concat(extras),old.lineupOverrides);
+      }
     }
+    if(old.pitchingOverride){merged.pitchingOverride=true;merged.pitching=old.pitching||[]}
+    else if(old.pitchingOverride===false)merged.pitching=auto.pitching;
     merged.id=old.id;merged.kboGameId=auto.kboGameId;merged.kbo=auto.kbo;merged.manualOverride=!!old.manualOverride;rows[index]=merged;
   }
   return{rows,warnings};
@@ -363,8 +373,28 @@ function orderedBatters(players){
   return result;
 }
 Repo.upsert=async function(ev){
-  if(ev.kboGameId){ev.manualOverride=!!document.querySelector('#kbo_manual')?.checked;if(ev.manualOverride&&Array.isArray(ev.batting))ev.batting=ev.batting.map((p,i)=>{const x={...p};for(const k of ['atBats','hits','doubles','triples','homeRuns','stolenBases','walks','reachedOnError']){const el=document.querySelector(`[data-batter="${i}"][data-stat="${k}"]`);if(el){const n=Number(el.value);if(!Number.isInteger(n)||n<0)throw new Error('타자 기록은 0 이상의 정수로 입력해주세요');x[k]=n}}if((+x.doubles||0)+(+x.triples||0)+(+x.homeRuns||0)>(+x.hits||0))throw new Error('장타 합계가 안타 수보다 많습니다');return x});saveKboLineupDetails(ev)}
+  if(ev.kboGameId){
+    const source=Array.isArray(ev.batting)?ev.batting:[];
+    ev.manualOverride=!!document.querySelector('#kbo_manual')?.checked;
+    const inputs=new Map();
+    document.querySelectorAll('[data-batter-name][data-stat]').forEach(el=>{const name=el.dataset.batterName;if(!inputs.has(name))inputs.set(name,{});inputs.get(name)[el.dataset.stat]=el.value});
+    ev.batting=eduBattersForEdit(ev).map(p=>{
+      const x={...p},values=inputs.get(S(p.name))||{};
+      if(ev.manualOverride){
+        for(const k of ['atBats','hits','doubles','triples','homeRuns','stolenBases','walks','reachedOnError'])if(Object.prototype.hasOwnProperty.call(values,k)){
+          const n=Number(values[k]);if(!Number.isInteger(n)||n<0)throw new Error('타자 기록은 0 이상의 정수로 입력해주세요');x[k]=n;
+        }
+        if((+x.doubles||0)+(+x.triples||0)+(+x.homeRuns||0)>(+x.hits||0))throw new Error('장타 합계가 안타 수보다 많습니다');
+      }
+      return x;
+    });
+    saveKboLineupDetails(ev,source);
+  }
   if(ev.type==='edu'){const year=+(S(ev.date).slice(0,4)||TODAY.getFullYear());const base=eduBattersForEdit(ev,year);const inputs=new Map();document.querySelectorAll('[data-batter-name][data-stat]').forEach(el=>{const name=el.dataset.batterName;if(!inputs.has(name))inputs.set(name,{});inputs.get(name)[el.dataset.stat]=el.value});for(const name of inputs.keys())if(!base.some(p=>S(p.name)===name))base.push({name,walks:0,reachedOnError:0});ev.batting=readBatterLineup(base.map(p=>{const x={...p},values=inputs.get(S(p.name))||{};for(const k of ['atBats','hits','doubles','triples','homeRuns','stolenBases','walks','reachedOnError']){x[k]=Object.prototype.hasOwnProperty.call(values,k)?Math.max(0,+values[k]||0):(+x[k]||0)}return x})).filter(p=>p.participated===true||['atBats','hits','doubles','triples','homeRuns','stolenBases','walks','reachedOnError'].some(k=>(+p[k]||0)>0));}
+  if(['kbo','edu'].includes(ev.type)&&document.querySelector('[data-pitcher-name]')){
+    if(ev.kboGameId){ev.pitchingOverride=!!document.querySelector('#f_pitching_manual')?.checked;if(ev.pitchingOverride)ev.pitching=readPitchingInputs(ev)}
+    else ev.pitching=readPitchingInputs(ev);
+  }
   return _manualUpsert(ev);
 };
 
@@ -409,12 +439,66 @@ const names=v=>[...new Set(S(v).split(/[,，、\n]+/).map(x=>x.trim()).filter(Bo
 const normRoster=v=>(Array.isArray(v)?v:[]).map(x=>typeof x==='string'?{n:S(x),t:''}:{n:S(x&&x.n),t:S(x&&x.t)}).filter(x=>x.n);
 const rosterForYear=y=>normRoster(ROSTERS_BY_YEAR[+y]||((+y===TODAY.getFullYear())?BEARS_ROSTER:[]));
 const eduRosterForYear=y=>normRoster(EDU_ROSTERS_BY_YEAR[+y]||[]);
+function gameRosterForYear(year){
+  const map=new Map();
+  for(const p of [...rosterForYear(year),...eduRosterForYear(year)])if(!map.has(S(p.n)))map.set(S(p.n),{...p});
+  return Array.from(map.values());
+}
+function gameRoster(game){
+  const year=+(S(game.date).slice(0,4)||TODAY.getFullYear()),map=new Map(gameRosterForYear(year).map(p=>[S(p.n),p]));
+  for(const [key,role] of [['batting','hitter'],['pitching','pitcher']])for(const p of game[key]||[])if(!map.has(S(p.name)))map.set(S(p.name),{n:S(p.name),t:role});
+  if(S(game.starter)&&!map.has(S(game.starter)))map.set(S(game.starter),{n:S(game.starter),t:'pitcher'});
+  return Array.from(map.values());
+}
 function eduBattersForEdit(game,year=+(S(game.date).slice(0,4)||TODAY.getFullYear())){
   const saved=Array.isArray(game.batting)?game.batting:[];
-  const roster=eduRosterForYear(year).filter(x=>x.t==='hitter');
-  const players=roster.map(x=>({name:x.n,atBats:0,hits:0,doubles:0,triples:0,homeRuns:0,stolenBases:0,walks:0,reachedOnError:0,rbi:0,runs:0,order:0,participated:saved.some(p=>S(p.name)===S(x.n)),...saved.find(p=>S(p.name)===S(x.n))}));
-  return players.concat(saved.filter(p=>!roster.some(x=>S(x.n)===S(p.name))));
+  return gameRoster(game).filter(x=>x.t!=='pitcher').map(x=>({name:x.n,atBats:0,hits:0,doubles:0,triples:0,homeRuns:0,stolenBases:0,walks:0,reachedOnError:0,rbi:0,runs:0,order:0,participated:saved.some(p=>S(p.name)===S(x.n)),...saved.find(p=>S(p.name)===S(x.n))}));
 }
+function pitchersForEdit(game){
+  const saved=Array.isArray(game.pitching)?game.pitching:[];
+  return gameRoster(game).filter(x=>x.t==='pitcher').map(x=>{
+    const p=saved.find(p=>S(p.name)===S(x.n)),selected=!!p||S(game.starter)===S(x.n);
+    return {name:x.n,participated:selected,appearanceOrder:p?(saved.indexOf(p)+1):(S(game.starter)===S(x.n)?1:0),hits:0,homeRuns:0,strikeouts:0,walks:0,hitByPitch:0,runs:0,earnedRuns:0,...p};
+  });
+}
+const PITCHING_FIELDS=[['innings','이닝'],['hits','피안타'],['homeRuns','피홈런'],['strikeouts','탈삼진'],['walks','볼넷'],['hitByPitch','사구'],['runs','실점'],['earnedRuns','자책']];
+function pitchingValue(p,key){
+  if(key==='innings'){
+    if(p.outs!==undefined&&p.outs!==null&&p.outs!==''&&Number.isFinite(+p.outs))return `${Math.floor(+p.outs/3)}${+p.outs%3?'.'+(+p.outs%3):''}`;
+    return S(p.innings??p.inningsPitched??p.ip)||'0';
+  }
+  const aliases={hits:['hits','hitsAllowed','h'],homeRuns:['homeRuns','homeRunsAllowed','hr'],strikeouts:['strikeouts','strikeOuts','so','k'],walks:['walks','basesOnBalls','bb'],hitByPitch:['hitByPitch','hitBatters','hbp'],runs:['runs','runsAllowed','r'],earnedRuns:['earnedRuns','er']};
+  for(const k of aliases[key]||[key])if(p[k]!==undefined&&p[k]!==null&&p[k]!=='')return +p[k]||0;
+  return 0;
+}
+function readPitchingInputs(game){
+  const inputs=new Map();
+  document.querySelectorAll('[data-pitcher-name][data-pitch-stat]').forEach(el=>{
+    const name=el.dataset.pitcherName;if(!inputs.has(name))inputs.set(name,{});
+    inputs.get(name)[el.dataset.pitchStat]=el.type==='checkbox'?el.checked:el.value;
+  });
+  if(!inputs.size)return game.pitching||[];
+  const original=new Map((game.pitching||[]).map(p=>[S(p.name),p]));
+  const selected=[];
+  for(const [name,values] of inputs){
+    if(!values.participated)continue;
+    const p={...(original.get(name)||{}),name,participated:true};
+    const innings=S(values.innings)||'0',m=innings.match(/^(\d+)(?:\.([012]))?$/);
+    if(!m)throw new Error(`${name}: 이닝은 4, 4.1, 4.2처럼 입력해주세요`);
+    p.outs=+m[1]*3+(+m[2]||0);p.innings=`${+m[1]}${+m[2]?'.'+m[2]:''}`;
+    for(const [k] of PITCHING_FIELDS){if(k==='innings')continue;const n=Number(values[k]??pitchingValue(p,k));if(!Number.isInteger(n)||n<0)throw new Error(`${name}: 투수 기록은 0 이상의 정수로 입력해주세요`);p[k]=n}
+    if(p.earnedRuns>p.runs)throw new Error(`${name}: 자책점이 실점보다 많습니다`);
+    if(p.homeRuns>p.hits)throw new Error(`${name}: 피홈런이 피안타보다 많습니다`);
+    const order=Number(values.appearanceOrder||0);if(!Number.isInteger(order)||order<0)throw new Error('등판 순서를 확인해주세요');p.appearanceOrder=order;
+    selected.push(p);
+  }
+  return selected.sort((a,b)=>(a.appearanceOrder||999)-(b.appearanceOrder||999));
+}
+function pitchingTable(players,edit=false){
+  if(!edit)return `<div style="margin-top:22px"><b style="font-size:14px">두산 투수</b><table class="rec batter-fit" style="table-layout:fixed;width:100%;margin-top:10px"><colgroup><col style="width:20%">${PITCHING_FIELDS.map(()=>'<col style="width:10%">').join('')}</colgroup><tr><th style="padding:8px 0">선수</th>${PITCHING_FIELDS.map(([,l])=>`<th style="text-align:center;padding:8px 0;line-height:1.3">${l}</th>`).join('')}</tr>${players.map(p=>`<tr><td style="padding:12px 0">${esc(p.name)}</td>${PITCHING_FIELDS.map(([k])=>`<td style="text-align:center;padding:12px 0">${pitchingValue(p,k)}</td>`).join('')}</tr>`).join('')}</table></div>`;
+  return `<div style="display:grid;gap:14px;margin-top:14px">${players.map(p=>`<div data-pitcher-row-name="${esc(p.name)}" style="display:${p.participated?'block':'none'};border:1px solid var(--line);border-radius:16px;padding:16px"><div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px"><strong style="margin-right:auto">${esc(p.name)}</strong><label style="display:flex;align-items:center;gap:6px;margin:0;font-size:14px"><input type="checkbox" style="width:20px;height:20px;margin:0" data-pitcher-name="${esc(p.name)}" data-pitch-stat="participated" ${p.participated?'checked':''}>출전</label><label style="display:flex;align-items:center;gap:6px;margin:0;font-size:14px">등판 순서<input type="number" min="1" step="1" style="width:62px;padding:8px" data-pitcher-name="${esc(p.name)}" data-pitch-stat="appearanceOrder" value="${p.appearanceOrder||''}"></label></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(68px,1fr));gap:12px">${PITCHING_FIELDS.map(([k,l])=>`<label style="margin:0;font-size:13px">${l}<input type="${k==='innings'?'text':'number'}" ${k==='innings'?'inputmode="decimal"':'min="0" step="1"'} style="display:block;width:100%;min-width:0;box-sizing:border-box;padding:10px;margin-top:6px;font-size:16px" data-pitcher-name="${esc(p.name)}" data-pitch-stat="${k}" value="${pitchingValue(p,k)}"></label>`).join('')}</div></div>`).join('')}</div>`;
+}
+
 const othersForYear=y=>Array.isArray(OTHERS_BY_YEAR[+y])?OTHERS_BY_YEAR[+y]:((+y===TODAY.getFullYear())?OTHERS:[]);
 const hasScore=e=>{const c=e&&e.score;if(!c)return false;const a=S(c.d),b=S(c.v);return a!==''&&b!==''&&!isNaN(+a)&&!isNaN(+b)};
 const isCancelled=e=>!!(e&&(e.cancelled===true||e.status==='cancelled'||e.cancelReason));
@@ -444,6 +528,8 @@ function detail(e){
   if(e.batting?.length){
   out+=batterTable(e.batting,false,e)
 }
+  if(e.pitching?.length)out+=pitchingTable(e.pitching);
+  if(isOwner)out+=`<button type="button" class="btn g" data-open-records="${esc(e.id)}" style="margin-top:16px">출전 선수 · 기록 입력</button>`;
   return out;
 }
 function batterTable(players,edit,game=null){
@@ -461,7 +547,7 @@ function batterTable(players,edit,game=null){
   ];
 
   if(edit)return `<div style="display:grid;gap:14px;margin-top:18px">
-    ${players.map((p,i)=>`<div data-batter-row style="border:1px solid #e2e4ef;border-radius:16px;padding:16px;background:#fff">
+    ${players.map((p,i)=>`<div data-batter-row data-batter-row-name="${esc(p.name)}" style="display:${p.participated!==false?'block':'none'};border:1px solid #e2e4ef;border-radius:16px;padding:16px;background:#fff">
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
         <strong style="font-size:17px;margin-right:auto">${esc(p.name)}</strong>
         <label style="display:flex;align-items:center;gap:7px;margin:0;font-size:14px;white-space:nowrap"><input type="checkbox" style="width:20px;height:20px;margin:0" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="participated" ${p.participated!==false?'checked':''}>출전</label>
@@ -704,7 +790,7 @@ let recSort=null,recKind='pitcher',recPitchTab='result',recBatTab='main',recYear
 // 투수 승/패/홀드/세이브의 단일 기준점:
 // KBO 자동 경기 = kbo.doosanDecisions, 수동/오버라이드 경기 = 입력한 winP/loseP/holdP/saveP.
 function recStats(){
-  const yr=String(recYear),m={},roster=(recLeague==='edu'?eduRosterForYear(recYear):rosterForYear(recYear)),role=new Map(roster.map(x=>[x.n,x.t]));
+  const yr=String(recYear),m={},roster=(recLeague==='edu'?gameRosterForYear(recYear):rosterForYear(recYear)),role=new Map(roster.map(x=>[x.n,x.t]));
   const row=(n,want)=>{if(role.get(n)!==want)return null;if(!m[n])m[n]={n,w:0,l:0,s:0,h:0,g:0,hr:0,d2:0,d3:0,hit:0,sb:0,ab:0,bb:0,hbp:0,ibb:0,rbi:0,runs:0,avg:0,o1:0,o2:0,o3:0,o4:0,o5:0,o6:0,o7:0,o8:0,o9:0};return m[n]};
   const addNames=(v,k,want)=>names(v).forEach(n=>{const r=row(n,want);if(r)r[k]++});
   Repo.all().filter(e=>e.type===recLeague&&!isCancelled(e)&&!e.stage&&S(e.date).slice(0,4)===yr&&hasScore(e)).forEach(e=>{
@@ -971,7 +1057,7 @@ function playerSheetHTML(){
 }
 
 function records(){
-  const roster=recLeague==='edu'?eduRosterForYear(recYear):rosterForYear(recYear);
+  const roster=recLeague==='edu'?gameRosterForYear(recYear):rosterForYear(recYear);
   if(!roster.length)return `<div class="brand"><div class="logo">개인기록</div></div><div class="card"><div class="empty">두산 선수 명단이 아직 없습니다.<br>관리자에서 선수 명단을 저장하면 두산 선수만 집계됩니다.</div></div>`;
 
   const cols=recKind==='pitcher'
@@ -1259,8 +1345,13 @@ function captureAdminDraft(){
     batters[i][el.dataset.stat]=el.type==='checkbox'?el.checked:el.value;
   });
   const hrEntries=Array.from(card.querySelectorAll('.hr-row'),row=>({player:row.querySelector('.hr-player')?.value||'',inning:row.querySelector('.hr-inning')?.value||'',runs:row.querySelector('.hr-runs')?.value||''}));
+  const pitchers=[];
+  card.querySelectorAll('[data-pitcher-name][data-pitch-stat]').forEach(el=>{
+    let p=pitchers.find(p=>p.name===el.dataset.pitcherName);if(!p){p={name:el.dataset.pitcherName};pitchers.push(p)}
+    p[el.dataset.pitchStat]=el.type==='checkbox'?el.checked:el.value;
+  });
   const previous=ADMIN_DRAFTS.get(renderedDraftKey);
-  const draft={fields,batters:batters.length?batters:(previous?.batters||[]),hrEntries};
+  const draft={fields,batters:batters.length?batters:(previous?.batters||[]),hrEntries,pitchers: pitchers.length?pitchers:(previous?.pitchers||[])};
   ADMIN_DRAFTS.set(renderedDraftKey,draft);
   try{localStorage.setItem(renderedDraftKey,JSON.stringify(draft))}catch(e){}
 }
@@ -1270,7 +1361,7 @@ function restoreAdminDraft(){
   if(!isOwner||!card)return;
   renderedDraftKey=adminDraftKey();
   const draft=readAdminDraft();
-  if(!draft)return;
+  if(!draft){syncParticipantCards();return;}
   card.querySelectorAll('[id^="f_"],#kbo_manual').forEach(el=>{
     if(!Object.prototype.hasOwnProperty.call(draft.fields||{},el.id))return;
     if(el.type==='checkbox')el.checked=!!draft.fields[el.id];else el.value=draft.fields[el.id];
@@ -1286,15 +1377,49 @@ function restoreAdminDraft(){
       else if(Object.prototype.hasOwnProperty.call(p,el.dataset.stat)){if(el.type==='checkbox')el.checked=!!p[el.dataset.stat];else el.value=p[el.dataset.stat];}
     }
   });
+  card.querySelectorAll('[data-pitcher-name][data-pitch-stat]').forEach(el=>{
+    const p=(draft.pitchers||[]).find(p=>p.name===el.dataset.pitcherName);
+    if(p&&Object.prototype.hasOwnProperty.call(p,el.dataset.pitchStat)){if(el.type==='checkbox')el.checked=!!p[el.dataset.pitchStat];else el.value=p[el.dataset.pitchStat];}
+  });
   const box=card.querySelector('#hr_rows');
   if(box&&Array.isArray(draft.hrEntries))box.innerHTML=draft.hrEntries.map(x=>hrRowHTML(x,+(S(card.querySelector('#f_date')?.value).slice(0,4)||TODAY.getFullYear()))).join('');
   updateReplacementControls();
+  syncParticipantCards();
   for(const k of ['place','opp','homeAway','cancelReason']){
     const input=card.querySelector('#f_'+k+'_custom');
     if(input)input.style.display=card.querySelector('#f_'+k)?.value==='__custom__'?'':'none';
   }
 }
 
+let adminRecordTab='lineup';
+function gameRecordEditor(game){
+  const batters=eduBattersForEdit(game),pitchers=pitchersForEdit(game),selected=new Set([...batters.filter(p=>p.participated).map(p=>p.name),...pitchers.filter(p=>p.participated).map(p=>p.name)]);
+  const roster=gameRoster(game);
+  return `<div style="margin:18px 0"><div class="chips" role="tablist" aria-label="경기 기록 입력">${[['lineup','출전 선수'],['batting','타자 기록'],['pitching','투수 기록']].map(([key,label])=>`<button type="button" class="chip${adminRecordTab===key?' on':''}" data-record-tab="${key}" role="tab" aria-selected="${adminRecordTab===key}">${label}</button>`).join('')}</div>
+    <div data-record-panel="lineup" role="tabpanel" style="display:${adminRecordTab==='lineup'?'block':'none'}"><div class="note">두산 전체 선수단에서 이 경기에 출전할 선수를 선택해주세요. 선택한 선수의 기록은 타자·투수 기록 탭에서 입력합니다.</div>${!roster.length?'<div class="empty">두산 선수 명단을 먼저 등록해주세요.</div>':''}${[['hitter','타자'],['pitcher','투수']].map(([role,label])=>`<b style="display:block;margin:16px 0 10px">${label}</b><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px">${roster.filter(p=>role==='pitcher'?p.t==='pitcher':p.t!=='pitcher').map(p=>`<label style="display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:10px;margin:0;font-size:14px"><input type="checkbox" style="width:18px;height:18px;margin:0" data-participant-name="${esc(p.n)}" data-participant-role="${role}" ${selected.has(p.n)?'checked':''}>${esc(p.n)}</label>`).join('')}</div>`).join('')}</div>
+    <div data-record-panel="batting" role="tabpanel" style="display:${adminRecordTab==='batting'?'block':'none'}"><div class="note">선택한 타자의 기록과 타순·수비 포지션을 입력해주세요.</div><div data-batting-empty class="empty">출전 선수 탭에서 타자를 선택해주세요.</div>${batterTable(batters,true,game)}</div>
+    <div data-record-panel="pitching" role="tabpanel" style="display:${adminRecordTab==='pitching'?'block':'none'}">${game.kboGameId?`<label style="display:flex;align-items:center;gap:8px;margin-top:16px"><input id="f_pitching_manual" type="checkbox" style="width:auto" ${game.pitchingOverride?'checked':''}>투수 기록을 수동으로 사용</label>`:''}<div class="note">이닝은 4, 4.1(4⅓), 4.2(4⅔)처럼 입력해주세요. 등판 순서대로 저장됩니다.</div><div data-pitching-empty class="empty">출전 선수 탭에서 투수를 선택해주세요.</div>${pitchingTable(pitchers,true)}</div>
+  </div>`;
+}
+function syncParticipantCards(){
+  const doc=document;
+  for(const [kind,attr,stat] of [['batter','batterName','stat'],['pitcher','pitcherName','pitchStat']]){
+    const boxes=Array.from(doc.querySelectorAll(kind==='batter'?'[data-batter-name][data-stat="participated"]':'[data-pitcher-name][data-pitch-stat="participated"]'));
+    doc.querySelectorAll(kind==='batter'?'[data-batter-row-name]':'[data-pitcher-row-name]').forEach(row=>{
+      const name=kind==='batter'?row.dataset.batterRowName:row.dataset.pitcherRowName,box=boxes.find(el=>el.dataset[attr]===name);
+      row.style.display=box?.checked?'block':'none';
+      const participant=Array.from(doc.querySelectorAll('[data-participant-name]')).find(el=>el.dataset.participantName===name);
+      if(participant&&box)participant.checked=box.checked;
+    });
+    const empty=doc.querySelector(kind==='batter'?'[data-batting-empty]':'[data-pitching-empty]');if(empty)empty.style.display=boxes.some(el=>el.checked)?'none':'block';
+  }
+}
+function activateRecordTab(tab){
+  adminRecordTab=tab;
+  document.querySelectorAll('[data-record-tab]').forEach(el=>{const active=el.dataset.recordTab===tab;el.classList.toggle('on',active);el.setAttribute('aria-selected',String(active))});
+  document.querySelectorAll('[data-record-panel]').forEach(el=>el.style.display=el.dataset.recordPanel===tab?'block':'none');
+  syncParticipantCards();
+}
 function admin(){
   const draft=readAdminDraft();
   const e={...(editing||{type:'kbo',date:TS,time:'',title:'',place:'',homeAway:'',program:'',channel:'',players:[],desc:''})};
@@ -1325,6 +1450,7 @@ function admin(){
   </div>
 
   ${adminCalendar()}
+  ${list.some(x=>['kbo','edu'].includes(x.type))?`<div class="card"><b>출전 선수 선택</b><div class="chips" style="margin-top:10px">${list.filter(x=>['kbo','edu'].includes(x.type)).map(x=>`<button type="button" class="chip" data-edit="${esc(x.id)}">${esc(x.title)} · 선수 선택</button>`).join('')}</div></div>`:''}
 
   <h2>${adminSearch?`검색 결과 · ${esc(adminSearch)}`:(adminCalDate?`${adminCalDate.slice(5).replace('-','월 ')}일 일정`:'전체 일정')}</h2>
   <div class="card">
@@ -1338,13 +1464,14 @@ function admin(){
     </div>`).join(''):'<div class="empty">해당 일정이 없습니다.</div>'}
   </div>`;
   const kboWarn=[KBO_WARNING,...KBO_MERGE_WARNINGS].filter(Boolean).join(' / ');
-  const kboPanel=editing?.kboGameId?`<div class="note"><label><input id="kbo_manual" type="checkbox" style="width:auto" ${editing.manualOverride?'checked':''}> 이 경기의 수동 기록을 우선 사용</label>타자 수치를 수정하면 자동으로 켜집니다. 교체 대상·출전 역할·수비 포지션은 자동 연동을 유지하면서 별도로 저장됩니다. 해제 후 저장하면 수치는 KBO 자동 기록으로 돌아갑니다.</div>${editing.batting?.length?batterTable(editing.batting,true,editing):''}`:'';
+  const kboPanel=editing?.kboGameId?`<div class="note"><label><input id="kbo_manual" type="checkbox" style="width:auto" ${editing.manualOverride?'checked':''}> 이 경기의 수동 기록을 우선 사용</label>타자 수치를 수정하면 자동으로 켜집니다. 교체 대상·출전 역할·수비 포지션은 자동 연동을 유지하면서 별도로 저장됩니다. 해제 후 저장하면 수치는 KBO 자동 기록으로 돌아갑니다.</div>`:'';
   return `${kboWarn?`<div class="note">${esc(kboWarn)}</div>`:''}<div class="brand"><div class="logo">관리자</div><a href="#/" class="demo" style="text-decoration:none">← 앱</a></div>
   <button class="btn g" id="admin_back" style="margin:0 0 12px">← 일정 관리로</button><button class="btn g" id="logout" style="margin:0 0 12px">로그아웃</button><div class="note">KBO 자동 일정은 kbo_game_records에 저장된 미래 경기까지 자동 표시됩니다. 같은 game_id가 경기 종료 후 갱신되면 결과와 선수 기록도 자동 반영됩니다.</div><div class="card"><b>${editing?'일정 수정':'일정 추가'}</b>
   ${kboPanel}
-  ${e.type==='edu'?`<div class="note">출전한 타자를 체크하고 타순을 선택해주세요. 교체 선수는 대타·대주자·대수비를 체크하고 교체 대상과 이후 수비 포지션을 선택해주세요. 타순은 교체 대상과 연결됩니다. 기록이 모두 0이어도 출전 체크 시 저장됩니다.</div>${batterTable(eduBattersForEdit(e),true,e)}`:''}
+
   <label>종류</label><select id="f_type"${editing?.kboGameId?' disabled':''}>${['kbo','club','fan','broadcast','radio','ticket','edu','etc'].map(k=>`<option value="${k}"${e.type===k?' selected':''}>${TYPES[k]}</option>`).join('')}</select>
   <label>날짜</label><input id="f_date" type="date"${editing?.kboGameId?' disabled':''} value="${e.date}"><label>시간</label><input id="f_time" type="time" value="${e.time||''}">
+  ${['kbo','edu'].includes(e.type)?gameRecordEditor(e):''}
   <label>장소</label><select id="f_place">${['',...VENUES].map(v=>`<option value="${v}" ${e.place===v?'selected':''}>${v||'장소 선택'}</option>`).join('')}<option value="__custom__"${placeCustom?' selected':''}>직접 입력</option></select>
   <input id="f_place_custom" value="${placeCustom?esc(e.place):''}" placeholder="장소를 직접 입력" style="margin-top:8px;${placeCustom?'':'display:none'}">
 
@@ -1410,9 +1537,14 @@ function route(){
   document.body.dataset.r=r;restoreAdminDraft();window.scrollTo(0,0);
 }
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-rleague],[data-hstat],[data-pstat],[data-orderhist],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-astand],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveo,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
+  const t=ev.target.closest('[data-open-records],[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-rleague],[data-hstat],[data-pstat],[data-orderhist],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-astand],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveo,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
   const keep=()=>{const y=scrollY;route2();scrollTo(0,y)};
-  if(t.dataset.d){sel=t.dataset.d;const d=new Date(sel+'T00:00:00');view=new Date(d.getFullYear(),d.getMonth(),1);keep()}
+  if(t.dataset.openRecords){
+    editing=Repo.all().find(x=>S(x.id)===S(t.dataset.openRecords));
+    adminRecordTab='lineup';adminView='form';
+    if(document.body.dataset.r==='admin')keep();else location.hash='#/admin';
+  }
+  else if(t.dataset.d){sel=t.dataset.d;const d=new Date(sel+'T00:00:00');view=new Date(d.getFullYear(),d.getMonth(),1);keep()}
   else if(t.dataset.m!==undefined){const m=+t.dataset.m;if(m===0){sel=TS;view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1)}else view=new Date(view.getFullYear(),view.getMonth()+m,1);keep()}
   else if(t.dataset.x){const id=t.dataset.x;openIds.has(id)?openIds.delete(id):openIds.add(id);keep()}
   else if(t.dataset.gamebatter!==undefined){
@@ -1493,7 +1625,7 @@ document.addEventListener('click',ev=>{
     adminCalDate='';
     keep()
   }
-  else if(t.id==='admin_new'){editing=null;adminView='form';keep()}
+  else if(t.id==='admin_new'){editing=null;adminRecordTab='lineup';adminView='form';keep()}
   else if(t.id==='admin_back'){editing=null;adminView='manage';keep()}
   else if(t.dataset.osort){
     const k=t.dataset.osort;
@@ -1565,7 +1697,7 @@ if(!v('date')){
   else if(t.id==='cancel'){clearAdminDraft();editing=null;adminView='manage';keep()}
   else if(t.dataset.edit){
     const id=t.dataset.edit;
-    editing=Repo.all().find(x=>x.id===id);adminView='form';keep();
+    editing=Repo.all().find(x=>x.id===id);adminRecordTab='lineup';adminView='form';keep();
     if(SB)SB.from('events').select('body').eq('id',id).maybeSingle().then(r=>{
       if(r.error||!r.data?.body||editing?.id!==id||adminView!=='form')return;
       CUSTOM=CUSTOM.filter(x=>S(x.id)!==S(id)).concat(r.data.body);
@@ -1629,6 +1761,24 @@ document.addEventListener('change',ev=>{
   }
   updateReplacementControls();
 });
+document.addEventListener('click',ev=>{const tab=ev.target.closest('[data-record-tab]');if(tab)activateRecordTab(tab.dataset.recordTab)});
+function handleParticipantChange(ev){
+  const el=ev.target;
+  if(el?.dataset?.participantName){
+    const name=el.dataset.participantName,role=el.dataset.participantRole;
+    const boxes=Array.from(document.querySelectorAll(role==='pitcher'?'[data-pitcher-name][data-pitch-stat="participated"]':'[data-batter-name][data-stat="participated"]'));
+    const box=boxes.find(x=>(role==='pitcher'?x.dataset.pitcherName:x.dataset.batterName)===name);if(box)box.checked=el.checked;
+    if(role==='pitcher'){
+      const manual=document.querySelector('#f_pitching_manual');if(manual)manual.checked=true;
+      const orders=Array.from(document.querySelectorAll('[data-pitch-stat="appearanceOrder"]')),order=orders.find(x=>x.dataset.pitcherName===name);
+      if(el.checked&&order&&!order.value)order.value=String(Math.max(0,...orders.map(x=>+x.value||0))+1);
+    }
+  }
+  if(el?.dataset?.pitcherName){const manual=document.querySelector('#f_pitching_manual');if(manual)manual.checked=true}
+  if(el?.dataset?.participantName||el?.dataset?.batterName||el?.dataset?.pitcherName)syncParticipantCards();
+}
+document.addEventListener('input',handleParticipantChange);
+document.addEventListener('change',handleParticipantChange);
 document.addEventListener('input',selectBatterOnEntry);
 document.addEventListener('change',selectBatterOnEntry);
 document.addEventListener('input',captureAdminDraft);
