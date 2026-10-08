@@ -227,7 +227,7 @@ Repo.load=async function(){
 };
 Repo.upsert=async function(ev){
   if(ev.kboGameId){ev.manualOverride=!!document.querySelector('#kbo_manual')?.checked;if(ev.manualOverride&&Array.isArray(ev.batting))ev.batting=ev.batting.map((p,i)=>{const x={...p};for(const k of ['atBats','hits','doubles','triples','homeRuns','stolenBases','walks']){const el=document.querySelector(`[data-batter="${i}"][data-stat="${k}"]`);if(el){const n=Number(el.value);if(!Number.isInteger(n)||n<0)throw new Error('타자 기록은 0 이상의 정수로 입력해주세요');x[k]=n}}if((+x.doubles||0)+(+x.triples||0)+(+x.homeRuns||0)>(+x.hits||0))throw new Error('장타 합계가 안타 수보다 많습니다');return x})}
-  if(ev.type==='edu'){const year=+(S(ev.date).slice(0,4)||TODAY.getFullYear());const base=Array.isArray(ev.batting)&&ev.batting.length?ev.batting:eduRosterForYear(year).filter(x=>x.t==='hitter').map(x=>({name:x.n,walks:0}));ev.batting=base.map((p,i)=>{const x={...p};for(const k of ['atBats','hits','doubles','triples','homeRuns','stolenBases','walks']){const el=document.querySelector(`[data-batter="${i}"][data-stat="${k}"]`);x[k]=el?Math.max(0,+el.value||0):(+x[k]||0)}return x}).filter(p=>['atBats','hits','doubles','triples','homeRuns','stolenBases','walks'].some(k=>(+p[k]||0)>0));}
+  if(ev.type==='edu'){const year=+(S(ev.date).slice(0,4)||TODAY.getFullYear());const base=eduBattersForEdit(ev,year);ev.batting=base.map((p,i)=>{const x={...p};for(const k of ['atBats','hits','doubles','triples','homeRuns','stolenBases','walks']){const el=document.querySelector(`[data-batter="${i}"][data-stat="${k}"]`);x[k]=el?Math.max(0,+el.value||0):(+x[k]||0)}return x}).filter(p=>['atBats','hits','doubles','triples','homeRuns','stolenBases','walks'].some(k=>(+p[k]||0)>0));}
   return _manualUpsert(ev);
 };
 
@@ -271,6 +271,12 @@ const names=v=>[...new Set(S(v).split(/[,，、\n]+/).map(x=>x.trim()).filter(Bo
 const normRoster=v=>(Array.isArray(v)?v:[]).map(x=>typeof x==='string'?{n:S(x),t:''}:{n:S(x&&x.n),t:S(x&&x.t)}).filter(x=>x.n);
 const rosterForYear=y=>normRoster(ROSTERS_BY_YEAR[+y]||((+y===TODAY.getFullYear())?BEARS_ROSTER:[]));
 const eduRosterForYear=y=>normRoster(EDU_ROSTERS_BY_YEAR[+y]||[]);
+function eduBattersForEdit(game,year=+(S(game.date).slice(0,4)||TODAY.getFullYear())){
+  const saved=Array.isArray(game.batting)?game.batting:[];
+  const roster=eduRosterForYear(year).filter(x=>x.t==='hitter');
+  const players=roster.map(x=>({name:x.n,atBats:0,hits:0,doubles:0,triples:0,homeRuns:0,stolenBases:0,walks:0,rbi:0,runs:0,order:0,...saved.find(p=>S(p.name)===S(x.n))}));
+  return players.concat(saved.filter(p=>!roster.some(x=>S(x.n)===S(p.name))));
+}
 const othersForYear=y=>Array.isArray(OTHERS_BY_YEAR[+y])?OTHERS_BY_YEAR[+y]:((+y===TODAY.getFullYear())?OTHERS:[]);
 const hasScore=e=>{const c=e&&e.score;if(!c)return false;const a=S(c.d),b=S(c.v);return a!==''&&b!==''&&!isNaN(+a)&&!isNaN(+b)};
 const isCancelled=e=>!!(e&&(e.cancelled===true||e.status==='cancelled'||e.cancelReason));
@@ -1116,7 +1122,7 @@ function admin(){
   return `${kboWarn?`<div class="note">${esc(kboWarn)}</div>`:''}<div class="brand"><div class="logo">관리자</div><a href="#/" class="demo" style="text-decoration:none">← 앱</a></div>
   <button class="btn g" id="admin_back" style="margin:0 0 12px">← 일정 관리로</button><button class="btn g" id="logout" style="margin:0 0 12px">로그아웃</button><div class="note">KBO 자동 일정은 kbo_game_records에 저장된 미래 경기까지 자동 표시됩니다. 같은 game_id가 경기 종료 후 갱신되면 결과와 선수 기록도 자동 반영됩니다.</div><div class="card"><b>${editing?'일정 수정':'일정 추가'}</b>
   ${kboPanel}
-  ${e.type==='edu'?`<div class="note">교육리그 타자 기록은 아래 선수 명단에서 직접 입력합니다. 기록 없는 선수는 0으로 두면 됩니다.</div>${batterTable((Array.isArray(e.batting)&&e.batting.length?e.batting:eduRosterForYear(+(S(e.date).slice(0,4)||TODAY.getFullYear())).filter(x=>x.t==='hitter').map(x=>({name:x.n,atBats:0,hits:0,doubles:0,triples:0,homeRuns:0,stolenBases:0,walks:0,rbi:0,runs:0,order:0}))),true)}`:''}
+  ${e.type==='edu'?`<div class="note">교육리그 타자 기록은 아래 선수 명단에서 직접 입력합니다. 기록 없는 선수는 0으로 두면 됩니다.</div>${batterTable(eduBattersForEdit(e),true)}`:''}
   <label>종류</label><select id="f_type"${editing?.kboGameId?' disabled':''}>${['kbo','club','fan','broadcast','radio','ticket','edu','etc'].map(k=>`<option value="${k}"${e.type===k?' selected':''}>${TYPES[k]}</option>`).join('')}</select>
   <label>날짜</label><input id="f_date" type="date"${editing?.kboGameId?' disabled':''} value="${e.date}"><label>시간</label><input id="f_time" type="time" value="${e.time||''}">
   <label>장소</label><select id="f_place">${['',...VENUES].map(v=>`<option value="${v}" ${e.place===v?'selected':''}>${v||'장소 선택'}</option>`).join('')}<option value="__custom__"${placeCustom?' selected':''}>직접 입력</option></select>
