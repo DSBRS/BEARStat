@@ -216,10 +216,12 @@ function applyKboLineupDetails(players,overrides){
   const rows=players.map(p=>{
     const detail=overrides.find(x=>S(x.name)===S(p.name)&&(!S(x.teamId)||S(x.teamId)===S(p.teamId)));
     if(!detail)return {...p};
-    const x={...p,entryRoles:detail.entryRoles||[],entryRole:detail.entryRole||'',replacedPlayer:detail.replacedPlayer||'',defensePosition:detail.defensePosition||''};
+    const x={...p,entryRoles:detail.entryRoles||[],entryRole:detail.entryRole||'',replacedPlayer:detail.replacedPlayer||'',defensePosition:detail.defensePosition||'',startingPosition:detail.startingPosition||'',defenseChanged:!!detail.defenseChanged,defenseFrom:detail.defenseFrom||'',defenseTo:detail.defenseTo||''};
     if(typeof detail.participated==='boolean')x.participated=detail.participated;
     if(detail.orderOverride>=1&&detail.orderOverride<=9)x.order=detail.orderOverride;
+    if(detail.startingPosition)x.position=detail.startingPosition;
     if(detail.defensePosition)x.position=detail.defensePosition;
+    if(detail.defenseChanged&&detail.defenseTo)x.position=detail.defenseTo;
     return x;
   }).filter(p=>p.participated!==false);
   function inheritOrder(p,seen=new Set()){
@@ -240,7 +242,7 @@ function saveKboLineupDetails(ev){
   ev.lineupOverrides=original.map(p=>{
     const x=edited.find(x=>S(x.name)===S(p.name)&&(!S(p.teamId)||S(x.teamId)===S(p.teamId)));
     const old=previous.find(x=>S(x.name)===S(p.name)&&(!S(x.teamId)||S(x.teamId)===S(p.teamId)));
-    const detail={name:p.name,teamId:p.teamId||'',participated:!!x,entryRoles:x?batterEntryRoles(x):[],entryRole:x?.entryRole||'',replacedPlayer:x?.replacedPlayer||'',defensePosition:x?.defensePosition||''};
+    const detail={name:p.name,teamId:p.teamId||'',participated:!!x,entryRoles:x?batterEntryRoles(x):[],entryRole:x?.entryRole||'',replacedPlayer:x?.replacedPlayer||'',defensePosition:x?.defensePosition||'',startingPosition:x?.startingPosition||'',defenseChanged:!!x?.defenseChanged,defenseFrom:x?.defenseFrom||'',defenseTo:x?.defenseTo||''};
     if(x&&+x.order!==+p.order&&+x.order>=1&&+x.order<=9&&!x.replacedPlayer)detail.orderOverride=+x.order;
     else if(x&&+x.order>=1&&+x.order<=9&&old?.orderOverride&&!x.replacedPlayer)detail.orderOverride=old.orderOverride;
     return detail;
@@ -289,7 +291,10 @@ function batterOrderOptions(p){
 const BATTER_DEFENSE_POSITIONS={'투':'투수','포':'포수','一':'1루수','二':'2루수','三':'3루수','유':'유격수','좌':'좌익수','중':'중견수','우':'우익수','D':'지명타자'};
 function batterEntryRoles(p){return Array.isArray(p.entryRoles)?p.entryRoles.filter(r=>Object.prototype.hasOwnProperty.call(BATTER_ENTRY_ROLES,r)):(Object.prototype.hasOwnProperty.call(BATTER_ENTRY_ROLES,p.entryRole)?[p.entryRole]:[])}
 function batterOrderLabel(p){return [+p.order>=1&&+p.order<=9?`${+p.order}번`:'',...batterEntryRoles(p).map(r=>BATTER_ENTRY_ROLES[r])].filter(Boolean).join(' · ')||'—'}
-function batterReplacementLabel(p){return [p.replacedPlayer?`${p.replacedPlayer} 대신`:'',BATTER_DEFENSE_POSITIONS[p.defensePosition]||''].filter(Boolean).join(' · ')}
+function batterReplacementLabel(p){
+  const changed=p.defenseChanged&&BATTER_DEFENSE_POSITIONS[p.defenseTo]?(BATTER_DEFENSE_POSITIONS[p.defenseFrom]?`${BATTER_DEFENSE_POSITIONS[p.defenseFrom]} → ${BATTER_DEFENSE_POSITIONS[p.defenseTo]}`:`${BATTER_DEFENSE_POSITIONS[p.defenseTo]} 수비`):'';
+  return [p.replacedPlayer?`${p.replacedPlayer} 대신`:'',changed||(BATTER_DEFENSE_POSITIONS[p.defensePosition]||BATTER_DEFENSE_POSITIONS[p.startingPosition]||'')].filter(Boolean).join(' · ');
+}
 function readBatterLineup(players){
   const inputs=new Map();
   document.querySelectorAll('[data-batter-name][data-stat]').forEach(el=>{
@@ -307,6 +312,13 @@ function readBatterLineup(players){
     const hasRoles=Object.keys(BATTER_ENTRY_ROLES).some(r=>Object.prototype.hasOwnProperty.call(values,'role_'+r));
     if(hasRoles){x.entryRoles=Object.keys(BATTER_ENTRY_ROLES).filter(r=>values['role_'+r]);x.entryRole=x.entryRoles[0]||''}
     if(Object.prototype.hasOwnProperty.call(values,'replacedPlayer'))x.replacedPlayer=S(values.replacedPlayer);
+    if(Object.prototype.hasOwnProperty.call(values,'startingPosition')){
+      const pos=S(values.startingPosition);
+      if(pos&&!Object.prototype.hasOwnProperty.call(BATTER_DEFENSE_POSITIONS,pos))throw new Error('선발 포지션을 선택해주세요');
+      x.startingPosition=pos;
+      if(pos)x.position=pos;
+      else if(p.startingPosition&&!p.defensePosition&&!p.defenseChanged)x.position='';
+    }
     if(Object.prototype.hasOwnProperty.call(values,'defensePosition')){
       const pos=S(values.defensePosition);
       if(pos&&!Object.prototype.hasOwnProperty.call(BATTER_DEFENSE_POSITIONS,pos))throw new Error('수비 포지션을 선택해주세요');
@@ -314,6 +326,19 @@ function readBatterLineup(players){
       x.defensePosition=pos;
     }
     if(hasRoles&&!x.entryRoles.length){x.replacedPlayer='';x.defensePosition=''}
+    if(Object.prototype.hasOwnProperty.call(values,'defenseChanged')){
+      x.defenseChanged=!!values.defenseChanged;
+      for(const key of ['defenseFrom','defenseTo']){
+        const pos=S(values[key]||'');
+        if(pos&&!Object.prototype.hasOwnProperty.call(BATTER_DEFENSE_POSITIONS,pos))throw new Error('수비 포지션을 선택해주세요');
+        x[key]=pos;
+      }
+      if(x.defenseChanged&&!x.defenseFrom&&x.startingPosition)x.defenseFrom=x.startingPosition;
+      if(x.defenseChanged){
+        if(!x.defenseTo)throw new Error(`${x.name}의 변경 후 수비 포지션을 선택해주세요`);
+        x.position=x.defenseTo;
+      }else if(p.defenseChanged)x.position=x.defensePosition||x.startingPosition||x.defenseFrom||'';
+    }
     return x;
   }).filter(p=>p.participated!==false);
   const byName=new Map(rows.map(p=>[S(p.name),p]));
@@ -442,6 +467,7 @@ function batterTable(players,edit,game=null){
         <label style="display:flex;align-items:center;gap:7px;margin:0;font-size:14px;white-space:nowrap"><input type="checkbox" style="width:20px;height:20px;margin:0" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="participated" ${p.participated!==false?'checked':''}>출전</label>
 ${manualLineup?`        <label style="display:flex;align-items:center;gap:7px;margin:0;font-size:14px">타순<select style="width:130px;padding:8px;font-size:14px" aria-label="${esc(p.name)} 타순" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="order">${batterOrderOptions(p)}</select></label>`:''}
 
+        <label style="display:flex;align-items:center;gap:7px;margin:0;font-size:14px">선발 포지션<select style="width:120px;padding:8px;font-size:14px" aria-label="${esc(p.name)} 선발 포지션" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="startingPosition"><option value="">포지션 선택</option>${Object.entries(BATTER_DEFENSE_POSITIONS).map(([pos,label])=>`<option value="${pos}" ${p.startingPosition===pos?'selected':''}>${label}</option>`).join('')}</select></label>
       </div>
 ${manualLineup?`      <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:14px">
         ${Object.entries(BATTER_ENTRY_ROLES).map(([role,label])=>`<label style="display:flex;align-items:center;gap:7px;margin:0;font-size:14px"><input type="checkbox" style="width:20px;height:20px;margin:0" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="role_${role}" ${batterEntryRoles(p).includes(role)?'checked':''}>${label}</label>`).join('')}
@@ -451,6 +477,12 @@ ${manualLineup?`      <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bo
         <label style="margin:0;font-size:13px">이후 수비 포지션<select style="display:block;width:100%;padding:10px;margin-top:6px;font-size:14px" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="defensePosition"><option value="">수비 안 함 / 미정</option>${Object.entries(BATTER_DEFENSE_POSITIONS).map(([pos,label])=>`<option value="${pos}" ${p.defensePosition===pos?'selected':''}>${label}</option>`).join('')}</select></label>
       </div>
 `:''}
+      <div style="border-top:1px solid var(--line);padding-top:12px;margin-bottom:16px">
+        <label style="display:flex;align-items:center;gap:7px;margin:0;font-size:14px"><input type="checkbox" style="width:20px;height:20px;margin:0" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="defenseChanged" ${p.defenseChanged?'checked':''}>수비 포지션 변경</label>
+        <div data-defense-change-details style="display:${p.defenseChanged?'grid':'none'};grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:12px">
+          ${[['defenseFrom','기존 포지션'],['defenseTo','변경 후 포지션']].map(([key,label])=>`<label style="margin:0;font-size:13px">${label}<select style="display:block;width:100%;padding:10px;margin-top:6px;font-size:14px" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="${key}"><option value="">${key==='defenseFrom'?'수비 안 함 / 미정':'포지션 선택'}</option>${Object.entries(BATTER_DEFENSE_POSITIONS).map(([pos,name])=>`<option value="${pos}" ${(p[key]||(key==='defenseFrom'?(p.startingPosition||(Object.prototype.hasOwnProperty.call(BATTER_DEFENSE_POSITIONS,p.position)?p.position:'')):''))===pos?'selected':''}>${name}</option>`).join('')}</select></label>`).join('')}
+        </div>
+      </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(68px,1fr));gap:12px">
         ${cols.map(([k,label])=>`<label style="display:block;min-width:0;margin:0;font-size:13px">${label}<input style="display:block;width:100%;min-width:0;box-sizing:border-box;padding:10px;margin-top:6px;font-size:16px" type="number" min="0" step="1" aria-label="${esc(p.name)} ${label}" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="${k}" value="${+p[k]||0}"></label>`).join('')}
       </div>
@@ -1567,7 +1599,7 @@ document.addEventListener('change',ev=>{
   if(custom)input.focus();
 });
 
-document.addEventListener('input',ev=>{const box=document.querySelector('#kbo_manual'),el=ev.target;if(box&&(((el.matches('[data-batter]')&&!['order','participated','replacedPlayer','defensePosition'].includes(el.dataset.stat)&&!S(el.dataset.stat).startsWith('role_'))||el.matches('.hr-player,.hr-inning,.hr-runs'))||/^f_(sd|so|starter|oppStarter|winP|loseP|saveP|holdP|gwRbi|doubles|triples|hits|steals|duration)$/.test(el.id)))box.checked=true});
+document.addEventListener('input',ev=>{const box=document.querySelector('#kbo_manual'),el=ev.target;if(box&&(((el.matches('[data-batter]')&&!['order','participated','replacedPlayer','defensePosition','defenseChanged','defenseFrom','defenseTo','startingPosition'].includes(el.dataset.stat)&&!S(el.dataset.stat).startsWith('role_'))||el.matches('.hr-player,.hr-inning,.hr-runs'))||/^f_(sd|so|starter|oppStarter|winP|loseP|saveP|holdP|gwRbi|doubles|triples|hits|steals|duration)$/.test(el.id)))box.checked=true});
 
 function selectBatterOnEntry(ev){
   const el=ev.target;
@@ -1580,11 +1612,18 @@ function updateReplacementControls(){
     const selected=Array.from(row.querySelectorAll('[data-stat^="role_"]')).some(el=>el.checked);
     const details=row.querySelector('[data-replacement-details]');
     if(details)details.style.display=selected?'grid':'none';
+    const changeDetails=row.querySelector('[data-defense-change-details]');
+    if(changeDetails)changeDetails.style.display=row.querySelector('[data-stat="defenseChanged"]')?.checked?'grid':'none';
   });
 }
 document.addEventListener('change',ev=>{
   const el=ev.target;if(!el?.dataset?.batterName)return;
-  if(el.dataset.stat?.startsWith('role_')&&el.checked){const box=el.closest('[data-batter-row]')?.querySelector('[data-stat="participated"]');if(box)box.checked=true}
+  if((el.dataset.stat?.startsWith('role_')||el.dataset.stat==='defenseChanged')&&el.checked){const box=el.closest('[data-batter-row]')?.querySelector('[data-stat="participated"]');if(box)box.checked=true}
+  if(el.dataset.stat==='startingPosition'&&el.value){
+    const row=el.closest('[data-batter-row]'),box=row?.querySelector('[data-stat="participated"]'),from=row?.querySelector('[data-stat="defenseFrom"]');
+    if(box)box.checked=true;
+    if(from&&!from.value)from.value=el.value;
+  }
   if(el.dataset.stat==='replacedPlayer'&&el.value){
     const target=Array.from(document.querySelectorAll('[data-stat="order"]')).find(x=>x.dataset.batterName===el.value);
     const order=el.closest('[data-batter-row]')?.querySelector('[data-stat="order"]');
