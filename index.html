@@ -441,7 +441,7 @@ function detail(e){
     h+=row('승리투수',e.winP,1)+row('패전투수',e.loseP,1)+row('세이브',e.saveP,1)+row('홀드',e.holdP,1)+row('결승타',e.gwRbi,1)+(hr?`<span>홈런</span><span>${hr}</span>`:'')+row('경기시간',e.duration,1);
   }
   let out=`<div class="dt">${fin?`<div class="big2">두산 ${+e.score.d} : ${+e.score.v} ${esc(opp)}</div>`:''}<div class="meta">${h}</div></div>`;
-  if(fin && e.batting?.length){
+  if(e.batting?.length){
   out+=batterTable(e.batting,false,e)
 }
   return out;
