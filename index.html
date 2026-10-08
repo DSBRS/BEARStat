@@ -169,10 +169,12 @@ const DEMO=[]; // 실제 일정은 관리자 화면에서 직접 등록
 
 /* 권한: 쓰기는 Supabase RLS(admins 테이블에 등록된 계정만)가 서버에서 강제합니다.
  * isOwner는 화면 표시용일 뿐 보안 경계가 아닙니다. */
+let draftUserId='';
 let isOwner=false,CUSTOM=[],SB=null,BEARS_ROSTER=[],ROSTERS_BY_YEAR={},EDU_ROSTERS_BY_YEAR={},OTHERS_BY_YEAR={},AUTO_STANDINGS_BY_YEAR={};
 let adminRosterYear=TODAY.getFullYear(),adminEduRosterYear=TODAY.getFullYear(),adminStandingsYear=TODAY.getFullYear();
 let adminCalDate=TS,adminCalView=new Date(TODAY.getFullYear(),TODAY.getMonth(),1),adminSearch='',adminView='manage';
 const live=()=>CUSTOM.some(e=>e.source==='kbo');
+const recordJSON=value=>JSON.stringify(value,(_key,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
 const Repo={
   all(){const a=DEMO.concat(CUSTOM),k=e=>e.date+e.type,isG=e=>e.type==='kbo',lv=CUSTOM.some(e=>e.source==='kbo'),real=new Set(a.filter(e=>!e.demo&&isG(e)).map(k));
     return a.filter(e=>!(e.demo&&isG(e)&&(lv||real.has(k(e)))))}, // 실제 수집 데이터가 있으면 DEMO 경기는 모두 숨김
@@ -186,7 +188,17 @@ const Repo={
     const er=await SB.from('kv').select('key,body').like('key','edu_roster_%');if(!er.error){for(const x of er.data||[]){const m=String(x.key).match(/^edu_roster_(\d{4})$/);if(m)EDU_ROSTERS_BY_YEAR[+m[1]]=normRoster(x.body)}}
     const asr=await SB.from('kv').select('key,body').like('key','standings_auto_%');if(!asr.error){for(const x of asr.data||[]){const m=String(x.key).match(/^standings_auto_(\d{4})$/);if(m&&Array.isArray(x.body))AUTO_STANDINGS_BY_YEAR[+m[1]]=x.body}}
     rerender()},
-  async upsert(ev){if(!SB)throw new Error('Supabase 설정이 필요합니다');const r=await SB.from('events').upsert({id:ev.id,date:ev.date,body:ev});if(r.error)throw r.error;await this.load()},
+  async upsert(ev){
+    if(!SB)throw new Error('Supabase 설정이 필요합니다');
+    const r=await SB.from('events').upsert({id:ev.id,date:ev.date,body:ev}).select('body').single();
+    if(r.error)throw r.error;
+    const saved=r.data?.body;
+    if(!saved||S(saved.id)!==S(ev.id))throw new Error('저장 결과를 확인하지 못했습니다. 입력값은 임시 보관되어 있습니다.');
+    if(Array.isArray(ev.batting)&&recordJSON(saved.batting)!==recordJSON(ev.batting))throw new Error('타자 기록의 저장 결과가 입력값과 다릅니다. 입력값은 임시 보관되어 있습니다.');
+    CUSTOM=CUSTOM.filter(x=>S(x.id)!==S(saved.id)).concat(saved);
+    await this.load();
+    CUSTOM=CUSTOM.filter(x=>S(x.id)!==S(saved.id)).concat(saved);
+  },
   async remove(id){if(!SB)throw new Error('Supabase 설정이 필요합니다');const r=await SB.from('events').delete().eq('id',id);if(r.error)throw r.error;await this.load()}
 };
 /* ============ KBO 자동 연동 ============ */
@@ -227,7 +239,7 @@ Repo.load=async function(){
 };
 Repo.upsert=async function(ev){
   if(ev.kboGameId){ev.manualOverride=!!document.querySelector('#kbo_manual')?.checked;if(ev.manualOverride&&Array.isArray(ev.batting))ev.batting=ev.batting.map((p,i)=>{const x={...p};for(const k of ['atBats','hits','doubles','triples','homeRuns','stolenBases','walks']){const el=document.querySelector(`[data-batter="${i}"][data-stat="${k}"]`);if(el){const n=Number(el.value);if(!Number.isInteger(n)||n<0)throw new Error('타자 기록은 0 이상의 정수로 입력해주세요');x[k]=n}}if((+x.doubles||0)+(+x.triples||0)+(+x.homeRuns||0)>(+x.hits||0))throw new Error('장타 합계가 안타 수보다 많습니다');return x})}
-  if(ev.type==='edu'){const year=+(S(ev.date).slice(0,4)||TODAY.getFullYear());const base=eduBattersForEdit(ev,year);ev.batting=base.map((p,i)=>{const x={...p};for(const k of ['atBats','hits','doubles','triples','homeRuns','stolenBases','walks']){const el=document.querySelector(`[data-batter="${i}"][data-stat="${k}"]`);x[k]=el?Math.max(0,+el.value||0):(+x[k]||0)}return x}).filter(p=>['atBats','hits','doubles','triples','homeRuns','stolenBases','walks'].some(k=>(+p[k]||0)>0));}
+  if(ev.type==='edu'){const year=+(S(ev.date).slice(0,4)||TODAY.getFullYear());const base=eduBattersForEdit(ev,year);const inputs=new Map();document.querySelectorAll('[data-batter-name][data-stat]').forEach(el=>{const name=el.dataset.batterName;if(!inputs.has(name))inputs.set(name,{});inputs.get(name)[el.dataset.stat]=el.value});for(const name of inputs.keys())if(!base.some(p=>S(p.name)===name))base.push({name,walks:0});ev.batting=base.map(p=>{const x={...p},values=inputs.get(S(p.name))||{};for(const k of ['atBats','hits','doubles','triples','homeRuns','stolenBases','walks']){x[k]=Object.prototype.hasOwnProperty.call(values,k)?Math.max(0,+values[k]||0):(+x[k]||0)}return x}).filter(p=>['atBats','hits','doubles','triples','homeRuns','stolenBases','walks'].some(k=>(+p[k]||0)>0));}
   return _manualUpsert(ev);
 };
 
@@ -237,6 +249,7 @@ function isUpcomingKbo(e){
 
 function rerender(){const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;const y=scrollY;route2();scrollTo(0,y)}
 async function setUser(sess){
+  draftUserId=sess?.user?.id||'';
   isOwner=false;
   if(sess){const r=await SB.from('admins').select('user_id').eq('user_id',sess.user.id);isOwner=!r.error&&r.data.length>0}
   rerender();
@@ -339,7 +352,7 @@ function batterTable(players,edit,game=null){
           ${cols.map(([k])=>`
             <td style="text-align:center;padding-left:0;padding-right:0">
               ${edit
-                ? `<input style="width:52px;padding:6px" type="number" min="0" step="1" data-batter="${i}" data-stat="${k}" value="${+p[k]||0}">`
+                ? `<input style="width:52px;padding:6px" type="number" min="0" step="1" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="${k}" value="${+p[k]||0}">`
                 : (+p[k]||0)}
             </td>
           `).join('')}
@@ -1077,8 +1090,63 @@ function adminCalendar(){
 }
 
 
+const ADMIN_DRAFTS=new Map();
+let renderedDraftKey='';
+function adminDraftKey(){return 'bearstat:record-draft:v1:'+draftUserId+':'+(editing?.id||'new')}
+function readAdminDraft(){
+  const key=adminDraftKey();
+  if(ADMIN_DRAFTS.has(key))return ADMIN_DRAFTS.get(key);
+  try{return JSON.parse(localStorage.getItem(key)||'null')}catch(e){return null}
+}
+function clearAdminDraft(key=adminDraftKey()){
+  ADMIN_DRAFTS.delete(key);
+  try{localStorage.removeItem(key)}catch(e){}
+}
+function captureAdminDraft(){
+  const card=document.querySelector('#save')?.closest('.card');
+  if(!isOwner||!card||!renderedDraftKey)return;
+  const fields={};
+  card.querySelectorAll('[id^="f_"],#kbo_manual').forEach(el=>{fields[el.id]=el.type==='checkbox'?el.checked:el.value});
+  const batters=[];
+  card.querySelectorAll('[data-batter]').forEach(el=>{
+    const i=+el.dataset.batter;
+    if(!batters[i])batters[i]={name:S(el.closest('tr')?.querySelector('td')?.textContent).trim()};
+    batters[i][el.dataset.stat]=el.value;
+  });
+  const hrEntries=Array.from(card.querySelectorAll('.hr-row'),row=>({player:row.querySelector('.hr-player')?.value||'',inning:row.querySelector('.hr-inning')?.value||'',runs:row.querySelector('.hr-runs')?.value||''}));
+  const previous=ADMIN_DRAFTS.get(renderedDraftKey);
+  const draft={fields,batters:batters.length?batters:(previous?.batters||[]),hrEntries};
+  ADMIN_DRAFTS.set(renderedDraftKey,draft);
+  try{localStorage.setItem(renderedDraftKey,JSON.stringify(draft))}catch(e){}
+}
+function restoreAdminDraft(){
+  renderedDraftKey='';
+  const card=document.querySelector('#save')?.closest('.card');
+  if(!isOwner||!card)return;
+  renderedDraftKey=adminDraftKey();
+  const draft=readAdminDraft();
+  if(!draft)return;
+  card.querySelectorAll('[id^="f_"],#kbo_manual').forEach(el=>{
+    if(!Object.prototype.hasOwnProperty.call(draft.fields||{},el.id))return;
+    if(el.type==='checkbox')el.checked=!!draft.fields[el.id];else el.value=draft.fields[el.id];
+  });
+  card.querySelectorAll('[data-batter]').forEach(el=>{
+    const name=S(el.closest('tr')?.querySelector('td')?.textContent).trim();
+    const p=(draft.batters||[]).find(x=>x.name===name);
+    if(p&&Object.prototype.hasOwnProperty.call(p,el.dataset.stat))el.value=p[el.dataset.stat];
+  });
+  const box=card.querySelector('#hr_rows');
+  if(box&&Array.isArray(draft.hrEntries))box.innerHTML=draft.hrEntries.map(x=>hrRowHTML(x,+(S(card.querySelector('#f_date')?.value).slice(0,4)||TODAY.getFullYear()))).join('');
+  for(const k of ['place','opp','homeAway','cancelReason']){
+    const input=card.querySelector('#f_'+k+'_custom');
+    if(input)input.style.display=card.querySelector('#f_'+k)?.value==='__custom__'?'':'none';
+  }
+}
+
 function admin(){
-  const e=editing||{type:'kbo',date:TS,time:'',title:'',place:'',homeAway:'',program:'',channel:'',players:[],desc:''};
+  const draft=readAdminDraft();
+  const e={...(editing||{type:'kbo',date:TS,time:'',title:'',place:'',homeAway:'',program:'',channel:'',players:[],desc:''})};
+  if(draft?.fields){e.type=draft.fields.f_type||e.type;e.date=draft.fields.f_date||e.date;}
   const allList=Repo.all().slice().sort((a,b)=>b.date.localeCompare(a.date));
   const q=S(adminSearch).toLowerCase();
   const list=q
@@ -1187,7 +1255,7 @@ function route(){
   const r=location.hash.replace('#/','')||'home';
   $('#app').innerHTML=r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='admin'?admin():home();
   $('#nav').innerHTML=[['home','홈'],['standings','순위'],['records','개인기록'],['h2h','맞대결'],['opponent','상대전적']].map(([k,l])=>`<a href="#/${k==='home'?'':k}" class="${r===k?'on':''}">${l}</a>`).join('');
-  document.body.dataset.r=r;window.scrollTo(0,0);
+  document.body.dataset.r=r;restoreAdminDraft();window.scrollTo(0,0);
 }
 document.addEventListener('click',ev=>{
   const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-rleague],[data-hstat],[data-pstat],[data-orderhist],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-astand],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveo,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
@@ -1338,11 +1406,20 @@ if(!v('date')){
     const sd=v('sd'),so=v('so'),gn=v('gno'),id=editing?editing.id:'c'+Date.now();
     const hrEntries=[...document.querySelectorAll('.hr-row')].map(row=>({player:S(row.querySelector('.hr-player')?.value),inning:+(row.querySelector('.hr-inning')?.value||0),runs:+(row.querySelector('.hr-runs')?.value||0)})).filter(x=>x.player&&x.inning&&x.runs);
     const homeRuns=hrEntries.map(x=>`${x.player} ${x.inning}회 ${x.runs}점`).join('\n');
+    const savedDraftKey=adminDraftKey();
     const old=editing||{},f=k=>$('#f_'+k)?v(k):S(old[k]);
-    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp, cancelReason,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
+    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp, cancelReason,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{clearAdminDraft(savedDraftKey);editing=null;adminView='manage';keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
   }
-  else if(t.id==='cancel'){editing=null;adminView='manage';keep()}
-  else if(t.dataset.edit){editing=Repo.all().find(x=>x.id===t.dataset.edit);adminView='form';keep()}
+  else if(t.id==='cancel'){clearAdminDraft();editing=null;adminView='manage';keep()}
+  else if(t.dataset.edit){
+    const id=t.dataset.edit;
+    editing=Repo.all().find(x=>x.id===id);adminView='form';keep();
+    if(SB)SB.from('events').select('body').eq('id',id).maybeSingle().then(r=>{
+      if(r.error||!r.data?.body||editing?.id!==id||adminView!=='form')return;
+      CUSTOM=CUSTOM.filter(x=>S(x.id)!==S(id)).concat(r.data.body);
+      editing=Repo.all().find(x=>S(x.id)===S(id));keep();
+    }).catch(()=>{});
+  }
   else if(t.dataset.del){const target=Repo.all().find(x=>x.id===t.dataset.del);if(target?.kboGameId){alert('KBO 자동 기록은 여기서 삭제하지 않습니다.');return}if(confirm('삭제할까요?')){Repo.remove(t.dataset.del).catch(e=>alert('삭제하지 못했습니다: '+(e.message||''))).finally(keep)}}
 });
 
@@ -1370,7 +1447,15 @@ document.addEventListener('change',ev=>{
 
 document.addEventListener('input',ev=>{const box=document.querySelector('#kbo_manual'),el=ev.target;if(box&&(el.matches('[data-batter],.hr-player,.hr-inning,.hr-runs')||/^f_(sd|so|starter|oppStarter|winP|loseP|saveP|holdP|gwRbi|doubles|triples|hits|steals|duration)$/.test(el.id)))box.checked=true});
 
-function route2(){const r=document.body.dataset.r;$('#app').innerHTML=r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='admin'?admin():home();}
+document.addEventListener('input',captureAdminDraft);
+document.addEventListener('change',ev=>{
+  captureAdminDraft();
+  if(ev.target?.id==='f_type'&&document.querySelector('#save'))route2();
+});
+document.addEventListener('click',ev=>{if(ev.target.closest('#addhr,[data-hrdel]'))captureAdminDraft()});
+addEventListener('beforeunload',captureAdminDraft);
+
+function route2(){const r=document.body.dataset.r;$('#app').innerHTML=r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='admin'?admin():home();restoreAdminDraft();}
 addEventListener('hashchange',route);route();
 
 /* ============ 3. PWA (아이콘/manifest 런타임 생성) ============ */
