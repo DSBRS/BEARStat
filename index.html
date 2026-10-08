@@ -239,11 +239,14 @@ Repo.load=async function(){
 };
 const BATTER_ENTRY_ROLES={pinchHitter:'대타',pinchRunner:'대주자',defensiveReplacement:'대수비'};
 function batterOrderOptions(p){
-  const selected=+p.order>=1&&+p.order<=9?String(+p.order):(Object.prototype.hasOwnProperty.call(BATTER_ENTRY_ROLES,p.entryRole)?p.entryRole:'0');
-  const options=[['0','선택'],...Array.from({length:9},(_,n)=>[String(n+1),`${n+1}번`]),...Object.entries(BATTER_ENTRY_ROLES)];
+  const selected=+p.order>=1&&+p.order<=9?String(+p.order):'0';
+  const options=[['0','선택'],...Array.from({length:9},(_,n)=>[String(n+1),`${n+1}번`])];
   return options.map(([value,label])=>`<option value="${value}" ${selected===value?'selected':''}>${label}</option>`).join('');
 }
-function batterOrderLabel(p){return +p.order>=1&&+p.order<=9?`${+p.order}번`:(BATTER_ENTRY_ROLES[p.entryRole]||'—')}
+const BATTER_DEFENSE_POSITIONS={'투':'투수','포':'포수','一':'1루수','二':'2루수','三':'3루수','유':'유격수','좌':'좌익수','중':'중견수','우':'우익수','D':'지명타자'};
+function batterEntryRoles(p){return Array.isArray(p.entryRoles)?p.entryRoles.filter(r=>Object.prototype.hasOwnProperty.call(BATTER_ENTRY_ROLES,r)):(Object.prototype.hasOwnProperty.call(BATTER_ENTRY_ROLES,p.entryRole)?[p.entryRole]:[])}
+function batterOrderLabel(p){return [+p.order>=1&&+p.order<=9?`${+p.order}번`:'',...batterEntryRoles(p).map(r=>BATTER_ENTRY_ROLES[r])].filter(Boolean).join(' · ')||'—'}
+function batterReplacementLabel(p){return [p.replacedPlayer?`${p.replacedPlayer} 대신`:'',BATTER_DEFENSE_POSITIONS[p.defensePosition]||''].filter(Boolean).join(' · ')}
 function readBatterLineup(players){
   const inputs=new Map();
   document.querySelectorAll('[data-batter-name][data-stat]').forEach(el=>{
@@ -251,23 +254,45 @@ function readBatterLineup(players){
     if(!inputs.has(name))inputs.set(name,{});
     inputs.get(name)[el.dataset.stat]=el.type==='checkbox'?el.checked:el.value;
   });
-  return players.map(p=>{
+  const rows=players.map(p=>{
     const values=inputs.get(S(p.name))||{},x={...p};
     if(Object.prototype.hasOwnProperty.call(values,'participated'))x.participated=!!values.participated;
     if(Object.prototype.hasOwnProperty.call(values,'order')){
-      if(Object.prototype.hasOwnProperty.call(BATTER_ENTRY_ROLES,values.order)){
-        x.order=0;x.entryRole=values.order;
-      }else{
-        const order=Number(values.order);
-        if(!Number.isInteger(order)||order<0||order>9)throw new Error('타순 또는 대타·대주자·대수비를 선택해주세요');
-        x.order=order;x.entryRole='';
-      }
+      if(Object.prototype.hasOwnProperty.call(BATTER_ENTRY_ROLES,values.order)){x.order=0;x.entryRole=values.order}
+      else{const order=Number(values.order);if(!Number.isInteger(order)||order<0||order>9)throw new Error('타순은 1~9번으로 선택해주세요');x.order=order}
     }
+    const hasRoles=Object.keys(BATTER_ENTRY_ROLES).some(r=>Object.prototype.hasOwnProperty.call(values,'role_'+r));
+    if(hasRoles){x.entryRoles=Object.keys(BATTER_ENTRY_ROLES).filter(r=>values['role_'+r]);x.entryRole=x.entryRoles[0]||''}
+    if(Object.prototype.hasOwnProperty.call(values,'replacedPlayer'))x.replacedPlayer=S(values.replacedPlayer);
+    if(Object.prototype.hasOwnProperty.call(values,'defensePosition')){
+      const pos=S(values.defensePosition);
+      if(pos&&!Object.prototype.hasOwnProperty.call(BATTER_DEFENSE_POSITIONS,pos))throw new Error('수비 포지션을 선택해주세요');
+      if(pos)x.position=pos;else if(x.defensePosition)x.position='';
+      x.defensePosition=pos;
+    }
+    if(hasRoles&&!x.entryRoles.length){x.replacedPlayer='';x.defensePosition=''}
     return x;
   }).filter(p=>p.participated!==false);
+  const byName=new Map(rows.map(p=>[S(p.name),p]));
+  function resolve(p,path=new Set()){
+    if(path.has(S(p.name)))throw new Error('교체 대상이 서로 연결되어 있습니다. 교체 선수를 확인해주세요');
+    if(!batterEntryRoles(p).length||!p.replacedPlayer)return +p.order||0;
+    const target=byName.get(S(p.replacedPlayer));
+    if(!target)throw new Error(`${p.name}의 교체 대상 ${p.replacedPlayer}도 출전 선수로 체크해주세요`);
+    const order=resolve(target,new Set([...path,S(p.name)]));
+    if(order>=1&&order<=9)p.order=order;
+    return +p.order||0;
+  }
+  rows.forEach(p=>resolve(p));
+  return rows;
 }
 function orderedBatters(players){
-  return players.filter(p=>p.participated!==false).slice().sort((a,b)=>(+a.order>=1&&+a.order<=9?+a.order:10)-(+b.order>=1&&+b.order<=9?+b.order:10));
+  const rows=players.filter(p=>p.participated!==false).slice().sort((a,b)=>(+a.order>=1&&+a.order<=9?+a.order:10)-(+b.order>=1&&+b.order<=9?+b.order:10)||(batterEntryRoles(a).length?1:0)-(batterEntryRoles(b).length?1:0));
+  const result=[],seen=new Set();
+  function append(p){if(seen.has(p))return;seen.add(p);result.push(p);rows.filter(x=>batterEntryRoles(x).length&&S(x.replacedPlayer)===S(p.name)).forEach(append)}
+  rows.filter(p=>!batterEntryRoles(p).length||!rows.some(x=>S(x.name)===S(p.replacedPlayer))).forEach(append);
+  rows.forEach(append);
+  return result;
 }
 Repo.upsert=async function(ev){
   if(ev.kboGameId){ev.manualOverride=!!document.querySelector('#kbo_manual')?.checked;if(ev.manualOverride&&Array.isArray(ev.batting))ev.batting=ev.batting.map((p,i)=>{const x={...p};for(const k of ['atBats','hits','doubles','triples','homeRuns','stolenBases','walks','reachedOnError']){const el=document.querySelector(`[data-batter="${i}"][data-stat="${k}"]`);if(el){const n=Number(el.value);if(!Number.isInteger(n)||n<0)throw new Error('타자 기록은 0 이상의 정수로 입력해주세요');x[k]=n}}if((+x.doubles||0)+(+x.triples||0)+(+x.homeRuns||0)>(+x.hits||0))throw new Error('장타 합계가 안타 수보다 많습니다');return x});if(ev.manualOverride&&Array.isArray(ev.batting))ev.batting=readBatterLineup(ev.batting)}
@@ -354,7 +379,8 @@ function detail(e){
   return out;
 }
 function batterTable(players,edit,game=null){
-  if(!edit)players=orderedBatters(players);
+  const manualLineup=game?.type!=='kbo';
+  if(!edit&&manualLineup)players=orderedBatters(players);
   const cols=[
     ['atBats','타수'],
     ['hits','안타'],
@@ -371,44 +397,39 @@ function batterTable(players,edit,game=null){
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
         <strong style="font-size:17px;margin-right:auto">${esc(p.name)}</strong>
         <label style="display:flex;align-items:center;gap:7px;margin:0;font-size:14px;white-space:nowrap"><input type="checkbox" style="width:20px;height:20px;margin:0" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="participated" ${p.participated!==false?'checked':''}>출전</label>
-        <label style="display:flex;align-items:center;gap:7px;margin:0;font-size:14px">타순<select style="width:130px;padding:8px;font-size:14px" aria-label="${esc(p.name)} 타순" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="order">${batterOrderOptions(p)}</select></label>
+${manualLineup?`        <label style="display:flex;align-items:center;gap:7px;margin:0;font-size:14px">타순<select style="width:130px;padding:8px;font-size:14px" aria-label="${esc(p.name)} 타순" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="order">${batterOrderOptions(p)}</select></label>`:''}
+
       </div>
+${manualLineup?`      <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:14px">
+        ${Object.entries(BATTER_ENTRY_ROLES).map(([role,label])=>`<label style="display:flex;align-items:center;gap:7px;margin:0;font-size:14px"><input type="checkbox" style="width:20px;height:20px;margin:0" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="role_${role}" ${batterEntryRoles(p).includes(role)?'checked':''}>${label}</label>`).join('')}
+      </div>
+      <div data-replacement-details style="display:${batterEntryRoles(p).length?'grid':'none'};grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px">
+        <label style="margin:0;font-size:13px">누구 대신 출전<select style="display:block;width:100%;padding:10px;margin-top:6px;font-size:14px" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="replacedPlayer"><option value="">선수 선택</option>${players.filter(x=>S(x.name)!==S(p.name)).map(x=>`<option value="${esc(x.name)}" ${S(p.replacedPlayer)===S(x.name)?'selected':''}>${esc(x.name)}${+x.order>=1&&+x.order<=9?` (${+x.order}번)`:''}</option>`).join('')}</select></label>
+        <label style="margin:0;font-size:13px">이후 수비 포지션<select style="display:block;width:100%;padding:10px;margin-top:6px;font-size:14px" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="defensePosition"><option value="">수비 안 함 / 미정</option>${Object.entries(BATTER_DEFENSE_POSITIONS).map(([pos,label])=>`<option value="${pos}" ${p.defensePosition===pos?'selected':''}>${label}</option>`).join('')}</select></label>
+      </div>
+`:''}
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(68px,1fr));gap:12px">
         ${cols.map(([k,label])=>`<label style="display:block;min-width:0;margin:0;font-size:13px">${label}<input style="display:block;width:100%;min-width:0;box-sizing:border-box;padding:10px;margin-top:6px;font-size:16px" type="number" min="0" step="1" aria-label="${esc(p.name)} ${label}" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="${k}" value="${+p[k]||0}"></label>`).join('')}
       </div>
     </div>`).join('')}
   </div>`;
 
-  return `<div style="overflow-x:auto;margin-top:18px">
-    <table class="rec" style="table-layout:fixed;width:96%">
+  return `<div class="recscroll" style="margin-top:18px">
+    <table class="rec recstats" style="table-layout:fixed;width:100%;min-width:${manualLineup?768:656}px">
       <colgroup>
-        <col style="width:26%">
-        ${edit?'<col style="width:64px">':''}<col style="width:96px">
-        ${cols.map(()=>'<col style="width:12%">').join('')}
+        <col style="width:112px">${manualLineup?'<col style="width:112px">':''}
+        ${cols.map(([k])=>`<col style="width:${k==='reachedOnError'?88:64}px">`).join('')}
       </colgroup>
       <tr>
-  <th style="text-align:left;font-size:14px;padding-bottom:8px">두산 타자</th>
-  ${edit?'<th style="text-align:center">출전</th>':''}<th style="text-align:center">타순</th>
-  ${cols.map(c=>`<th style="font-size:14px;padding:0 0 8px;text-align:center">${c[1]}</th>`).join('')}
-</tr>
-      ${players.map((p,i)=>`
-        <tr>
-          <td style="text-align:left;white-space:nowrap">${
-            edit
-              ? esc(p.name)
-              : `<button class="playerlink" data-gamebatter="${esc(p.name)}" data-gameab="${+p.atBats||0}" data-gamehit="${+p.hits||0}" data-gamedate="${esc(game?.date||'')}" data-gameopp="${esc(game?.opp||'')}" data-gameha="${esc(game?.homeAway||'')}">${esc(p.name)}</button>`
-          }</td>
-          ${edit?`<td style="text-align:center"><input type="checkbox" style="width:auto" aria-label="${esc(p.name)} 출전" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="participated" ${p.participated!==false?'checked':''}></td>`:''}
-          <td style="text-align:center">${edit?`<select style="width:90px;padding:6px" aria-label="${esc(p.name)} 타순" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="order">${batterOrderOptions(p)}</select>`:batterOrderLabel(p)}</td>
-          ${cols.map(([k])=>`
-            <td style="text-align:center;padding-left:0;padding-right:0">
-              ${edit
-                ? `<input style="width:52px;padding:6px" type="number" min="0" step="1" data-batter="${i}" data-batter-name="${esc(p.name)}" data-stat="${k}" value="${+p[k]||0}">`
-                : (+p[k]||0)}
-            </td>
-          `).join('')}
-        </tr>
-      `).join('')}
+        <th style="font-size:14px;padding:12px 8px;white-space:nowrap">두산 타자</th>
+        ${manualLineup?'<th style="font-size:14px;padding:12px 8px;text-align:center;white-space:nowrap">타순</th>':''}
+        ${cols.map(c=>`<th style="font-size:14px;padding:12px 8px;text-align:center;white-space:nowrap">${c[1]}</th>`).join('')}
+      </tr>
+      ${players.map(p=>`<tr>
+        <td style="padding:14px 8px;white-space:nowrap"><button class="playerlink" data-gamebatter="${esc(p.name)}" data-gameab="${+p.atBats||0}" data-gamehit="${+p.hits||0}" data-gamedate="${esc(game?.date||'')}" data-gameopp="${esc(game?.opp||'')}" data-gameha="${esc(game?.homeAway||'')}">${esc(p.name)}</button>${batterReplacementLabel(p)?`<div style="font-size:11px;font-weight:400;color:var(--sub);white-space:normal;line-height:1.5;margin-top:4px">${esc(batterReplacementLabel(p))}</div>`:''}</td>
+        ${manualLineup?`<td style="text-align:center;padding:14px 8px;white-space:normal;line-height:1.6">${batterOrderLabel(p)}</td>`:''}
+        ${cols.map(([k])=>`<td style="text-align:center;padding:14px 8px;white-space:nowrap">${+p[k]||0}</td>`).join('')}
+      </tr>`).join('')}
     </table>
   </div>`;
 }
@@ -496,7 +517,7 @@ function evRow(e){
   else if(e.type==='broadcast'||e.type==='radio')sb=[e.program,e.players&&e.players.join(', '),e.channel].filter(Boolean).join(' · ');
   else sb=[e.place].filter(Boolean).join(' · ');
   const g=e.type==='kbo'||e.type==='edu',o=g&&openIds.has(e.id);
-  return `<div class="ev${g?' tap':''}"${g?` data-x="${esc(e.id)}"`:''}><div class="tm">${e.time||'--:--'}</div><div class="bd"><div class="ti"><span class="tag">${TYPES[e.type]||'기타'}</span>${e.title}${e.demo?' <span class="tag">DEMO</span>':''}</div>${sb?`<div class="sb">${sb}</div>`:''}${e.desc?`<div class="sb">${e.desc}</div>`:''}${g?`<div class="more">${o?'접기 ▴':'경기 상세 ▾'}</div>`:''}${o?detail(e):''}</div></div>`;
+  return `<div class="ev${g?' tap':''}"${g?` data-x="${esc(e.id)}"`:''}>${g?'':`<div class="tm">${e.time||'--:--'}</div>`}<div class="bd">${g?`<div class="tm" style="width:auto;margin-bottom:8px">${e.time||'--:--'}</div>`:''}<div class="ti"><span class="tag">${TYPES[e.type]||'기타'}</span>${e.title}${e.demo?' <span class="tag">DEMO</span>':''}</div>${sb?`<div class="sb">${sb}</div>`:''}${e.desc?`<div class="sb">${e.desc}</div>`:''}${g?`<div class="more">${o?'접기 ▴':'경기 상세 ▾'}</div>`:''}${o?detail(e):''}</div></div>`;
 }
 function calendar(){
   const y=view.getFullYear(),m=view.getMonth(),first=new Date(y,m,1),start=addDays(first,-first.getDay());
@@ -1184,10 +1205,17 @@ function restoreAdminDraft(){
   card.querySelectorAll('[data-batter]').forEach(el=>{
     const name=el.dataset.batterName||S(el.closest('tr')?.querySelector('td')?.textContent).trim();
     const p=(draft.batters||[]).find(x=>x.name===name);
-    if(p&&Object.prototype.hasOwnProperty.call(p,el.dataset.stat)){if(el.type==='checkbox')el.checked=!!p[el.dataset.stat];else el.value=p[el.dataset.stat];}
+    if(p){
+      const legacyRole=Object.prototype.hasOwnProperty.call(BATTER_ENTRY_ROLES,p.order)?p.order:'';
+      if(el.dataset.stat?.startsWith('role_')&&!Object.prototype.hasOwnProperty.call(p,el.dataset.stat)){el.checked=(p.entryRoles||[p.entryRole||legacyRole]).includes(el.dataset.stat.slice(5));}
+      else if(el.dataset.stat==='entryRole'&&(p.entryRole!==undefined||legacyRole))el.value=p.entryRole||legacyRole;
+      else if(el.dataset.stat==='order'&&legacyRole)el.value='0';
+      else if(Object.prototype.hasOwnProperty.call(p,el.dataset.stat)){if(el.type==='checkbox')el.checked=!!p[el.dataset.stat];else el.value=p[el.dataset.stat];}
+    }
   });
   const box=card.querySelector('#hr_rows');
   if(box&&Array.isArray(draft.hrEntries))box.innerHTML=draft.hrEntries.map(x=>hrRowHTML(x,+(S(card.querySelector('#f_date')?.value).slice(0,4)||TODAY.getFullYear()))).join('');
+  updateReplacementControls();
   for(const k of ['place','opp','homeAway','cancelReason']){
     const input=card.querySelector('#f_'+k+'_custom');
     if(input)input.style.display=card.querySelector('#f_'+k)?.value==='__custom__'?'':'none';
@@ -1237,11 +1265,11 @@ function admin(){
     </div>`).join(''):'<div class="empty">해당 일정이 없습니다.</div>'}
   </div>`;
   const kboWarn=[KBO_WARNING,...KBO_MERGE_WARNINGS].filter(Boolean).join(' / ');
-  const kboPanel=editing?.kboGameId?`<div class="note"><label><input id="kbo_manual" type="checkbox" style="width:auto" ${editing.manualOverride?'checked':''}> 이 경기의 수동 기록을 우선 사용</label>기록을 수정하면 자동으로 켜집니다. 해제 후 저장하면 KBO 자동 기록으로 돌아갑니다.</div>${editing.batting?.length?batterTable(editing.batting,true):''}`:'';
+  const kboPanel=editing?.kboGameId?`<div class="note"><label><input id="kbo_manual" type="checkbox" style="width:auto" ${editing.manualOverride?'checked':''}> 이 경기의 수동 기록을 우선 사용</label>기록을 수정하면 자동으로 켜집니다. 해제 후 저장하면 KBO 자동 기록으로 돌아갑니다.</div>${editing.batting?.length?batterTable(editing.batting,true,editing):''}`:'';
   return `${kboWarn?`<div class="note">${esc(kboWarn)}</div>`:''}<div class="brand"><div class="logo">관리자</div><a href="#/" class="demo" style="text-decoration:none">← 앱</a></div>
   <button class="btn g" id="admin_back" style="margin:0 0 12px">← 일정 관리로</button><button class="btn g" id="logout" style="margin:0 0 12px">로그아웃</button><div class="note">KBO 자동 일정은 kbo_game_records에 저장된 미래 경기까지 자동 표시됩니다. 같은 game_id가 경기 종료 후 갱신되면 결과와 선수 기록도 자동 반영됩니다.</div><div class="card"><b>${editing?'일정 수정':'일정 추가'}</b>
   ${kboPanel}
-  ${e.type==='edu'?`<div class="note">출전한 타자를 체크하고 타순을 선택해주세요. 교체 선수는 대타·대주자·대수비 중에서 선택해주세요. 기록이 모두 0이어도 출전 체크 시 저장됩니다.</div>${batterTable(eduBattersForEdit(e),true)}`:''}
+  ${e.type==='edu'?`<div class="note">출전한 타자를 체크하고 타순을 선택해주세요. 교체 선수는 대타·대주자·대수비를 체크하고 교체 대상과 이후 수비 포지션을 선택해주세요. 타순은 교체 대상과 연결됩니다. 기록이 모두 0이어도 출전 체크 시 저장됩니다.</div>${batterTable(eduBattersForEdit(e),true,e)}`:''}
   <label>종류</label><select id="f_type"${editing?.kboGameId?' disabled':''}>${['kbo','club','fan','broadcast','radio','ticket','edu','etc'].map(k=>`<option value="${k}"${e.type===k?' selected':''}>${TYPES[k]}</option>`).join('')}</select>
   <label>날짜</label><input id="f_date" type="date"${editing?.kboGameId?' disabled':''} value="${e.date}"><label>시간</label><input id="f_time" type="time" value="${e.time||''}">
   <label>장소</label><select id="f_place">${['',...VENUES].map(v=>`<option value="${v}" ${e.place===v?'selected':''}>${v||'장소 선택'}</option>`).join('')}<option value="__custom__"${placeCustom?' selected':''}>직접 입력</option></select>
@@ -1504,6 +1532,23 @@ function selectBatterOnEntry(ev){
   const box=el.closest('[data-batter-row],tr')?.querySelector('[data-stat="participated"]');
   if(box)box.checked=true;
 }
+function updateReplacementControls(){
+  document.querySelectorAll('[data-batter-row]').forEach(row=>{
+    const selected=Array.from(row.querySelectorAll('[data-stat^="role_"]')).some(el=>el.checked);
+    const details=row.querySelector('[data-replacement-details]');
+    if(details)details.style.display=selected?'grid':'none';
+  });
+}
+document.addEventListener('change',ev=>{
+  const el=ev.target;if(!el?.dataset?.batterName)return;
+  if(el.dataset.stat?.startsWith('role_')&&el.checked){const box=el.closest('[data-batter-row]')?.querySelector('[data-stat="participated"]');if(box)box.checked=true}
+  if(el.dataset.stat==='replacedPlayer'&&el.value){
+    const target=Array.from(document.querySelectorAll('[data-stat="order"]')).find(x=>x.dataset.batterName===el.value);
+    const order=el.closest('[data-batter-row]')?.querySelector('[data-stat="order"]');
+    if(order&&target&&+target.value>0)order.value=target.value;
+  }
+  updateReplacementControls();
+});
 document.addEventListener('input',selectBatterOnEntry);
 document.addEventListener('change',selectBatterOnEntry);
 document.addEventListener('input',captureAdminDraft);
