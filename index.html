@@ -872,7 +872,7 @@ function pitcherDetail(name){
     r.hits+=val(['hits','hitsAllowed','h']);r.homeRuns+=val(['homeRuns','homeRunsAllowed','hr']);r.strikeouts+=val(['strikeouts','strikeOuts','so','k']);r.walks+=val(['walks','basesOnBalls','bb']);r.hitByPitch+=val(['hitByPitch','hitBatters','hbp']);r.runs+=val(['runs','runsAllowed','r']);r.earnedRuns+=val(['earnedRuns','er']);
   });
   const season=recStats().find(x=>S(x.n)===S(name))||{w:0,l:0,h:0,s:0};r.w=+season.w||0;r.l=+season.l||0;r.h=+season.h||0;r.s=+season.s||0;
-  const whole=Math.floor(r.ipOuts/3),rem=r.ipOuts%3;r.ip=rem?`${whole}.${rem}`:String(whole);r.era=r.ipOuts?((r.earnedRuns*27)/r.ipOuts).toFixed(2):'0.00';return r;
+  const whole=Math.floor(r.ipOuts/3),rem=r.ipOuts%3;r.ip=rem?`${whole}.${rem}`:String(whole);r.era=r.ipOuts?((r.earnedRuns*27)/r.ipOuts).toFixed(2):'–';return r;
 }
 function pitcherStatHistory(name,stat){
   const yr=String(recYear),out=[];
@@ -884,7 +884,7 @@ function pitcherStatHistory(name,stat){
     const p=Array.isArray(e.pitching)?e.pitching.find(x=>S(x.name)===S(name)):null;
     let value=null,detail='',summary='';
     const o=ipOuts(p),ip=ipText(o),runs=val(p,['runs','runsAllowed','r']),er=val(p,['earnedRuns','er']);
-    const gameEra=o?((er*27)/o).toFixed(2):'0.00';
+    const gameEra=o?((er*27)/o).toFixed(2):'–';
     if(['w','l','s','h'].includes(stat)){
       const d=(e.kboGameId&&!e.manualOverride&&e.kbo?.doosanDecisions)?e.kbo.doosanDecisions:e;
       const field={w:'winP',l:'loseP',s:'saveP',h:'holdP'}[stat];
