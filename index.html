@@ -1512,9 +1512,12 @@ document.addEventListener('change',ev=>{
 });
 
 function adminPlayerChoices(e){
-  const selected=new Set(e.players||[]),year=+(S(e.date).slice(0,4)||TODAY.getFullYear());
-  const candidates=[...new Set([...rosterForYear(year).map(p=>p.n),...selected])];
-  return `<h2>선수 선택</h2><div style="display:flex;gap:10px;flex-wrap:wrap">${candidates.map(n=>`<label style="margin:4px 0"><input type="checkbox" style="width:auto" data-admin-player="${esc(n)}"${selected.has(n)?' checked':''}> ${esc(n)}</label>`).join('')||'<div class="note">선수 관리에서 명단을 등록하거나 아래에 선수 이름을 입력해주세요.</div>'}</div>`;
+  const selected=new Set(e.players||[]),year=+(S(e.date).slice(0,4)||TODAY.getFullYear()),roster=rosterForYear(year);
+  const groups=[['투수',[...new Set(roster.filter(p=>p.t==='pitcher').map(p=>p.n))]],['타자',[...new Set(roster.filter(p=>p.t==='hitter').map(p=>p.n))]]];
+  const known=new Set(groups.flatMap(g=>g[1]));
+  const others=[...new Set([...roster.map(p=>p.n),...selected])].filter(n=>!known.has(n));
+  if(others.length)groups.push(['기타 선수',others]);
+  return `<h2>선수 선택</h2>${groups.map(([label,players])=>`<h3>${label}</h3><div style="display:flex;gap:10px;flex-wrap:wrap">${players.map(n=>`<label style="margin:4px 0"><input type="checkbox" style="width:auto" data-admin-player="${esc(n)}"${selected.has(n)?' checked':''}> ${esc(n)}</label>`).join('')||'<div class="note">등록된 선수가 없습니다.</div>'}</div>`).join('')}`;
 }
 function updateAdminPlayerChoices(){
   const box=$('#general_players');if(!box)return;
@@ -1643,11 +1646,13 @@ function admin(){
   <label>포스트시즌 단계 / 차전 / 시리즈 전적</label><div style="display:flex;gap:8px"><select id="f_stage"><option value="">정규시즌</option>${['시범경기','와일드카드','준플레이오프','플레이오프','한국시리즈','관련 없음'].map(x=>`<option${e.stage===x?' selected':''}>${x}</option>`).join('')}</select><input id="f_gno" type="number" min="1" placeholder="차전" value="${e.gameNo||''}"></div><input id="f_series" placeholder="1승 0패" value="${e.series||''}" style="margin-top:8px">
   <label>프로그램명</label><input id="f_program" value="${e.program||''}"><label>방송사</label><input id="f_channel" value="${e.channel||''}">
   <label>설명</label><textarea id="f_desc" rows="2">${e.desc||''}</textarea>
-  <button class="btn" id="save">${editing?'수정 저장':'추가'}</button>${editing?'<button class="btn g" id="cancel">취소</button>':''}</section>
+  </section>
   <div style="display:flex;gap:8px;margin-top:12px">
     <button class="btn g" id="admin_step_prev" style="${adminFormStep>1?'':'display:none'}">← 이전</button>
     <button class="btn" id="admin_step_next" style="${adminFormStep<6?'':'display:none'}">다음 →</button>
-  </div></div>
+  </div>
+  <button class="btn" id="save" style="margin-top:12px">${editing?'일정 수정':'일정 추가'}</button>${editing?'<button class="btn g" id="cancel">취소</button>':''}
+  </div>
   `;
 }
 
