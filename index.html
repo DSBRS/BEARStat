@@ -42,9 +42,14 @@ h2{font-size:12px;letter-spacing:1.2px;color:var(--sub);margin:20px 2px 8px;font
 .d.today{font-weight:800;box-shadow:inset 0 0 0 1.5px var(--navy)}
 .d.sel{background:var(--navy);color:var(--bg);font-weight:800}
 .cal-marks{position:absolute;bottom:3px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:3px;height:11px;pointer-events:none}
-.cal-mark{display:inline-flex;align-items:center;justify-content:center;width:10px;height:11px;font-size:8px;line-height:1;font-style:normal}
-.cal-mark svg{display:block;width:8px;height:8px;flex-shrink:0}
+.cal-mark{display:inline-flex;align-items:center;justify-content:center;width:10px;height:11px;font-size:9.5px;line-height:1;font-style:normal}
+.cal-mark svg{display:block;width:10px;height:10px;flex-shrink:0}
+.cal-mark.baseball svg{width:10px;height:10px}
+.cal-mark.sparkle svg{width:10.4px;height:10.4px}
+.cal-mark.heart{font-size:15px}
 .cal-mark.cancellation svg{width:10px;height:10px}
+.cal-mark.cancellation[data-icon="☁︎"] svg{width:9.5px;height:9.5px}
+.cal-mark.cancellation[data-icon="༄"] svg{width:10px;height:10px}
 .cal-mark.circle::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 .d i{position:absolute;bottom:5px;left:50%;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--acc)}
 .d.sel i{background:var(--bg)}
@@ -554,9 +559,9 @@ function evRow(e){
 }
 function calendarIconSVG(symbol){
   const shapes={
-    '★':'<path d="M12 1.5l3.2 6.8 7.3 1-5.3 5.2 1.3 7.3-6.5-3.5-6.5 3.5 1.3-7.3L1.5 9.3l7.3-1z"/>',
+    '✦':'<path d="M12 1C13.6 7.7 16.3 10.4 23 12C16.3 13.6 13.6 16.3 12 23C10.4 16.3 7.7 13.6 1 12C7.7 10.4 10.4 7.7 12 1Z"/>',
     '♥':'<path d="M12 22S1 14.4 1 7.5C1 1 9-1 12 5c3-6 11-4 11 2.5C23 14.4 12 22 12 22z"/>',
-    '♣':'<path d="M12 1a5 5 0 0 0-4.3 7.6A5.4 5.4 0 1 0 10 18l-2 5h8l-2-5a5.4 5.4 0 1 0 2.3-9.4A5 5 0 0 0 12 1z"/>',
+    'baseball':'<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.7" stroke-width="2.8"/><path d="M6.1 4.5C10.1 8.2 10.1 15.8 6.1 19.5M17.9 4.5C13.9 8.2 13.9 15.8 17.9 19.5" stroke-width="2.8"/><path d="M6.3 7.5l2.4-.9M7.3 12h2.5M6.3 16.5l2.4.9M15.3 6.6l2.4.9M14.2 12h2.5M15.3 17.4l2.4-.9" stroke-width="2.8"/></g>',
     '☂':'<path d="M1 11a11 11 0 0 1 22 0H1z"/><path d="M12 2v18a3 3 0 0 0 6 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
     '☀':'<circle cx="12" cy="12" r="5"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
     '❆':'<path d="M12 1v22M2.5 6.5l19 11M2.5 17.5l19-11M9 3l3 3 3-3M9 21l3-3 3 3M3 10l4-1-1-4M18 19l-1-4 4-1M3 14l4 1-1 4M18 5l-1 4 4 1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -571,7 +576,7 @@ function calendarIconSVG(symbol){
 }
 function calendarMarks(events,includeOther=false){
   const marks=[];
-  for(const [type,symbol,label] of [['kbo','♣','KBO'],['futures','★','퓨처스리그'],['edu','♥','교육리그']]){
+  for(const [type,symbol,label] of [['kbo','baseball','KBO'],['futures','✦','퓨처스리그'],['edu','♥','교육리그']]){
     const games=events.filter(e=>e.type===type),groups=new Map();
     for(const game of games){
       const side=game.homeAway||'',reason=S(game.cancelReason);
@@ -580,7 +585,7 @@ function calendarMarks(events,includeOther=false){
     }
     for(const {side,cancellation} of groups.values()){
       const color=side==='home'?'#eb1d25':side==='away'?'#1A1748':'var(--sub)',where=side==='home'?'홈':side==='away'?'원정':'경기',icon=cancellation[0]||symbol,title=label+' '+where+(cancellation[1]?' · '+cancellation[1]:'');
-      marks.push(`<span class="cal-mark${icon?'':' circle'}${cancellation[0]?' cancellation':''}" style="color:${color}" title="${title}" aria-label="${title}">${['☂','☁︎','⛈','☀','⊘'].includes(icon)?calendarIconSVG(icon):icon}</span>`);
+      marks.push(`<span class="cal-mark${icon?'':' circle'}${cancellation[0]?' cancellation':type==='kbo'?' baseball':type==='futures'?' sparkle':' heart'}" data-icon="${esc(icon)}" style="color:${color}" title="${title}" aria-label="${title}">${icon==='♥'?icon:calendarIconSVG(icon)||icon}</span>`);
     }
   }
   if(includeOther&&events.some(e=>!['kbo','futures','edu'].includes(e.type)))marks.push('<span class="cal-mark circle" style="color:var(--sub)" title="기타 일정" aria-label="기타 일정"></span>');
