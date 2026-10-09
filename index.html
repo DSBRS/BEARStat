@@ -1040,12 +1040,12 @@ function opponentStatHistory(name,stat,opp){
 }
 
 function opponentBattingSplits(name){
-  const year=String(TODAY.getFullYear()),byTeam=new Map(TEAMS.map(opp=>[opp,{opp,ab:0,hit:0,hr:0}]));
+  const year=String(TODAY.getFullYear()),byTeam=new Map(TEAMS.map(opp=>[opp,{opp,ab:0,hit:0,rbi:0,d2:0,d3:0,hr:0,sb:0}]));
   Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&!isCancelled(e)&&hasScore(e)&&S(e.date).slice(0,4)===year&&Array.isArray(e.batting)).forEach(e=>{
     const row=byTeam.get(S(e.opp));if(!row)return;
     for(const p of e.batting){
       if(S(p.name)!==S(name))continue;
-      row.ab+=+p.atBats||0;row.hit+=+p.hits||0;row.hr+=+p.homeRuns||0;
+      row.ab+=+p.atBats||0;row.hit+=+p.hits||0;row.rbi+=+p.rbi||0;row.d2+=+p.doubles||0;row.d3+=+p.triples||0;row.hr+=+p.homeRuns||0;row.sb+=+p.stolenBases||0;
     }
   });
   return [...byTeam.values()].map(r=>({...r,avg:r.ab?(r.hit/r.ab>=1?'1.000':(r.hit/r.ab).toFixed(3).slice(1)):'—'}));
@@ -1064,17 +1064,12 @@ function opponentBattingSheetHTML(name){
 }
 
 function opponentBattingDetailSheetHTML(name,opp){
-  const row=opponentBattingSplits(name).find(r=>r.opp===opp)||{ab:0,hit:0,hr:0,avg:'—'};
+  const row=opponentBattingSplits(name).find(r=>r.opp===opp)||{ab:0,hit:0,rbi:0,d2:0,d3:0,hr:0,sb:0,avg:'—'};
+  const cards=[['ab','타수'],['hit','안타'],['rbi','타점'],['avg','타율'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['sb','도루']];
   return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div>
-    <div class="sheethead"><div><b>${esc(name)}</b><div class="sb">${TODAY.getFullYear()} 시즌 · ${esc(opp)}전 타격 기록</div></div><button class="sheetclose" data-oppclose>×</button></div>
+    <div class="sheethead"><div><b>${esc(name)}</b><div class="sb">${TODAY.getFullYear()}년 KBO · ${esc(opp)}전 타격 기록</div></div><button class="sheetclose" data-oppclose>×</button></div>
+    <div class="ordergrid">${cards.map(([key,label])=>`<div class="orderbox"><b>${row[key]}</b><span>${label}</span></div>`).join('')}</div>
     <button class="link" style="margin-top:12px" data-opphist="avg" data-oppplayer="${esc(name)}" data-oppteam="${esc(opp)}">← 상대 구단별 타율</button>
-    <div class="ordergrid" style="grid-template-columns:repeat(2,1fr)">
-      <div class="orderbox"><b>${row.avg}</b><span>타율</span></div>
-      <div class="orderbox"><b>${row.ab}</b><span>타수</span></div>
-      <div class="orderbox"><b>${row.hit}개</b><span>안타</span></div>
-      <div class="orderbox"><b>${row.hr}개</b><span>홈런</span></div>
-    </div>
-    <div class="note">정규시즌 종료 경기 기준 · 홈런은 안타 개수에 포함됩니다.</div>
   </div></div>`;
 }
 
