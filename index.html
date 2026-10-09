@@ -71,13 +71,14 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 .rec th:nth-child(2),.rec td:nth-child(2){text-align:right}.rec td:first-child{font-weight:700;padding-left:6px}
 .sh{border:0;background:none;font:inherit;font-size:12.5px;font-weight:700;color:var(--sub);padding:12px 6px;min-height:44px;width:100%;text-align:inherit;white-space:nowrap}.sh.on{color:var(--navy)}
 .recscroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;position:relative;contain:paint;clip-path:inset(0)}
-.recstats{width:max-content;min-width:100%;table-layout:auto}
-.recstats th,.recstats td{min-width:66px;white-space:nowrap}
-.recstats th:first-child,.recstats td:first-child{position:-webkit-sticky;position:sticky;left:0;z-index:2;background:var(--card);min-width:84px;width:84px;padding-right:12px}
-.recstats th:first-child{z-index:3}
-.recstats.recsitu th:first-child,.recstats.recsitu td:first-child{min-width:36px;width:36px;padding-right:4px}
-.recstats.recsitu th:nth-child(2),.recstats.recsitu td:nth-child(2){min-width:76px;width:76px;text-align:left;padding-left:10px;padding-right:12px}
-.recstats.recsitu th:nth-child(2) .sh{padding-left:0;padding-right:0}
+/* Explicit column widths keep rank/name compact on every screen size. */
+.recstats{min-width:0;table-layout:fixed;border-collapse:separate;border-spacing:0}
+.recstats th,.recstats td{min-width:0;white-space:nowrap;box-sizing:border-box}
+.recstats th:first-child,.recstats td:first-child{position:-webkit-sticky;position:sticky;left:0;z-index:2;background:var(--card);text-align:left;padding-left:6px;padding-right:8px}
+.recstats th:first-child{z-index:4}
+.recstats.recsitu th:nth-child(2),.recstats.recsitu td:nth-child(2){position:-webkit-sticky;position:sticky;left:40px;z-index:2;background:var(--card);text-align:left;padding-left:6px;padding-right:8px}
+.recstats.recsitu th:nth-child(2){z-index:4}
+.recstats th:first-child .sh,.recstats.recsitu th:nth-child(2) .sh{padding-left:0;padding-right:0}
 
 .playerlink{border:0;background:none;color:inherit;font:inherit;font-weight:800;padding:0;cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
 .sheetback{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:50;display:flex;align-items:flex-end;justify-content:center}
@@ -944,6 +945,11 @@ function situationalRows(){
   return [...out.values()].filter(r=>Object.keys(SPLIT_ALIASES).some(k=>r[k]!==null));
 }
 function splitValue(v,avg=false){return v===null||v===undefined?'—':avg?(v===1?'1.000':v.toFixed(3).replace(/^0/,'')):String(v)}
+function recordTableStart(cols,ranked=false){
+  const widths=cols.map(([key,label])=>key==='n'?96:Math.max(66,Array.from(label).length*13+24));
+  if(ranked)widths.unshift(40);
+  return `<table class="rec recstats${ranked?' recsitu':''}" style="width:${widths.reduce((a,b)=>a+b,0)}px"><colgroup>${widths.map(w=>`<col style="width:${w}px">`).join('')}</colgroup>`;
+}
 function situationRecords(){
   const state=recSituation[recKind],options=SITUATION_OPTIONS[recKind],rows=situationalRows();
   const cols=recKind==='hitter'?[['avg','타율'],['ab','타수'],['hit','안타'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['rbi','타점'],['bb','볼넷'],['hbp','사구'],['so','삼진'],['gdp','병살타']]:[['hit','피안타'],['d2','피2루타'],['d3','피3루타'],['hr','피홈런'],['bb','볼넷'],['hbp','사구'],['so','탈삼진'],['wp','폭투'],['bk','보크'],['avg','피안타율']];
@@ -964,7 +970,7 @@ function situationRecords(){
   return `<div class="brand"><div class="logo">개인기록</div></div>${recordTabs()}
   <div class="chips" style="margin-bottom:12px">${Object.keys(options).map(d=>`<button class="chip${state.dimension===d?' on':''}" data-sdimension="${d}">${SITUATION_LABELS[d]}</button>`).join('')}</div>
   <div class="chips" style="margin-bottom:12px">${options[state.dimension].map(v=>`<button class="chip${state.value===v?' on':''}" data-svalue="${esc(v)}">${esc(v)}</button>`).join('')}</div>
-  <div class="card"><div class="recscroll"><table class="rec recstats recsitu"><tr><th>순위</th>${heads}</tr>${body||`<tr><td colspan="${cols.length+2}" class="empty">${KBO_SITUATIONAL_WARNING&&recLeague==='kbo'?'상황별 기록을 불러오지 못했습니다. 잠시 후 다시 확인해주세요.':'선택한 조건의 상황별 기록이 아직 없습니다.'}</td></tr>`}</table></div></div>
+  <div class="card"><div class="recscroll">${recordTableStart([['n','선수'],...cols],true)}<tr><th>순위</th>${heads}</tr>${body||`<tr><td colspan="${cols.length+2}" class="empty">${KBO_SITUATIONAL_WARNING&&recLeague==='kbo'?'상황별 기록을 불러오지 못했습니다. 잠시 후 다시 확인해주세요.':'선택한 조건의 상황별 기록이 아직 없습니다.'}</td></tr>`}</table></div></div>
   <div class="foot">${recYear}년 ${recLeague==='edu'?'교육리그':'KBO'} · 두산 선수 명단 기준 · ${esc(SITUATION_LABELS[state.dimension])} / ${esc(state.value)}<br>${recKind==='pitcher'?'피안타율: 상대 타자의 타율 · ':''}—: 데이터 없음${snapshot?.updatedAt?` · 갱신 ${esc(snapshot.updatedAt)}`:''}${KBO_SITUATIONAL_WARNING&&rows.length?'<br>갱신 실패 · 이전에 받은 기록을 표시합니다.':''}</div>`;
 }
 function appearanceOuts(p){
@@ -1055,7 +1061,7 @@ function records(){
 
   return `<div class="brand"><div class="logo">개인기록</div></div>
   ${recordTabs()}
-  ${rows.length?`<div class="card"><div class="recscroll"><table class="rec recstats"><tr>${head}</tr>${rows.map(r=>`<tr>${cols.map(([k])=>`<td>${k==='n'?`<button class="playerlink" data-player="${esc(r.n)}">${esc(r.n)}</button>`:k==='avg'?(r.avg>=1?'1.000':r.avg.toFixed(3).slice(1)):r[k]}</td>`).join('')}</tr>`).join('')}</table></div></div>`:`<div class="card"><div class="empty">아직 집계할 ${recKind==='pitcher'?'투수':'타자'} 기록이 없습니다.</div></div>`}
+  ${rows.length?`<div class="card"><div class="recscroll">${recordTableStart(cols)}<tr>${head}</tr>${rows.map(r=>`<tr>${cols.map(([k])=>`<td>${k==='n'?`<button class="playerlink" data-player="${esc(r.n)}">${esc(r.n)}</button>`:k==='avg'?(r.avg>=1?'1.000':r.avg.toFixed(3).slice(1)):r[k]}</td>`).join('')}</tr>`).join('')}</table></div></div>`:`<div class="card"><div class="empty">아직 집계할 ${recKind==='pitcher'?'투수':'타자'} 기록이 없습니다.</div></div>`}
   <div class="foot">${recYear}년 ${recLeague==='edu'?'교육리그':'KBO'} · 두산 선수 명단 기준<br>${st}</div>${playerSheetHTML()}`;
 }
 
