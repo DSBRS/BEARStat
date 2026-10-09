@@ -41,7 +41,8 @@ h2{font-size:12px;letter-spacing:1.2px;color:var(--sub);margin:20px 2px 8px;font
 .d.today{font-weight:800;box-shadow:inset 0 0 0 1.5px var(--navy)}
 .d.sel{background:var(--navy);color:var(--bg);font-weight:800}
 .cal-marks{position:absolute;bottom:3px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:3px;height:11px;pointer-events:none}
-.cal-mark{display:inline-flex;align-items:center;justify-content:center;width:10px;height:11px;font-size:10px;line-height:1;font-style:normal}
+.cal-mark{display:inline-flex;align-items:center;justify-content:center;width:10px;height:11px;font-size:8px;line-height:1;font-style:normal}
+.cal-mark.cancellation{font-size:10px}
 .cal-mark.circle::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 .d i{position:absolute;bottom:5px;left:50%;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--acc)}
 .d.sel i{background:var(--bg)}
@@ -530,9 +531,17 @@ function evRow(e){
 }
 function calendarMarks(events,includeOther=false){
   const marks=[];
-  for(const [type,symbol,label] of [['kbo','','KBO'],['futures','★','퓨처스리그'],['edu','♥','교육리그']]){
-    const games=events.filter(e=>e.type===type),sides=[...new Set(games.map(e=>e.homeAway||''))];
-    for(const side of sides){const color=side==='home'?'#eb1d25':side==='away'?'#1A1748':'var(--sub)',where=side==='home'?'홈':side==='away'?'원정':'경기';marks.push(`<span class="cal-mark${symbol?'':' circle'}" style="color:${color}" title="${label} ${where}" aria-label="${label} ${where}">${symbol}</span>`);}
+  for(const [type,symbol,label] of [['kbo','♣','KBO'],['futures','★','퓨처스리그'],['edu','♥','교육리그']]){
+    const games=events.filter(e=>e.type===type),groups=new Map();
+    for(const game of games){
+      const side=game.homeAway||'',reason=S(game.cancelReason);
+      const cancellation=isCancelled(game)?(/폭염/.test(reason)?['☀','폭염 취소']:/폭설/.test(reason)?['❆','폭설 취소']:/그라운드/.test(reason)?['⛈','그라운드 사정 취소']:/우천|강우|비로|rain/i.test(reason)?['☂','우천 취소']:['','경기 취소']):['',''];
+      groups.set(side+':'+cancellation[1],{side,cancellation});
+    }
+    for(const {side,cancellation} of groups.values()){
+      const color=side==='home'?'#eb1d25':side==='away'?'#1A1748':'var(--sub)',where=side==='home'?'홈':side==='away'?'원정':'경기',icon=cancellation[0]||symbol,title=label+' '+where+(cancellation[1]?' · '+cancellation[1]:'');
+      marks.push(`<span class="cal-mark${icon?'':' circle'}${cancellation[0]?' cancellation':''}" style="color:${color}" title="${title}" aria-label="${title}">${icon}</span>`);
+    }
   }
   if(includeOther&&events.some(e=>!['kbo','futures','edu'].includes(e.type)))marks.push('<span class="cal-mark circle" style="color:var(--sub)" title="기타 일정" aria-label="기타 일정"></span>');
   return marks.length?`<span class="cal-marks">${marks.join('')}</span>`:'';
