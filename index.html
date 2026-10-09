@@ -957,7 +957,7 @@ function recordTableStart(cols,ranked=false,names=[]){
 }
 function situationRecords(){
   const state=recSituation[recKind],options=SITUATION_OPTIONS[recKind],rows=situationalRows();
-  const cols=recKind==='hitter'?[['avg','타율'],['ab','타수'],['hit','안타'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['rbi','타점'],['bb','볼넷'],['hbp','사구'],['so','삼진'],['gdp','병살타']]:[['hit','피안타'],['d2','피2루타'],['d3','피3루타'],['hr','피홈런'],['bb','볼넷'],['hbp','사구'],['so','탈삼진'],['wp','폭투'],['bk','보크'],['avg','피안타율']];
+  const cols=recKind==='hitter'?[['avg','타율'],['ab','타수'],['hit','안타'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['rbi','타점'],['bb','볼넷'],['hbp','사구'],['so','삼진'],['gdp','병살타']]:[['hit','피안타'],['d2','2루타'],['d3','3루타'],['hr','피홈런'],['bb','볼넷'],['hbp','사구'],['so','탈삼진'],['wp','폭투'],['bk','보크'],['avg','피안타율']];
   const compareName=(a,b)=>a.n.localeCompare(b.n,'ko');
   const metric=recSort?.k||'avg',direction=recSort?.dir||'desc';
   rows.sort((a,b)=>{
