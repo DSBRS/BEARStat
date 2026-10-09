@@ -181,7 +181,7 @@ const DEMO=[]; // 실제 일정은 관리자 화면에서 직접 등록
 
 /* 권한: 쓰기는 Supabase RLS(admins 테이블에 등록된 계정만)가 서버에서 강제합니다.
  * isOwner는 화면 표시용일 뿐 보안 경계가 아닙니다. */
-let isOwner=false,CUSTOM=[],SB=null,BEARS_ROSTER=[],ROSTERS_BY_YEAR={},EDU_ROSTERS_BY_YEAR={},OTHERS_BY_YEAR={},AUTO_STANDINGS_BY_YEAR={};
+let isOwner=false,CUSTOM=[],SB=null,BEARS_ROSTER=[],ROSTERS_BY_YEAR={},EDU_ROSTERS_BY_YEAR={},OTHERS_BY_YEAR={},AUTO_STANDINGS_BY_YEAR={},HIDDEN_AUTO_IDS=[];
 let adminRosterYear=TODAY.getFullYear(),adminEduRosterYear=TODAY.getFullYear();
 let adminCalDate=TS,adminCalView=new Date(TODAY.getFullYear(),TODAY.getMonth(),1),adminSearch='',adminView='manage';
 let adminFormStep=1;
@@ -193,11 +193,14 @@ const Repo={
   custom(){return CUSTOM},
   async saveRoster(rows,year=adminRosterYear){requireAdmin();if(!SB)throw new Error('Supabase 설정이 필요합니다');rows=normRoster(rows);const y=+year||TODAY.getFullYear(),key='bears_roster_'+y;const r=await SB.from('kv').upsert({key,body:rows});if(r.error)throw r.error;ROSTERS_BY_YEAR[y]=rows;if(y===TODAY.getFullYear())BEARS_ROSTER=rows;rerender()},
   async saveEduRoster(rows,year=adminEduRosterYear){requireAdmin();if(!SB)throw new Error('Supabase 설정이 필요합니다');rows=normRoster(rows);const y=+year||TODAY.getFullYear(),key='edu_roster_'+y;const r=await SB.from('kv').upsert({key,body:rows});if(r.error)throw r.error;EDU_ROSTERS_BY_YEAR[y]=rows;rerender()},
+  async hideAuto(id){requireAdmin();if(!SB)throw new Error('Supabase 설정이 필요합니다');const next=[...new Set([...HIDDEN_AUTO_IDS,S(id)].filter(Boolean))];const r=await SB.from('kv').upsert({key:'hidden_auto_events',body:next});if(r.error)throw r.error;HIDDEN_AUTO_IDS=next;rerender()},
+  async restoreAuto(id){requireAdmin();if(!SB)throw new Error('Supabase 설정이 필요합니다');const next=HIDDEN_AUTO_IDS.filter(x=>S(x)!==S(id));const r=await SB.from('kv').upsert({key:'hidden_auto_events',body:next});if(r.error)throw r.error;HIDDEN_AUTO_IDS=next;rerender()},
   async load(){const r=await SB.from('events').select('body');if(!r.error)CUSTOM=r.data.map(x=>x.body);
     const ks=await SB.from('kv').select('key,body').like('key','standings_others%');if(!ks.error){let legacy=null;for(const x of ks.data||[]){if(x.key==='standings_others')legacy=x.body;else{const m=String(x.key).match(/^standings_others_(\d{4})$/);if(m)OTHERS_BY_YEAR[+m[1]]=x.body}}if(!OTHERS_BY_YEAR[TODAY.getFullYear()]&&legacy)OTHERS=legacy;else OTHERS=OTHERS_BY_YEAR[TODAY.getFullYear()]||[]}
     const br=await SB.from('kv').select('key,body').like('key','bears_roster%');if(!br.error){let legacy=null;for(const x of br.data||[]){if(x.key==='bears_roster')legacy=normRoster(x.body);else{const m=String(x.key).match(/^bears_roster_(\d{4})$/);if(m)ROSTERS_BY_YEAR[+m[1]]=normRoster(x.body)}}BEARS_ROSTER=ROSTERS_BY_YEAR[TODAY.getFullYear()]||legacy||[]}
     const er=await SB.from('kv').select('key,body').like('key','edu_roster_%');if(!er.error){for(const x of er.data||[]){const m=String(x.key).match(/^edu_roster_(\d{4})$/);if(m)EDU_ROSTERS_BY_YEAR[+m[1]]=normRoster(x.body)}}
     const asr=await SB.from('kv').select('key,body').like('key','standings_auto_%');if(!asr.error){for(const x of asr.data||[]){const m=String(x.key).match(/^standings_auto_(\d{4})$/);if(m&&Array.isArray(x.body))AUTO_STANDINGS_BY_YEAR[+m[1]]=x.body}}
+    const hidden=await SB.from('kv').select('body').eq('key','hidden_auto_events').maybeSingle();if(!hidden.error)HIDDEN_AUTO_IDS=Array.isArray(hidden.data?.body)?hidden.data.body.map(S).filter(Boolean):[];
     rerender()},
   async upsert(ev){requireAdmin();if(!SB)throw new Error('Supabase 설정이 필요합니다');const r=await SB.from('events').upsert({id:ev.id,date:ev.date,body:ev});if(r.error)throw r.error;await this.load()},
   async remove(id){requireAdmin();if(!SB)throw new Error('Supabase 설정이 필요합니다');const r=await SB.from('events').delete().eq('id',id);if(r.error)throw r.error;await this.load()}
@@ -293,7 +296,7 @@ function mergeEvents(manual,automatic){
   return{rows,warnings};
 }
 const _manualAll=Repo.all.bind(Repo),_manualLoad=Repo.load.bind(Repo),_manualUpsert=Repo.upsert.bind(Repo);
-Repo.all=function(){const automatic=new Map();for(const e of [...KBO_AUTO,...FUTURES_AUTO])automatic.set(e.type+':'+(e.kboGameId||e.id),e);const x=mergeEvents(_manualAll(),[...automatic.values()]);KBO_MERGE_WARNINGS=x.warnings;return x.rows};
+Repo.all=function(){const automatic=new Map();for(const e of [...KBO_AUTO,...FUTURES_AUTO])automatic.set(e.type+':'+(e.kboGameId||e.id),e);const x=mergeEvents(_manualAll(),[...automatic.values()]);KBO_MERGE_WARNINGS=x.warnings;const hidden=new Set(HIDDEN_AUTO_IDS.map(S));return x.rows.filter(e=>!(e.kboGameId&&hidden.has(S(e.kboGameId))));};
 Repo.load=async function(){
   if(SB){try{const rows=[];for(let start=0;;start+=500){const r=await SB.from('kbo_game_records').select('game_id,date,body').order('game_id').range(start,start+499);if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<500)break}
     const automatic=new Map();
@@ -1590,7 +1593,9 @@ document.addEventListener('click',ev=>{
   if(!button||!isOwner)return;
   if(button.id==='admin_step_next'&&adminFormStep===1&&!$('#f_date')?.value){alert('날짜를 선택해주세요');$('#f_date')?.focus();return;}
   captureEduInputs();
-  adminFormStep=Math.max(1,Math.min(6,adminFormStep+(button.id==='admin_step_next'?1:-1)));
+  let nextStep=Math.max(1,Math.min(6,adminFormStep+(button.id==='admin_step_next'?1:-1)));
+  if(editing?.kboGameId&&nextStep===2)nextStep=button.id==='admin_step_next'?3:1;
+  adminFormStep=nextStep;
   if(adminFormStep===5&&!hasEduRecordPage($('#f_type')?.value))adminFormStep=button.id==='admin_step_next'?6:4;
   for(const panel of document.querySelectorAll('[data-admin-step]'))panel.style.display=+panel.dataset.adminStep===adminFormStep?'':'none';
   $('#admin_step_title').textContent=adminFormStep+' / 6 · '+['날짜 선택','선수 선택','정보 입력','경기 기록 입력','교육리그 선수 기록','추가 정보'][adminFormStep-1];
@@ -1628,6 +1633,7 @@ function admin(){
   </div>
 
   ${adminCalendar()}
+  ${HIDDEN_AUTO_IDS.length?`<div class="card"><h2>숨긴 자동연동 일정</h2><div class="note">숨긴 일정은 홈·캘린더·일정 목록에서 제외되고, 자동연동이 다시 실행돼도 숨김이 유지됩니다.</div>${HIDDEN_AUTO_IDS.map(id=>`<div class="ev"><div class="bd"><div class="ti">${esc(id)}</div><button class="link" data-restore-auto="${esc(id)}">복원</button></div></div>`).join('')}</div>`:''}
 
   <h2>${adminSearch?`검색 결과 · ${esc(adminSearch)}`:(adminCalDate?`${adminCalDate.slice(5).replace('-','월 ')}일 일정`:'전체 일정')}</h2>
   <div class="card">
@@ -1636,7 +1642,7 @@ function admin(){
       <div class="bd">
         <div class="ti">${esc(x.title)}</div>
         <div class="sb">${TYPES[x.type]}${isCancelled(x)?' · '+(x.cancelReason?esc(x.cancelReason)+'취소':'경기취소'):''}${x.kboGameId?' · KBO 자동연동':''}${x.venue?' · '+esc(x.venue):''}</div>
-        <button class="link" data-edit="${x.id}">수정</button>${x.kboGameId?'':`<button class="link" data-del="${x.id}">삭제</button>`}
+        <button class="link" data-edit="${x.id}">수정</button>${x.kboGameId?`<button class="link" data-hide-auto="${esc(x.kboGameId)}">일정 숨기기</button>`:`<button class="link" data-del="${x.id}">삭제</button>`}
       </div>
     </div>`).join(''):'<div class="empty">해당 일정이 없습니다.</div>'}
   </div>`;
@@ -1649,11 +1655,11 @@ function admin(){
   <label>종류</label><select id="f_type"${editing?.kboGameId?' disabled':''}>${['kbo','futures','club','fan','broadcast','radio','ticket','edu','etc'].map(k=>`<option value="${k}"${e.type===k?' selected':''}>${TYPES[k]}</option>`).join('')}</select>
   <label>날짜</label><input id="f_date" type="date"${editing?.kboGameId?' disabled':''} value="${e.date}"><label>시간</label><input id="f_time" type="time" value="${e.time||''}">
   </section>
-  <section data-admin-step="2" style="${adminFormStep===2?'':'display:none'}">
+  ${editing?.kboGameId?'':`<section data-admin-step="2" style="${adminFormStep===2?'':'display:none'}">
   <div id="edu_editor">${e.type==='edu'?eduEditorHTML(e,'selection'):''}</div>
   <div id="general_players" style="${e.type==='edu'?'display:none':''}">${adminPlayerChoices(e)}</div>
   <label${e.type==='edu'?' style="display:none"':''}>관련 선수 (쉼표 구분)</label><input id="f_players" value="${esc((e.players||[]).join(', '))}"${e.type==='edu'?' style="display:none"':''}>
-  </section>
+  </section>`}
   <section data-admin-step="3" style="${adminFormStep===3?'':'display:none'}">
   <label for="f_cancelReason">경기 취소</label><select id="f_cancelReason"><option value=""${!isCancelled(e)?' selected':''}>정상 경기</option><option value="__cancelled__"${isCancelled(e)&&!cancelReason?' selected':''}>⊘ 경기 취소 (사유 미지정)</option>${['우천','그라운드 사정','폭염','폭설','강풍','미세먼지','황사'].map(x=>`<option value="${x}"${cancelReason===x?' selected':''}>${CANCEL_ICONS[x]} ${x}</option>`).join('')}<option value="__custom__"${cancelCustom?' selected':''}>✎ 직접 입력</option></select>
   <input id="f_cancelReason_custom" value="${cancelCustom?esc(cancelReason):''}" placeholder="✎ 취소 사유 직접 입력" style="margin-top:8px;${cancelCustom?'':'display:none'}">
@@ -1740,7 +1746,7 @@ function route(){
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppdetail-stat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-sdimension],[data-svalue],[data-rleague],[data-hstat],[data-pstat],[data-prole],[data-rseason],[data-orderhist],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
+  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppdetail-stat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-sdimension],[data-svalue],[data-rleague],[data-hstat],[data-pstat],[data-prole],[data-rseason],[data-orderhist],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],[data-hide-auto],[data-restore-auto],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
   if(!isOwner&&(t.dataset.edit||t.dataset.del||['save','saveroster','saveeduroster','admin_new','addhr'].includes(t.id)))return;
   const keep=()=>{const y=scrollY;route2();scrollTo(0,y)};
   if(t.dataset.d){sel=t.dataset.d;const d=new Date(sel+'T00:00:00');view=new Date(d.getFullYear(),d.getMonth(),1);keep()}
@@ -1907,9 +1913,11 @@ if(!v('date')){
     const old=editing||{},f=k=>$('#f_'+k)?v(k):S(old[k]);
     const cancellationOverride=!!old.cancellationOverride||cancelled!==isCancelled(old)||cancelReason!==S(old.cancelReason);
     const status=cancelled?'cancelled':(old.status==='cancelled'||!old.status?((sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?'final':'scheduled'):old.status);
-    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp,cancelReason,cancelled,status,cancellationOverride,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
+    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:editing?.kboGameId?(old.players||[]):v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp,cancelReason,cancelled,status,cancellationOverride,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
   }
   else if(t.id==='cancel'){editing=null;adminView='manage';keep()}
+  else if(t.dataset.hideAuto){if(confirm('이 자동연동 일정을 숨길까요?\n숨긴 뒤에도 자동연동으로 다시 나타나지 않습니다.'))Repo.hideAuto(t.dataset.hideAuto).then(()=>keep()).catch(e=>alert('숨기지 못했습니다: '+(e.message||'')))}
+  else if(t.dataset.restoreAuto){Repo.restoreAuto(t.dataset.restoreAuto).then(()=>keep()).catch(e=>alert('복원하지 못했습니다: '+(e.message||'')))}
   else if(t.dataset.edit){adminFormStep=1;eduDraft=null;editing=Repo.all().find(x=>x.id===t.dataset.edit);adminView='form';keep()}
   else if(t.dataset.del){const target=Repo.all().find(x=>x.id===t.dataset.del);if(target?.kboGameId){alert('KBO 자동 기록은 여기서 삭제하지 않습니다.');return}if(confirm('삭제할까요?')){Repo.remove(t.dataset.del).catch(e=>alert('삭제하지 못했습니다: '+(e.message||''))).finally(keep)}}
 });
