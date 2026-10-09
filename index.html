@@ -1055,12 +1055,8 @@ function opponentBattingSheetHTML(name){
   const rows=opponentBattingSplits(name);
   return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div>
     <div class="sheethead"><div><b>${esc(name)}</b><div class="sb">${TODAY.getFullYear()} 시즌 · 상대 구단별 타율</div></div><button class="sheetclose" data-oppclose>×</button></div>
-    <div class="historybox" style="border-top:0;margin-top:12px;padding-top:0;max-height:50vh">
-      <table class="rec" style="width:100%;text-align:center"><thead><tr><th>상대 구단</th><th>타수</th><th>안타</th><th>타율</th></tr></thead><tbody>
-      ${rows.map(r=>`<tr${r.opp===h2h?' style="background:var(--chip)"':''}><td>${esc(r.opp)}</td><td>${r.ab}</td><td>${r.hit}</td><td><button class="playerlink" data-opphist="avgdetail" data-oppplayer="${esc(name)}" data-oppteam="${esc(r.opp)}">${r.avg}</button></td></tr>`).join('')}
-      </tbody></table>
-      <div class="note">정규시즌 종료 경기 기준 · 타율 = 안타 ÷ 타수<br>타수가 없는 상대 구단은 —로 표시됩니다.</div>
-    </div>
+    <div class="ordergrid">${rows.map(r=>`<button type="button" class="orderbox statclick${r.opp===h2h?' on':''}" data-opphist="avgdetail" data-oppplayer="${esc(name)}" data-oppteam="${esc(r.opp)}" aria-label="${esc(r.opp)}전 타율 ${r.avg}, 타격 기록 보기"><b>${r.avg}</b><span>${esc(r.opp)}</span><span style="display:block;margin-top:6px;font-size:11px">${r.ab}타수 · ${r.hit}안타</span></button>`).join('')}</div>
+    <div class="note" style="margin-top:14px">정규시즌 종료 경기 기준 · 타율 = 안타 ÷ 타수<br>타수가 없는 상대 구단은 —로 표시됩니다.</div>
   </div></div>`;
 }
 
