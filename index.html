@@ -74,10 +74,11 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 /* Explicit column widths keep rank/name compact on every screen size. */
 .recstats{min-width:0;table-layout:fixed;border-collapse:separate;border-spacing:0}
 .recstats th,.recstats td{min-width:0;white-space:nowrap;box-sizing:border-box}
-.recstats th:first-child,.recstats td:first-child{position:-webkit-sticky;position:sticky;left:0;z-index:2;background:var(--card);text-align:left;padding-left:6px;padding-right:8px}
+.recstats th:first-child,.recstats td:first-child{position:-webkit-sticky;position:sticky;left:0;z-index:2;background:var(--card);text-align:left;padding-left:4px;padding-right:4px}
 .recstats th:first-child{z-index:4}
-.recstats.recsitu th:nth-child(2),.recstats.recsitu td:nth-child(2){position:-webkit-sticky;position:sticky;left:40px;z-index:2;background:var(--card);text-align:left;padding-left:6px;padding-right:8px}
+.recstats.recsitu th:nth-child(2),.recstats.recsitu td:nth-child(2){position:-webkit-sticky;position:sticky;left:34px;z-index:2;background:var(--card);text-align:left;padding-left:4px;padding-right:4px}
 .recstats.recsitu th:nth-child(2){z-index:4}
+.recstats .sh{padding-left:4px;padding-right:4px}
 .recstats th:first-child .sh,.recstats.recsitu th:nth-child(2) .sh{padding-left:0;padding-right:0}
 
 .playerlink{border:0;background:none;color:inherit;font:inherit;font-weight:800;padding:0;cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
@@ -946,8 +947,8 @@ function situationalRows(){
 }
 function splitValue(v,avg=false){return v===null||v===undefined?'—':avg?(v===1?'1.000':v.toFixed(3).replace(/^0/,'')):String(v)}
 function recordTableStart(cols,ranked=false){
-  const widths=cols.map(([key,label])=>key==='n'?96:Math.max(66,Array.from(label).length*13+24));
-  if(ranked)widths.unshift(40);
+  const widths=cols.map(([key,label])=>key==='n'?80:Math.max(56,Array.from(label).length*13+16));
+  if(ranked)widths.unshift(34);
   return `<table class="rec recstats${ranked?' recsitu':''}" style="width:${widths.reduce((a,b)=>a+b,0)}px"><colgroup>${widths.map(w=>`<col style="width:${w}px">`).join('')}</colgroup>`;
 }
 function situationRecords(){
