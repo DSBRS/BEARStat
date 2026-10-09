@@ -1145,6 +1145,11 @@ async function readSituationRelay(id){
  const b=await response.json();if(!response.ok||b.schemaVersion!==1||b.gameId!==id||!Array.isArray(b.plays))throw Error('경기 내역 조회 실패');
  SITUATION_RELAY_CACHE.set(id,b);return b;
 }
+function relayPlayerAvailable(relay,id,name,role){
+ const ourSide=id.slice(8,10)==='OB'?'away':'home',side=role==='hitter'?ourSide:(ourSide==='away'?'home':'away');
+ const blocked=relay.unavailable?.[role==='hitter'?'batters':'pitchers']||[];
+ return !blocked.some(x=>x.name===name&&x.side===side);
+}
 function startSituationRelay(){
  if(!situationHistoryStat||recLeague!=='kbo'||!RELAY_SUPPORTED.has(situationHistoryStat)){situationRelayJob=null;return;}
  const name=playerSheet,role=recKind,stat=situationHistoryStat,state={...recSituation[role]};
@@ -1152,13 +1157,13 @@ function startSituationRelay(){
  if(situationRelayJob?.signature===signature)return;
  const games=situationRelayCandidates(name,stat),job={signature,total:games.length,done:0,failed:0,running:true};situationRelayJob=job;
  let next=0;
- Promise.all(Array.from({length:2},async()=>{while(next<games.length&&situationRelayJob===job&&playerSheet===name&&situationHistoryStat===stat){const e=games[next++];try{await readSituationRelay(e.kboGameId)}catch{job.failed++}job.done++;if(situationRelayJob===job)rerender();}})).finally(()=>{job.running=false;if(situationRelayJob===job)rerender()});
+ Promise.all(Array.from({length:2},async()=>{while(next<games.length&&situationRelayJob===job&&playerSheet===name&&situationHistoryStat===stat){const e=games[next++];try{const b=await readSituationRelay(e.kboGameId);if(!relayPlayerAvailable(b,e.kboGameId,name,role))throw Error('선수 기록 불일치')}catch{job.failed++}job.done++;if(situationRelayJob===job)rerender();}})).finally(()=>{job.running=false;if(situationRelayJob===job)rerender()});
 }
 function relayGameHistory(name,stat){
  if(!RELAY_SUPPORTED.has(stat)||recLeague!=='kbo')return [];
  const out=[],state=recSituation[recKind];
  for(const e of situationRelayCandidates(name,stat)){
-  const b=SITUATION_RELAY_CACHE.get(e.kboGameId);if(!b)continue;
+  const b=SITUATION_RELAY_CACHE.get(e.kboGameId);if(!b||!relayPlayerAvailable(b,e.kboGameId,name,recKind))continue;
   const ourSide=e.kboGameId.slice(8,10)==='OB'?'away':'home';
   const plays=b.plays.filter(p=>recKind==='hitter'?p.side===ourSide&&p.batter===name:p.side!==ourSide&&p.pitcher===name).filter(p=>relayMatches(p,state));
   const ab=plays.reduce((n,p)=>n+p.stats.ab,0),hit=plays.reduce((n,p)=>n+p.stats.hit,0),value=stat==='avg'?(ab?hit/ab:null):plays.reduce((n,p)=>n+(p.stats[stat]||0),0);
@@ -1171,7 +1176,7 @@ function relayGameHistory(name,stat){
 function pitcherSituationAtBats(row){
  if(recKind!=='pitcher'||recLeague!=='kbo'||row.ab!==null)return row;
  const games=situationRelayCandidates(row.n,'ab');
- if(!games.length||games.some(e=>!SITUATION_RELAY_CACHE.has(e.kboGameId)))return row;
+ if(!games.length||games.some(e=>!SITUATION_RELAY_CACHE.has(e.kboGameId)||!relayPlayerAvailable(SITUATION_RELAY_CACHE.get(e.kboGameId),e.kboGameId,row.n,'pitcher')))return row;
  // A denominator is shown only when complete collected games agree with the official numerator and rate.
  const parts=relayGameHistory(row.n,'avg'),ab=parts.reduce((n,x)=>n+x.ab,0),hit=parts.reduce((n,x)=>n+x.hit,0);
  if(hit!==row.hit||(ab>0&&row.avg!==null&&Math.round(hit/ab*1000)!==Math.round(row.avg*1000)))return row;
@@ -1183,7 +1188,7 @@ function situationRelayNote(stat){
  const j=situationRelayJob;
  if(!j)return '기록 박스를 다시 눌러 경기 내역을 조회해 주세요.';
  if(j.running)return `경기 내역 확인 중 · ${j.done} / ${j.total}경기${j.failed?' · '+j.failed+'경기 조회 실패':''}`;
- if(j.failed)return `${j.failed}경기 내역을 가져오지 못했습니다. 아래는 확인된 경기만 표시합니다. 연결 함수 설치 여부를 확인해 주세요.`;
+ if(j.failed)return `${j.failed}경기 내역을 가져오지 못했습니다. 아래는 확인된 경기만 표시합니다. 연결 오류 또는 해당 선수의 원본 기록 불일치로 제외된 경기입니다.`;
  return `저장된 두산 경기 ${j.total}경기에서 확인했습니다. 문자중계 기준이며 공식 시즌 합계와 다를 수 있습니다.`;
 }
 function situationGameHistory(name,stat){
@@ -1497,13 +1502,13 @@ function startOpponentRelay(){
  const job={signature,total:games.length,done:0,failed:0,running:true};opponentRelayJob=job;let next=0;
  Promise.all(Array.from({length:2},async()=>{
   while(next<games.length&&opponentRelayJob===job&&oppHistorySheet===selected&&selected.detailStat===stat){
-   const game=games[next++];try{await readSituationRelay(game.event.kboGameId)}catch{job.failed++}job.done++;
+   const game=games[next++];try{const b=await readSituationRelay(game.event.kboGameId);if(!relayPlayerAvailable(b,game.event.kboGameId,name,'hitter'))throw Error('선수 기록 불일치')}catch{job.failed++}job.done++;
    if(opponentRelayJob===job&&oppHistorySheet===selected)rerender();
   }
  })).finally(()=>{job.running=false;if(opponentRelayJob===job&&oppHistorySheet===selected)rerender()});
 }
 function opponentPlayDetails(e,name,stat){
- const relay=SITUATION_RELAY_CACHE.get(e.kboGameId);if(!relay||!OPP_RELAY_STATS.has(stat))return null;
+ const relay=SITUATION_RELAY_CACHE.get(e.kboGameId);if(!relay||!OPP_RELAY_STATS.has(stat)||!relayPlayerAvailable(relay,e.kboGameId,name,'hitter'))return null;
  const side=S(e.kboGameId).slice(8,10)==='OB'?'away':'home';
  return relay.plays.filter(p=>p.side===side&&p.batter===name&&(stat==='avg'?p.stats.ab>0:p.stats[stat]>0)).map(p=>`${p.inning}회${p.side==='away'?'초':'말'} · ${p.result}`);
 }
