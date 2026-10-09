@@ -283,6 +283,7 @@ const rosterForYear=y=>normRoster(ROSTERS_BY_YEAR[+y]||((+y===TODAY.getFullYear(
 const eduRosterForYear=y=>normRoster(EDU_ROSTERS_BY_YEAR[+y]||[]);
 const othersForYear=y=>Array.isArray(OTHERS_BY_YEAR[+y])?OTHERS_BY_YEAR[+y]:((+y===TODAY.getFullYear())?OTHERS:[]);
 const hasScore=e=>{const c=e&&e.score;if(!c)return false;const a=S(c.d),b=S(c.v);return a!==''&&b!==''&&!isNaN(+a)&&!isNaN(+b)};
+const isExhibition=e=>!!e&&(S(e.stage).replace(/\s/g,'')==='시범경기'||S(e.kbo?.seriesId??e.seriesId)==='1');
 const isCancelled=e=>!!(e&&(e.cancelled===true||e.status==='cancelled'||e.cancelReason));
 const cancellationMessage=e=>S(e?.cancelReason)?`이 경기는 ${esc(e.cancelReason)}으로 인해 취소되었습니다.`:'이 경기는 취소되었습니다.';
 const result=e=>isCancelled(e)||!hasScore(e)?null:(+e.score.d>+e.score.v?'W':+e.score.d<+e.score.v?'L':'D');
@@ -952,7 +953,7 @@ function hrEditor(e){
 }
 
 function h2hView(){
-  const kb=Repo.all().filter(e=>e.type==='kbo');
+  const kb=Repo.all().filter(e=>e.type==='kbo'&&!isExhibition(e));
   const winPct=c=>{
     const n=(+c.W||0)+(+c.L||0);
     return n?('.'+String(Math.round((c.W/n)*1000)).padStart(3,'0')):'.000';
@@ -1016,7 +1017,7 @@ function opponentStatHistory(name,stat,opp){
   if(!key)return [];
   const rows=[];
   Repo.all()
-    .filter(e=>e.type==='kbo'&&!e.stage&&!isCancelled(e)&&hasScore(e)&&S(e.date).slice(0,4)===yr&&S(e.opp)===S(opp)&&Array.isArray(e.batting))
+    .filter(e=>e.type==='kbo'&&!e.stage&&!isExhibition(e)&&!isCancelled(e)&&hasScore(e)&&S(e.date).slice(0,4)===yr&&S(e.opp)===S(opp)&&Array.isArray(e.batting))
     .forEach(e=>{
       const p=e.batting.find(x=>S(x.name)===S(name));
       if(!p)return;
@@ -1041,7 +1042,7 @@ function opponentStatHistory(name,stat,opp){
 
 function opponentBattingSplits(name){
   const year=String(TODAY.getFullYear()),byTeam=new Map(TEAMS.map(opp=>[opp,{opp,ab:0,hit:0,rbi:0,d2:0,d3:0,hr:0,sb:0}]));
-  Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&!isCancelled(e)&&hasScore(e)&&S(e.date).slice(0,4)===year&&Array.isArray(e.batting)).forEach(e=>{
+  Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&!isExhibition(e)&&!isCancelled(e)&&hasScore(e)&&S(e.date).slice(0,4)===year&&Array.isArray(e.batting)).forEach(e=>{
     const row=byTeam.get(S(e.opp));if(!row)return;
     for(const p of e.batting){
       if(S(p.name)!==S(name))continue;
@@ -1109,7 +1110,7 @@ function opponentStatsView(){
   let body='';
   if(h2h){
     const m={};
-    Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&!isCancelled(e)&&hasScore(e)&&S(e.date).slice(0,4)===String(yr)&&e.opp===h2h&&Array.isArray(e.batting)).forEach(e=>{
+    Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&!isExhibition(e)&&!isCancelled(e)&&hasScore(e)&&S(e.date).slice(0,4)===String(yr)&&e.opp===h2h&&Array.isArray(e.batting)).forEach(e=>{
       e.batting.forEach(p=>{
         const n=S(p.name);if(!n)return;
         if(!m[n])m[n]={n,ab:0,hit:0,hr:0,sb:0};
