@@ -636,6 +636,9 @@ function isPostseasonRecord(e){
 function hasPostseasonSchedule(year=recYear){
   return Repo.all().some(e=>e.type==='kbo'&&!isCancelled(e)&&S(e.date).slice(0,4)===String(year)&&isPostseasonRecord(e));
 }
+function hasEducationSchedule(year=recYear){
+  return Repo.all().some(e=>e.type==='edu'&&!isCancelled(e)&&S(e.date).slice(0,4)===String(year));
+}
 function recordSeasonMatches(e){
   if(recLeague!=='kbo')return !e.stage;
   if(isExhibition(e))return false;
@@ -661,11 +664,11 @@ function recStats(){
 function recordTabs(){
   const maxYear=TODAY.getFullYear()+1;
   return `<div class="calhead" style="margin-bottom:10px"><button class="ib" data-ryear="-1">‹</button><b>${recYear}년 ${recLeague==='edu'?'교육리그':'KBO'}</b><button class="ib" data-ryear="1"${recYear>=maxYear?' disabled':''}>›</button></div>
-  <div class="chips" style="margin-bottom:12px">${[['kbo','KBO'],['edu','교육리그']].map(([k,l])=>`<button class="chip${recLeague===k?' on':''}" data-rleague="${k}">${l}</button>`).join('')}</div>
+  <div class="chips" style="margin-bottom:12px">${[['kbo','KBO'],...(hasEducationSchedule()?[['edu','교육리그']]:[])].map(([k,l])=>`<button class="chip${recLeague===k?' on':''}" data-rleague="${k}">${l}</button>`).join('')}</div>
   ${recLeague==='kbo'&&hasPostseasonSchedule()?`<div class="chips" style="margin-bottom:12px">${[['regular','정규시즌'],['postseason','포스트시즌']].map(([key,label])=>`<button type="button" class="chip${recSeason===key?' on':''}" data-rseason="${key}" aria-pressed="${recSeason===key}">${label}</button>`).join('')}</div>`:''}
   <div class="chips" style="margin-bottom:12px">${[['pitcher','투수'],['hitter','타자']].map(([k,l])=>`<button class="chip${recKind===k?' on':''}" data-rkind="${k}">${l}</button>`).join('')}</div>
-  ${recKind==='pitcher'?`<div class="chips" style="margin-bottom:12px">${[['result','투수 기록'],['pitching','투구 기록'],['situational','상황별 기록']].map(([k,l])=>`<button class="chip${recPitchTab===k?' on':''}" data-rptab="${k}">${l}</button>`).join('')}</div>`:''}
-  ${recKind==='hitter'?`<div class="chips" style="margin-bottom:12px">${[['main','타격 기록'],['onbase','출루 기록'],['order','타순'],['defense','수비 포지션'],['situational','상황별 기록']].map(([k,l])=>`<button class="chip${recBatTab===k?' on':''}" data-rbtab="${k}">${l}</button>`).join('')}</div>`:''}`;
+  ${recKind==='pitcher'?`<div class="chips" style="margin-bottom:12px">${[['result','투수 기록'],['pitching','투구 기록'],...(recLeague==='kbo'?[['situational','상황별 기록']]:[])].map(([k,l])=>`<button class="chip${recPitchTab===k?' on':''}" data-rptab="${k}">${l}</button>`).join('')}</div>`:''}
+  ${recKind==='hitter'?`<div class="chips" style="margin-bottom:12px">${[['main','타격 기록'],['onbase','출루 기록'],['order','타순'],['defense','수비 포지션'],...(recLeague==='kbo'?[['situational','상황별 기록']]:[])].map(([k,l])=>`<button class="chip${recBatTab===k?' on':''}" data-rbtab="${k}">${l}</button>`).join('')}</div>`:''}`;
 }
 
 
@@ -982,7 +985,7 @@ function recordTableStart(cols,ranked=false,names=[]){
 }
 function situationRecords(){
   const state=recSituation[recKind],options=SITUATION_OPTIONS[recKind],rows=situationalRows();
-  const cols=recKind==='hitter'?[['avg','타율'],['ab','타수'],['hit','안타'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['rbi','타점'],['bb','볼넷'],['hbp','사구'],['so','삼진'],['gdp','병살타']]:[['hit','피안타'],['d2','피2루타'],['d3','피3루타'],['hr','피홈런'],['bb','볼넷'],['hbp','사구'],['so','탈삼진'],['wp','폭투'],['bk','보크'],['avg','피안타율']];
+  const cols=recKind==='hitter'?[['avg','타율'],['ab','타수'],['hit','안타'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['rbi','타점'],['bb','볼넷'],['hbp','사구'],['so','삼진'],['gdp','병살타']]:[['hit','피안타'],['d2','2루타'],['d3','3루타'],['hr','피홈런'],['bb','볼넷'],['hbp','사구'],['so','탈삼진'],['wp','폭투'],['bk','보크'],['avg','피안타율']];
   const compareName=(a,b)=>a.n.localeCompare(b.n,'ko');
   const metric=recSort?.k||'avg',direction=recSort?.dir||'desc';
   rows.sort((a,b)=>{
@@ -1035,6 +1038,8 @@ function pitcherRoleERA(name){
 }
 
 function records(){
+  if(recLeague==='edu'){if(recPitchTab==='situational')recPitchTab='pitching';if(recBatTab==='situational')recBatTab='main';}
+  if(recLeague==='edu'&&!hasEducationSchedule()){recLeague='kbo';playerSheet=null;recSort=null;playerHistoryStat=null;pitcherHistoryStat=null;pitcherHistoryRole='all';playerOrderHistory=null;playerDefensePosition=null;}
   if(recLeague==='kbo'&&recSeason==='postseason'&&!hasPostseasonSchedule())recSeason='regular';
   if((recKind==='pitcher'?recPitchTab:recBatTab)==='situational')return situationRecords();
   const roster=recLeague==='edu'?eduRosterForYear(recYear):rosterForYear(recYear);
@@ -1655,7 +1660,7 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.rbtab){recBatTab=t.dataset.rbtab;recSort=null;playerSheet=null;playerHistoryStat=null;playerOrderHistory=null;keep()}
   else if(t.dataset.sdimension){const d=t.dataset.sdimension;if(SITUATION_OPTIONS[recKind][d]){recSituation[recKind]={dimension:d,value:SITUATION_OPTIONS[recKind][d][0]};recSort=null;playerSheet=null;keep()}}
   else if(t.dataset.svalue){const state=recSituation[recKind];if(SITUATION_OPTIONS[recKind][state.dimension].includes(t.dataset.svalue)){state.value=t.dataset.svalue;recSort=null;keep()}}
-  else if(t.dataset.rleague){recLeague=t.dataset.rleague;recSort=null;playerSheet=null;playerHistoryStat=null;playerOrderHistory=null;keep()}
+  else if(t.dataset.rleague){if(t.dataset.rleague==='kbo'||(t.dataset.rleague==='edu'&&hasEducationSchedule())){recLeague=t.dataset.rleague;recSort=null;playerSheet=null;playerHistoryStat=null;playerOrderHistory=null;pitcherHistoryStat=null;pitcherHistoryRole='all';playerDefensePosition=null;}keep()}
   else if(t.dataset.hstat){playerHistoryStat=playerHistoryStat===t.dataset.hstat?null:t.dataset.hstat;keep()}
   else if(t.dataset.rseason){if(['regular','postseason'].includes(t.dataset.rseason)&&(t.dataset.rseason!=='postseason'||hasPostseasonSchedule())){recSeason=t.dataset.rseason;recSort=null;playerSheet=null;pitcherHistoryStat=null;pitcherHistoryRole='all';playerHistoryStat=null;playerOrderHistory=null;playerDefensePosition=null;}keep()}
   else if(t.dataset.prole){if(['all','start','relief'].includes(t.dataset.prole))pitcherHistoryRole=t.dataset.prole;keep()}
