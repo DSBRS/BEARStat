@@ -73,8 +73,11 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 .recscroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;position:relative;contain:paint;clip-path:inset(0)}
 .recstats{width:max-content;min-width:100%;table-layout:auto}
 .recstats th,.recstats td{min-width:66px;white-space:nowrap}
-.recstats th:first-child,.recstats td:first-child{position:-webkit-sticky;position:sticky;left:0;z-index:2;background:var(--card);min-width:92px}
+.recstats th:first-child,.recstats td:first-child{position:-webkit-sticky;position:sticky;left:0;z-index:2;background:var(--card);min-width:84px;width:84px;padding-right:12px}
 .recstats th:first-child{z-index:3}
+.recstats.recsitu th:first-child,.recstats.recsitu td:first-child{min-width:36px;width:36px;padding-right:4px}
+.recstats.recsitu th:nth-child(2),.recstats.recsitu td:nth-child(2){min-width:76px;width:76px;text-align:left;padding-left:10px;padding-right:12px}
+.recstats.recsitu th:nth-child(2) .sh{padding-left:0;padding-right:0}
 
 .playerlink{border:0;background:none;color:inherit;font:inherit;font-weight:800;padding:0;cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
 .sheetback{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:50;display:flex;align-items:flex-end;justify-content:center}
@@ -961,7 +964,7 @@ function situationRecords(){
   return `<div class="brand"><div class="logo">개인기록</div></div>${recordTabs()}
   <div class="chips" style="margin-bottom:12px">${Object.keys(options).map(d=>`<button class="chip${state.dimension===d?' on':''}" data-sdimension="${d}">${SITUATION_LABELS[d]}</button>`).join('')}</div>
   <div class="chips" style="margin-bottom:12px">${options[state.dimension].map(v=>`<button class="chip${state.value===v?' on':''}" data-svalue="${esc(v)}">${esc(v)}</button>`).join('')}</div>
-  <div class="card"><div class="recscroll"><table class="rec recstats"><tr><th>순위</th>${heads}</tr>${body||`<tr><td colspan="${cols.length+2}" class="empty">${KBO_SITUATIONAL_WARNING&&recLeague==='kbo'?'상황별 기록을 불러오지 못했습니다. 잠시 후 다시 확인해주세요.':'선택한 조건의 상황별 기록이 아직 없습니다.'}</td></tr>`}</table></div></div>
+  <div class="card"><div class="recscroll"><table class="rec recstats recsitu"><tr><th>순위</th>${heads}</tr>${body||`<tr><td colspan="${cols.length+2}" class="empty">${KBO_SITUATIONAL_WARNING&&recLeague==='kbo'?'상황별 기록을 불러오지 못했습니다. 잠시 후 다시 확인해주세요.':'선택한 조건의 상황별 기록이 아직 없습니다.'}</td></tr>`}</table></div></div>
   <div class="foot">${recYear}년 ${recLeague==='edu'?'교육리그':'KBO'} · 두산 선수 명단 기준 · ${esc(SITUATION_LABELS[state.dimension])} / ${esc(state.value)}<br>${recKind==='pitcher'?'피안타율: 상대 타자의 타율 · ':''}—: 데이터 없음${snapshot?.updatedAt?` · 갱신 ${esc(snapshot.updatedAt)}`:''}${KBO_SITUATIONAL_WARNING&&rows.length?'<br>갱신 실패 · 이전에 받은 기록을 표시합니다.':''}</div>`;
 }
 function appearanceOuts(p){
