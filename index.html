@@ -1046,7 +1046,7 @@ function recordTableStart(cols,ranked=false,names=[]){
 }
 function situationRecords(){
   const state=recSituation[recKind],options=SITUATION_OPTIONS[recKind],rows=situationalRows();
-  const cols=recKind==='hitter'?[['avg','타율'],['ab','타수'],['hit','안타'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['rbi','타점'],['bb','볼넷'],['hbp','사구'],['so','삼진'],['gdp','병살타']]:[['hit','피안타'],['d2','피2루타'],['d3','피3루타'],['hr','피홈런'],['bb','볼넷'],['hbp','사구'],['so','탈삼진'],['wp','폭투'],['bk','보크'],['avg','피안타율']];
+  const cols=recKind==='hitter'?[['avg','타율'],['ab','타수'],['hit','안타'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['rbi','타점'],['bb','볼넷'],['hbp','사구'],['so','삼진'],['gdp','병살타']]:[['hit','피안타'],['d2','2루타'],['d3','3루타'],['hr','피홈런'],['bb','볼넷'],['hbp','사구'],['so','탈삼진'],['wp','폭투'],['bk','보크'],['avg','피안타율']];
   const compareName=(a,b)=>a.n.localeCompare(b.n,'ko');
   const metric=recSort?.k||'avg',direction=recSort?.dir||'desc';
   rows.sort((a,b)=>{
@@ -1532,16 +1532,18 @@ document.addEventListener('change',ev=>{
     if(input)input.value=[...selected].join(', ');
   }else if(el.id==='f_type'||el.id==='f_date'||el.id==='f_players')updateAdminPlayerChoices();
 });
+function hasEduRecordPage(type){return type==='edu'&&!!eduDraft&&(eduDraft.selected.hitter.size>0||eduDraft.selected.pitcher.size>0);}
 document.addEventListener('click',ev=>{
   const button=ev.target.closest('#admin_step_next,#admin_step_prev');
   if(!button||!isOwner)return;
   if(button.id==='admin_step_next'&&adminFormStep===1&&!$('#f_date')?.value){alert('날짜를 선택해주세요');$('#f_date')?.focus();return;}
   captureEduInputs();
-  adminFormStep=Math.max(1,Math.min(3,adminFormStep+(button.id==='admin_step_next'?1:-1)));
+  adminFormStep=Math.max(1,Math.min(6,adminFormStep+(button.id==='admin_step_next'?1:-1)));
+  if(adminFormStep===5&&!hasEduRecordPage($('#f_type')?.value))adminFormStep=button.id==='admin_step_next'?6:4;
   for(const panel of document.querySelectorAll('[data-admin-step]'))panel.style.display=+panel.dataset.adminStep===adminFormStep?'':'none';
-  $('#admin_step_title').textContent=adminFormStep+' / 3 · '+['날짜 선택','선수 선택','정보 입력'][adminFormStep-1];
+  $('#admin_step_title').textContent=adminFormStep+' / 6 · '+['날짜 선택','선수 선택','정보 입력','경기 기록 입력','교육리그 선수 기록','추가 정보'][adminFormStep-1];
   $('#admin_step_prev').style.display=adminFormStep>1?'':'none';
-  $('#admin_step_next').style.display=adminFormStep<3?'':'none';
+  $('#admin_step_next').style.display=adminFormStep<6?'':'none';
   window.scrollTo(0,0);
 });
 
@@ -1590,7 +1592,7 @@ function admin(){
   const kboPanel=editing?.kboGameId?`<div class="note"><label><input id="kbo_manual" type="checkbox" style="width:auto" ${editing.manualOverride?'checked':''}> 이 경기의 수동 기록을 우선 사용</label>기록을 수정하면 자동으로 켜집니다. 해제 후 저장하면 KBO 자동 기록으로 돌아갑니다.</div>${editing.batting?.length?batterTable(editing.batting,true):''}`:'';
   return `${kboWarn?`<div class="note">${esc(kboWarn)}</div>`:''}<div class="brand"><div class="logo">관리자</div><a href="#/" class="demo" style="text-decoration:none">← 앱</a></div>
   <button class="btn g" id="admin_back" style="margin:0 0 12px">← 일정 관리로</button><button class="btn g" id="logout" style="margin:0 0 12px">로그아웃</button><div class="note">KBO 자동 일정은 kbo_game_records에 저장된 미래 경기까지 자동 표시됩니다. 같은 game_id가 경기 종료 후 갱신되면 결과와 선수 기록도 자동 반영됩니다.</div><div class="card"><b>${editing?'일정 수정':'일정 추가'}</b>
-  <div class="note" id="admin_step_title">${adminFormStep} / 3 · ${['날짜 선택','선수 선택','정보 입력'][adminFormStep-1]}</div>
+  <div class="note" id="admin_step_title">${adminFormStep} / 6 · ${['날짜 선택','선수 선택','정보 입력','경기 기록 입력','교육리그 선수 기록','추가 정보'][adminFormStep-1]}</div>
   <section data-admin-step="1" style="${adminFormStep===1?'':'display:none'}">
   <label>종류</label><select id="f_type"${editing?.kboGameId?' disabled':''}>${['kbo','futures','club','fan','broadcast','radio','ticket','edu','etc'].map(k=>`<option value="${k}"${e.type===k?' selected':''}>${TYPES[k]}</option>`).join('')}</select>
   <label>날짜</label><input id="f_date" type="date"${editing?.kboGameId?' disabled':''} value="${e.date}"><label>시간</label><input id="f_time" type="time" value="${e.time||''}">
@@ -1618,6 +1620,8 @@ function admin(){
 <input id="f_homeAway_custom" value="${homeCustom?esc(e.homeAway):''}" placeholder="예: 중립" style="margin-top:8px;${homeCustom?'':'display:none'}"${editing?.kboGameId?' disabled':''}>
 <label>두산 선발</label><input id="f_starter" value="${e.starter||''}" placeholder="예: 곽빈">
 <label>상대팀 선발</label><input id="f_oppStarter" value="${e.oppStarter||''}" placeholder="예: 임찬규">
+  </section>
+  <section data-admin-step="4" style="${adminFormStep===4?'':'display:none'}">
   <label>스코어 두산 : 상대 (종료 시)</label><div style="display:flex;gap:8px"><input id="f_sd" type="number" min="0" value="${e.score?e.score.d:''}"><input id="f_so" type="number" min="0" value="${e.score?e.score.v:''}"></div>
   <label>경기시간</label><input id="f_duration" value="${esc(e.duration)}" placeholder="예: 3시간 12분">
   <label>승리투수</label><input id="f_winP" value="${esc(e.winP)}" placeholder="예: 곽빈">
@@ -1630,15 +1634,19 @@ function admin(){
   <label>안타 (여러 개면 이름 반복)</label><input id="f_hits" value="${esc(e.hits)}" placeholder="예: 양의지, 양의지, 김민석">
   <label>도루 (여러 개면 이름 반복)</label><input id="f_steals" value="${esc(e.steals)}" placeholder="예: 정수빈, 김민석">
   ${hrEditor(e)}
+  ${kboPanel}
+  </section>
+  <section data-admin-step="5" style="${adminFormStep===5?'':'display:none'}">
+  <div id="edu_records">${e.type==='edu'?eduEditorHTML(e,'records'):''}</div>
+  </section>
+  <section data-admin-step="6" style="${adminFormStep===6?'':'display:none'}">
   <label>포스트시즌 단계 / 차전 / 시리즈 전적</label><div style="display:flex;gap:8px"><select id="f_stage"><option value="">정규시즌</option>${['시범경기','와일드카드','준플레이오프','플레이오프','한국시리즈','관련 없음'].map(x=>`<option${e.stage===x?' selected':''}>${x}</option>`).join('')}</select><input id="f_gno" type="number" min="1" placeholder="차전" value="${e.gameNo||''}"></div><input id="f_series" placeholder="1승 0패" value="${e.series||''}" style="margin-top:8px">
   <label>프로그램명</label><input id="f_program" value="${e.program||''}"><label>방송사</label><input id="f_channel" value="${e.channel||''}">
   <label>설명</label><textarea id="f_desc" rows="2">${e.desc||''}</textarea>
-  ${kboPanel}
-  <div id="edu_records">${e.type==='edu'?eduEditorHTML(e,'records'):''}</div>
   <button class="btn" id="save">${editing?'수정 저장':'추가'}</button>${editing?'<button class="btn g" id="cancel">취소</button>':''}</section>
   <div style="display:flex;gap:8px;margin-top:12px">
     <button class="btn g" id="admin_step_prev" style="${adminFormStep>1?'':'display:none'}">← 이전</button>
-    <button class="btn" id="admin_step_next" style="${adminFormStep<3?'':'display:none'}">다음 →</button>
+    <button class="btn" id="admin_step_next" style="${adminFormStep<6?'':'display:none'}">다음 →</button>
   </div></div>
   `;
 }
