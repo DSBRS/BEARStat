@@ -202,7 +202,7 @@ const Repo={
  * 같은 game_id가 경기 종료 후 upsert되면 결과와 선수 기록으로 갱신됩니다.
  */
 
-let KBO_AUTO=[],KBO_WARNING='',KBO_MERGE_WARNINGS=[],FUTURES_PROGRESS_BY_YEAR={};
+let KBO_AUTO=[],KBO_WARNING='',KBO_MERGE_WARNINGS=[],FUTURES_PROGRESS_BY_YEAR={},FUTURES_AUTO=[],FUTURES_WARNING='';
 // Optional season snapshots in existing kv; never write or change existing tables.
 let KBO_SITUATIONAL_BY_YEAR={},KBO_SITUATIONAL_WARNING='';
 async function loadKboSituational(){
@@ -241,6 +241,19 @@ function futuresEvent(row){
     score:final&&S(d)!==''&&S(v)!==''?{d:Number(d),v:Number(v)}:null,
     kbo:{...meta,leagueId:2,seriesId:0},batting:[],pitching:[]};
 }
+async function loadFuturesGames(){
+  if(!SB)return;
+  try{
+    const next=new Map();
+    for(let start=0;;start+=500){
+      const r=await SB.from('futures_game_records').select('game_id,date,body').order('game_id').range(start,start+499);
+      if(r.error)throw r.error;
+      for(const row of r.data||[]){const b=row.body;if(b?.type!=='futures'||b.source!=='futures'||S(b.kbo?.leagueId)!=='2'||S(b.kbo?.seriesId)!=='0'||b.kboGameId!==row.game_id||b.date!==row.date)continue;const event=futuresEvent(row);if(event)next.set(event.kboGameId,event);}
+      if((r.data||[]).length<500)break;
+    }
+    FUTURES_AUTO=[...next.values()];FUTURES_WARNING='';
+  }catch{FUTURES_WARNING='퓨처스 자동 기록을 갱신하지 못했습니다.';}
+}
 async function loadFuturesProgress(){
   if(!SB)return;
   try{const r=await SB.from('kv').select('key,body').like('key','futures_sync_%');if(r.error)return;
@@ -250,7 +263,7 @@ async function loadFuturesProgress(){
 function futuresRecordNote(){
   const events=Repo.all().filter(e=>e.type==='futures'&&!isCancelled(e)&&hasScore(e)&&S(e.date).slice(0,4)===String(recYear));
   const collected=events.filter(e=>e.batting?.length&&e.pitching?.length).length,state=FUTURES_PROGRESS_BY_YEAR[recYear];
-  return `수집된 ${collected}경기 기준${state&&!state.complete?' · 이전 경기 수집 중':''}${events.length>collected?' · 일부 경기 선수 기록 대기':''}${KBO_WARNING?' · 자동 갱신 실패, 이전 기록 표시':''}`;
+  return `수집된 ${collected}경기 기준${state&&!state.complete?' · 이전 경기 수집 중':''}${events.length>collected?' · 일부 경기 선수 기록 대기':''}${FUTURES_WARNING?' · 자동 갱신 실패, 이전 기록 표시':''}`;
 }
 
 function mergeEvents(manual,automatic){
@@ -274,7 +287,7 @@ function mergeEvents(manual,automatic){
   return{rows,warnings};
 }
 const _manualAll=Repo.all.bind(Repo),_manualLoad=Repo.load.bind(Repo),_manualUpsert=Repo.upsert.bind(Repo);
-Repo.all=function(){const x=mergeEvents(_manualAll(),KBO_AUTO);KBO_MERGE_WARNINGS=x.warnings;return x.rows};
+Repo.all=function(){const automatic=new Map();for(const e of [...KBO_AUTO,...FUTURES_AUTO])automatic.set(e.type+':'+(e.kboGameId||e.id),e);const x=mergeEvents(_manualAll(),[...automatic.values()]);KBO_MERGE_WARNINGS=x.warnings;return x.rows};
 Repo.load=async function(){
   if(SB){try{const rows=[];for(let start=0;;start+=500){const r=await SB.from('kbo_game_records').select('game_id,date,body').order('game_id').range(start,start+499);if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<500)break}
     const automatic=new Map();
@@ -289,6 +302,7 @@ Repo.load=async function(){
     KBO_AUTO=[...automatic.values()];
     KBO_WARNING=''
   }catch(e){KBO_WARNING='KBO 자동 기록을 갱신하지 못했습니다. 저장된 수동 일정은 계속 사용할 수 있습니다.'}}
+  await loadFuturesGames();
   await _manualLoad();
   await loadKboSituational();
   await loadFuturesProgress();
