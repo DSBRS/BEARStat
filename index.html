@@ -1430,7 +1430,7 @@ function adminCalendar(){
 
 
 let eduDraft=null;
-const EDU_BAT_FIELDS=[['atBats','타수'],['hits','안타'],['doubles','2루타'],['triples','3루타'],['homeRuns','홈런'],['stolenBases','도루'],['walks','볼넷'],['hitByPitch','사구'],['intentionalWalks','고의4구'],['rbi','타점'],['runs','득점'],['order','타순']];
+const EDU_BAT_FIELDS=[['atBats','타수'],['hits','안타'],['doubles','2루타'],['triples','3루타'],['homeRuns','홈런'],['stolenBases','도루'],['walks','볼넷'],['hitByPitch','사구'],['intentionalWalks','고의4구'],['order','타순']];
 const EDU_PITCH_FIELDS=[['innings','이닝'],['hits','피안타'],['homeRuns','피홈런'],['strikeouts','탈삼진'],['walks','볼넷'],['hitByPitch','사구'],['runs','실점'],['earnedRuns','자책점']];
 function eduInnings(p){
   if(p.outs!==undefined&&p.outs!==null&&p.outs!==''&&Number.isFinite(+p.outs))return `${Math.floor(+p.outs/3)}.${+p.outs%3}`;
