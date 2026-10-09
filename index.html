@@ -746,13 +746,7 @@ function standings(){
       </div>
     </div>
 
-    <div class="foot">
-      ${display.baseline
-        ? `${stYear}년 · STAT 스크린샷 기준 · 최신 자동 순위 수신 시 반영`
-        : auto.length===10
-        ? `${stYear}년 · KBO 공식 팀 순위 자동연동${sync?` · ${new Date(sync).toLocaleString('ko-KR')} 갱신`:''}`
-        : `${stYear}년 · 자동 순위 데이터가 없어서 기존 입력값으로 표시 중`}
-    </div>
+
   `;
 }
 
