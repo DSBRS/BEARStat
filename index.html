@@ -1158,8 +1158,14 @@ async function primePlayerRelay(ids,name,role){
 }
 async function readSituationRelay(id,name,role){
  const existing=cachedPlayerRelay(id,name,role);if(existing)return existing;
+ if(RELAY_INFLIGHT.has(id))return RELAY_INFLIGHT.get(id);
+ const pending=fetchSituationRelay(id,name,role);RELAY_INFLIGHT.set(id,pending);
+ try{return await pending}finally{RELAY_INFLIGHT.delete(id)}
+}
+async function fetchSituationRelay(id,name,role){
+ const existing=cachedPlayerRelay(id,name,role);if(existing)return existing;
  const response=await fetch(SUPABASE_URL+'/functions/v1/kbo-relay?gameId='+encodeURIComponent(id),{headers:{apikey:SUPABASE_KEY},signal:AbortSignal.timeout(90000)});
- const b=await response.json();if(!response.ok||b.schemaVersion!==1||b.gameId!==id||!Array.isArray(b.plays))throw Error('경기 내역 조회 실패');
+ const b=await response.json();if(!response.ok||b.schemaVersion!==1||b.gameId!==id||!Array.isArray(b.plays))throw Error('경기 내역 조회 실패 (HTTP '+response.status+')');
  SITUATION_RELAY_CACHE.set(id,b);return b;
 }
 function relayPlayerAvailable(relay,id,name,role){
@@ -1247,8 +1253,37 @@ function situationPlayerSheetHTML(){
   </div>`:'';
   return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div><div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 ${recordLeagueLabel()}${recordSeasonLabel()?' · '+recordSeasonLabel():''} · ${esc(SITUATION_LABELS[state.dimension])} / ${esc(state.value)}</div></div><button class="sheetclose" data-sheetclose>×</button></div>${row?`<div class="ordergrid" style="margin-top:16px">${cols.map(([k,l])=>`<button type="button" class="orderbox statclick${stat===k?' on':''}" data-sstat="${k}" aria-pressed="${stat===k}"><b>${splitValue(row[k],k==='avg')}</b><span>${l}</span></button>`).join('')}</div><div class="note">기록 박스를 누르면 해당 조건의 경기별 내역을 확인할 수 있습니다.</div>${historyBox}`:'<div class="empty">선택한 조건의 선수 기록이 없습니다.</div>'}</div></div>`;
 }
+// Fill missing pitcher AB automatically when the situation table opens.
+const SITUATION_AUTO_JOBS=new Map(),RELAY_INFLIGHT=new Map();
+function situationAutoKey(){return JSON.stringify([recYear,recSeason,recSituation.pitcher]);}
+function scheduleSituationAtBats(rows){
+ if(recKind!=='pitcher'||recLeague!=='kbo'||!SUPABASE_URL)return;
+ const key=situationAutoKey();if(SITUATION_AUTO_JOBS.has(key))return;
+ const tasks=rows.filter(r=>r.ab===null).map(r=>({name:r.n,games:situationRelayCandidates(r.n,'ab')}));
+ if(!tasks.length)return;
+ const job={running:true,pending:new Set(tasks.map(t=>t.name)),errors:[]};SITUATION_AUTO_JOBS.set(key,job);
+ let next=0;
+ Promise.resolve().then(()=>Promise.all(Array.from({length:2},async()=>{
+  while(next<tasks.length){
+   const task=tasks[next++];
+   try{await primePlayerRelay(task.games.map(e=>e.kboGameId),task.name,'pitcher')}catch{}
+   for(const e of task.games){
+    try{await readSituationRelay(e.kboGameId,task.name,'pitcher')}
+    catch(error){job.errors.push({name:task.name,date:e.date,reason:error.message})}
+   }
+   job.pending.delete(task.name);rerender();
+  }
+ }))).finally(()=>{job.running=false;rerender()});
+}
+function situationAtBatCell(row){
+ if(recKind!=='pitcher'||row.ab!==null)return splitValue(row.ab);
+ const job=SITUATION_AUTO_JOBS.get(situationAutoKey());
+ return job?.pending.has(row.n)?'<span role="status" aria-label="타수 자동 확인 중">…</span>':'—';
+}
+
 function situationRecords(){
   const state=recSituation[recKind],options=SITUATION_OPTIONS[recKind],rows=situationalRows();
+  scheduleSituationAtBats(rows);
   const cols=situationColumns();
   const compareName=(a,b)=>a.n.localeCompare(b.n,'ko');
   const metric=recSort?.k||'avg',direction=recSort?.dir||'desc';
@@ -1262,13 +1297,13 @@ function situationRecords(){
   let lastValue,lastRank;
   const body=rows.map((r,i)=>{
     const value=r[metric];const rank=metric==='n'||value===null?'—':(i&&value===lastValue?lastRank:i+1);lastValue=value;lastRank=rank;
-    return `<tr><td>${rank}</td><td><button class="playerlink" data-player="${esc(r.n)}">${esc(r.n)}</button></td>${cols.map(([k])=>`<td>${recKind==='pitcher'&&k==='ab'&&r.ab===null?`<button class="playerlink" data-player="${esc(r.n)}" data-abload aria-label="${esc(r.n)} 타수 조회">조회</button>`:splitValue(r[k],k==='avg')}</td>`).join('')}</tr>`;
+    return `<tr><td>${rank}</td><td><button class="playerlink" data-player="${esc(r.n)}">${esc(r.n)}</button></td>${cols.map(([k])=>`<td>${k==='ab'?situationAtBatCell(r):splitValue(r[k],k==='avg')}</td>`).join('')}</tr>`;
   }).join('');
   return `<div class="brand"><div class="logo">개인기록</div></div>${recordTabs()}
   <div class="chips" style="margin-bottom:12px">${Object.keys(options).map(d=>`<button class="chip${state.dimension===d?' on':''}" data-sdimension="${d}">${SITUATION_LABELS[d]}</button>`).join('')}</div>
   <div class="chips" style="margin-bottom:12px">${options[state.dimension].map(v=>`<button class="chip${state.value===v?' on':''}" data-svalue="${esc(v)}">${esc(v)}</button>`).join('')}</div>
   <div class="card"><div class="recscroll">${recordTableStart([['n','선수'],...cols],true,rows.map(r=>r.n))}<tr><th>순위</th>${heads}</tr>${body||`<tr><td colspan="${cols.length+2}" class="empty">${KBO_SITUATIONAL_WARNING&&recLeague==='kbo'?'상황별 기록을 불러오지 못했습니다. 잠시 후 다시 확인해주세요.':'선택한 조건의 상황별 기록이 아직 없습니다.'}</td></tr>`}</table></div></div>
-  <div class="foot">${recYear}년 ${recordLeagueLabel()}${recordSeasonLabel()?' · '+recordSeasonLabel():''} · 두산 선수 명단 기준 · ${esc(SITUATION_LABELS[state.dimension])} / ${esc(state.value)}<br>${recKind==='pitcher'?'피안타율 = 피안타 ÷ 상대 타수 · 타수 조회 후 확인 · ':''}—: 데이터 없음${snapshot?.updatedAt?` · 갱신 ${esc(snapshot.updatedAt)}`:''}${KBO_SITUATIONAL_WARNING&&rows.length?'<br>갱신 실패 · 이전에 받은 기록을 표시합니다.':''}</div>${playerSheetHTML()}`;
+  <div class="foot">${recYear}년 ${recordLeagueLabel()}${recordSeasonLabel()?' · '+recordSeasonLabel():''} · 두산 선수 명단 기준 · ${esc(SITUATION_LABELS[state.dimension])} / ${esc(state.value)}<br>${recKind==='pitcher'?'피안타율 = 피안타 ÷ 상대 타수 · 타수 자동 확인 · …: 확인 중 · —: 자료 부족 또는 기록 불일치 · ':''}—: 데이터 없음${snapshot?.updatedAt?` · 갱신 ${esc(snapshot.updatedAt)}`:''}${KBO_SITUATIONAL_WARNING&&rows.length?'<br>갱신 실패 · 이전에 받은 기록을 표시합니다.':''}</div>${playerSheetHTML()}`;
 }
 function appearanceOuts(p){
   const outs=recordNumber(p,['outs']);if(outs!==null)return Number.isInteger(outs)?outs:null;
