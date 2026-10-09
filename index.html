@@ -951,13 +951,13 @@ function recordTableStart(cols,ranked=false,names=[]){
   const nameWidth=Math.max(68,...names.map(n=>Array.from(String(n)).length*14+8));
   // Short result tables fill the card; only the player column has a fixed width.
   if(!ranked&&cols.length<=5)return `<table class="rec recstats recshort" style="width:100%"><colgroup>${cols.map(([key])=>key==='n'?`<col style="width:${nameWidth}px">`:'<col>').join('')}</colgroup>`;
-  const widths=cols.map(([key,label])=>key==='n'?nameWidth:Math.max(56,Array.from(label).length*13+16));
+  const widths=cols.map(([key,label])=>key==='n'?nameWidth:key==='era'?72:['starterEra','reliefEra'].includes(key)?64:Math.max(56,Array.from(label).length*13+16));
   if(ranked)widths.unshift(34);
   return `<table class="rec recstats${ranked?' recsitu':''}" style="width:${widths.reduce((a,b)=>a+b,0)}px"><colgroup>${widths.map(w=>`<col style="width:${w}px">`).join('')}</colgroup>`;
 }
 function situationRecords(){
   const state=recSituation[recKind],options=SITUATION_OPTIONS[recKind],rows=situationalRows();
-  const cols=recKind==='hitter'?[['avg','타율'],['ab','타수'],['hit','안타'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['rbi','타점'],['bb','볼넷'],['hbp','사구'],['so','삼진'],['gdp','병살타']]:[['hit','피안타'],['d2','2루타'],['d3','3루타'],['hr','피홈런'],['bb','볼넷'],['hbp','사구'],['so','탈삼진'],['wp','폭투'],['bk','보크'],['avg','피안타율']];
+  const cols=recKind==='hitter'?[['avg','타율'],['ab','타수'],['hit','안타'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['rbi','타점'],['bb','볼넷'],['hbp','사구'],['so','삼진'],['gdp','병살타']]:[['hit','피안타'],['d2','피2루타'],['d3','피3루타'],['hr','피홈런'],['bb','볼넷'],['hbp','사구'],['so','탈삼진'],['wp','폭투'],['bk','보크'],['avg','피안타율']];
   const compareName=(a,b)=>a.n.localeCompare(b.n,'ko');
   const metric=recSort?.k||'avg',direction=recSort?.dir||'desc';
   rows.sort((a,b)=>{
@@ -1015,7 +1015,7 @@ function records(){
   if(!roster.length)return `<div class="brand"><div class="logo">개인기록</div></div><div class="card"><div class="empty">두산 선수 명단이 아직 없습니다.<br>관리자에서 선수 명단을 저장하면 두산 선수만 집계됩니다.</div></div>`;
 
   const cols=recKind==='pitcher'
-    ?(recPitchTab==='result'?[['n','선수'],['w','승리'],['l','패전'],['s','세이브'],['h','홀드']]:[['n','선수'],['g','경기'],['ip','이닝'],['era','평균자책점'],['starterEra','선발 평균자책점'],['reliefEra','구원 평균자책점'],['hits','피안타'],['homeRuns','피홈런'],['strikeouts','탈삼진'],['walks','볼넷'],['hitByPitch','사구'],['runs','실점'],['earnedRuns','자책']])
+    ?(recPitchTab==='result'?[['n','선수'],['w','승리'],['l','패전'],['s','세이브'],['h','홀드']]:[['n','선수'],['g','경기'],['ip','이닝'],['era','평균자책점'],['starterEra','선발 평자'],['reliefEra','구원 평자'],['hits','피안타'],['homeRuns','피홈런'],['strikeouts','탈삼진'],['walks','볼넷'],['hitByPitch','사구'],['runs','실점'],['earnedRuns','자책']])
     :recBatTab==='order'
       ?[['n','선수'],['o1','1번'],['o2','2번'],['o3','3번'],['o4','4번'],['o5','5번'],['o6','6번'],['o7','7번'],['o8','8번'],['o9','9번']]
       :recBatTab==='defense'
@@ -1056,7 +1056,9 @@ function records(){
 
   const head=cols.map(([k,l])=>{
     const on=recSort&&recSort.k===k;
-    return `<th><button class="sh${on?' on':''}" data-sort="${k}">${l}${on?(recSort.dir==='desc'?' ↓':' ↑'):''}</button></th>`;
+    const arrow=on?(recSort.dir==='desc'?' ↓':' ↑'):'';
+    const title=l+arrow;
+    return `<th><button class="sh${on?' on':''}" data-sort="${k}">${title}</button></th>`;
   }).join('');
 
   const st=recSort?(()=>{
