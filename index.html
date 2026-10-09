@@ -1331,7 +1331,7 @@ function situationRecords(){
   <div class="chips" style="margin-bottom:12px">${Object.keys(options).map(d=>`<button class="chip${state.dimension===d?' on':''}" data-sdimension="${d}">${SITUATION_LABELS[d]}</button>`).join('')}</div>
   <div class="chips" style="margin-bottom:12px">${options[state.dimension].map(v=>`<button class="chip${state.value===v?' on':''}" data-svalue="${esc(v)}">${esc(v)}</button>`).join('')}</div>
   <div class="card"><div class="recscroll">${recordTableStart([['n','선수'],...cols],true,rows.map(r=>r.n))}<tr><th>순위</th>${heads}</tr>${body||`<tr><td colspan="${cols.length+2}" class="empty">${KBO_SITUATIONAL_WARNING&&recLeague==='kbo'?'상황별 기록을 불러오지 못했습니다. 잠시 후 다시 확인해주세요.':'선택한 조건의 상황별 기록이 아직 없습니다.'}</td></tr>`}</table></div></div>
-  <div class="foot">${recYear}년 ${recordLeagueLabel()}${recordSeasonLabel()?' · '+recordSeasonLabel():''} · 두산 선수 명단 기준 · ${esc(SITUATION_LABELS[state.dimension])} / ${esc(state.value)}<br>${recKind==='pitcher'?'피안타율 = 피안타 ÷ 상대 타수 · 타수 자동 확인 · …: 확인 중 · —: 자료 부족 또는 기록 불일치 · ':''}—: 데이터 없음${KBO_SITUATIONAL_WARNING&&rows.length?'<br>갱신 실패 · 이전에 받은 기록을 표시합니다.':''}</div>${playerSheetHTML()}`;
+  ${playerSheetHTML()}`;
 }
 function appearanceOuts(p){
   const outs=recordNumber(p,['outs']);if(outs!==null)return Number.isInteger(outs)?outs:null;
