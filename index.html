@@ -95,6 +95,22 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 .sheethead{display:flex;align-items:center;justify-content:space-between;gap:12px}.sheethead b{font-size:22px}.sheetclose{border:0;background:var(--chip);color:var(--ink);width:34px;height:34px;border-radius:50%;font-size:18px}
 .ordergrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
 .orderbox{background:var(--bg);border-radius:14px;padding:13px 8px;text-align:center}.orderbox b{display:block;font-size:20px;color:var(--navy)}.orderbox span{font-size:12px;color:var(--sub)}.orderbox.statclick{border:0;font:inherit;cursor:pointer;width:100%;color:inherit}.orderbox.statclick.on{box-shadow:inset 0 0 0 1.5px var(--navy);background:var(--chip)}.orderbox.statclick:focus-visible{outline:2px solid var(--navy);outline-offset:2px}.historybox{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;max-height:220px;overflow-y:auto}.historyrow{padding:9px 2px;border-top:1px solid var(--line);font-size:13px}.historyrow:first-child{border-top:0}
+
+/* Situation history: compact, scoped layout. */
+.situ-history{max-height:280px;overflow-x:hidden}
+.situ-history-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+.situ-history-head>b{font-size:14px}
+.situ-history-status{font-size:11px;color:var(--sub);text-align:right;line-height:1.5;flex-shrink:0}
+.situ-history .situ-caption{font-size:11px;color:var(--sub);line-height:1.5;margin-bottom:8px}
+.situ-history .historyrow{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px 0}
+.situ-game-body{flex:1;min-width:0}
+.situ-game-title{font-size:13px;line-height:1.5;color:var(--navy)}
+.situ-game-title>span{color:var(--sub);font-size:12px;margin-left:5px}
+.situ-game-detail{font-size:12px;line-height:1.65;color:var(--sub);margin-top:3px;overflow-wrap:anywhere}
+.situ-game-value{white-space:nowrap;flex-shrink:0;font-size:15px;line-height:1.5;color:var(--navy);font-variant-numeric:tabular-nums}
+.situ-info{font-size:11px;color:var(--sub);line-height:1.6;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.situ-info summary{cursor:pointer;width:fit-content}
+.situ-info p{margin:6px 0 0;overflow-wrap:anywhere}
 </style>
 
 <style>
@@ -1184,7 +1200,19 @@ function situationGameHistory(name,stat){
 function situationPlayerSheetHTML(){
   const row=situationalRows().find(r=>S(r.n)===S(playerSheet)),state=recSituation[recKind],cols=situationColumns();
   const stat=situationHistoryStat,label=cols.find(c=>c[0]===stat)?.[1],history=stat?situationGameHistory(playerSheet,stat):[];
-  const historyBox=stat?`<div class="historybox"><b>${esc(label)} 경기별 기록</b><div class="sb">${esc(SITUATION_LABELS[state.dimension])} · ${esc(state.value)}</div><div class="note" role="status">${esc(situationRelayNote(stat))}</div>${history.length?history.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px"><div><b>${esc(x.date.slice(5).replace('-','.'))}</b> · vs ${esc(x.opp)}${x.detail?`<div class="sb">${esc(x.detail)}</div>`:''}${x.url?`<a class="sb" href="${esc(x.url)}" target="_blank" rel="noopener">문자중계 보기</a>`:''}</div><b>${splitValue(x.value,stat==='avg')}</b></div>`).join(''):`<div class="empty">${!RELAY_SUPPORTED.has(stat)?'이 항목의 경기별 내역은 아직 지원하지 않습니다.':situationRelayJob?.running?'경기 내역을 찾고 있습니다.':situationRelayJob?.failed?'확인된 경기 내역이 없습니다.':'확인한 경기에는 이 조건에 해당하는 기록이 없습니다.'}</div>`}${history.length?'<div class="note">타석 결과 직전의 주자·아웃·볼카운트를 기준으로 표시합니다.</div>':''}</div>`:'';
+  const progress=situationRelayJob;
+  const status=!RELAY_SUPPORTED.has(stat)?'내역 미지원':progress?.running?`${progress.done}/${progress.total}경기 확인 중`:progress?`${progress.total-progress.failed}경기 확인${progress.failed?' · '+progress.failed+'경기 조회 실패':''}`:'';
+  const historyBox=stat?`<div class="historybox situ-history">
+    <div class="situ-history-head"><b>${esc(label)} 경기별 기록</b><span class="situ-history-status" role="status">${esc(status)}</span></div>
+    <div class="situ-caption">${esc(SITUATION_LABELS[state.dimension])} · ${esc(state.value)}</div>
+    ${history.length?history.map(x=>`<div class="historyrow">
+      <div class="situ-game-body"><div class="situ-game-title"><b>${esc(x.date.slice(5).replace('-','.'))}</b><span>vs ${esc(x.opp)}</span></div>
+      ${x.detail?`<div class="situ-game-detail">${esc(x.detail)}</div>`:''}
+      </div>
+      <b class="situ-game-value">${splitValue(x.value,stat==='avg')}${stat==='avg'?'':'개'}</b></div>`).join(''):
+      `<div class="empty">${!RELAY_SUPPORTED.has(stat)?'이 항목의 경기별 내역은 아직 지원하지 않습니다.':progress?.running?'경기 내역을 찾고 있어요.':progress?.failed?'확인된 경기 내역이 없습니다.':'해당 조건의 기록이 없습니다.'}</div>`}
+    <details class="situ-info"><summary>집계 안내</summary><p>${esc(situationRelayNote(stat))} 타석 결과 직전의 주자·아웃과 마지막 공 직전 볼카운트를 기준으로 표시합니다.</p></details>
+  </div>`:'';
   return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div><div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 ${recordLeagueLabel()}${recordSeasonLabel()?' · '+recordSeasonLabel():''} · ${esc(SITUATION_LABELS[state.dimension])} / ${esc(state.value)}</div></div><button class="sheetclose" data-sheetclose>×</button></div>${row?`<div class="ordergrid" style="margin-top:16px">${cols.map(([k,l])=>`<button type="button" class="orderbox statclick${stat===k?' on':''}" data-sstat="${k}" aria-pressed="${stat===k}"><b>${splitValue(row[k],k==='avg')}</b><span>${l}</span></button>`).join('')}</div><div class="note">기록 박스를 누르면 해당 조건의 경기별 내역을 확인할 수 있습니다.</div>${historyBox}`:'<div class="empty">선택한 조건의 선수 기록이 없습니다.</div>'}</div></div>`;
 }
 function situationRecords(){
