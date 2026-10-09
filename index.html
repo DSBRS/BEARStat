@@ -172,6 +172,7 @@ const DEMO=[]; // 실제 일정은 관리자 화면에서 직접 등록
 let isOwner=false,CUSTOM=[],SB=null,BEARS_ROSTER=[],ROSTERS_BY_YEAR={},EDU_ROSTERS_BY_YEAR={},OTHERS_BY_YEAR={},AUTO_STANDINGS_BY_YEAR={};
 let adminRosterYear=TODAY.getFullYear(),adminEduRosterYear=TODAY.getFullYear();
 let adminCalDate=TS,adminCalView=new Date(TODAY.getFullYear(),TODAY.getMonth(),1),adminSearch='',adminView='manage';
+let adminFormStep=1;
 function requireAdmin(){if(!isOwner)throw new Error('관리자 로그인 후 사용할 수 있습니다');}
 const live=()=>CUSTOM.some(e=>e.source==='kbo');
 const Repo={
@@ -241,7 +242,7 @@ function isUpcomingKbo(e){
   return e&&e.type==='kbo'&&!isCancelled(e)&&!hasScore(e)&&S(e.date)>=TS;
 }
 
-function rerender(){const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;const y=scrollY;route2();scrollTo(0,y)}
+function rerender(){if(document.body.dataset.r==='admin'&&adminView==='form'&&document.querySelector('[data-admin-step]'))return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;const y=scrollY;route2();scrollTo(0,y)}
 let authRevision=0;
 async function setUser(sess){
   const revision=++authRevision;isOwner=false;
@@ -1212,6 +1213,40 @@ document.addEventListener('change',ev=>{
   }
 });
 
+function adminPlayerChoices(e){
+  const selected=new Set(e.players||[]),year=+(S(e.date).slice(0,4)||TODAY.getFullYear());
+  const candidates=[...new Set([...rosterForYear(year).map(p=>p.n),...selected])];
+  return `<h2>선수 선택</h2><div style="display:flex;gap:10px;flex-wrap:wrap">${candidates.map(n=>`<label style="margin:4px 0"><input type="checkbox" style="width:auto" data-admin-player="${esc(n)}"${selected.has(n)?' checked':''}> ${esc(n)}</label>`).join('')||'<div class="note">선수 관리에서 명단을 등록하거나 아래에 선수 이름을 입력해주세요.</div>'}</div>`;
+}
+function updateAdminPlayerChoices(){
+  const box=$('#general_players');if(!box)return;
+  const edu=$('#f_type')?.value==='edu',input=$('#f_players');
+  box.style.display=edu?'none':'';
+  if(input){input.style.display=edu?'none':'';if(input.previousElementSibling)input.previousElementSibling.style.display=edu?'none':'';}
+  box.innerHTML=adminPlayerChoices({date:$('#f_date')?.value,players:names(input?.value)});
+}
+document.addEventListener('change',ev=>{
+  const el=ev.target;
+  if(!isOwner)return;
+  if(el.matches('[data-admin-player]')){
+    const input=$('#f_players'),selected=new Set(names(input?.value));
+    if(el.checked)selected.add(el.dataset.adminPlayer);else selected.delete(el.dataset.adminPlayer);
+    if(input)input.value=[...selected].join(', ');
+  }else if(el.id==='f_type'||el.id==='f_date'||el.id==='f_players')updateAdminPlayerChoices();
+});
+document.addEventListener('click',ev=>{
+  const button=ev.target.closest('#admin_step_next,#admin_step_prev');
+  if(!button||!isOwner)return;
+  if(button.id==='admin_step_next'&&adminFormStep===1&&!$('#f_date')?.value){alert('날짜를 선택해주세요');$('#f_date')?.focus();return;}
+  captureEduInputs();
+  adminFormStep=Math.max(1,Math.min(3,adminFormStep+(button.id==='admin_step_next'?1:-1)));
+  for(const panel of document.querySelectorAll('[data-admin-step]'))panel.style.display=+panel.dataset.adminStep===adminFormStep?'':'none';
+  $('#admin_step_title').textContent=adminFormStep+' / 3 · '+['날짜 선택','선수 선택','정보 입력'][adminFormStep-1];
+  $('#admin_step_prev').style.display=adminFormStep>1?'':'none';
+  $('#admin_step_next').style.display=adminFormStep<3?'':'none';
+  window.scrollTo(0,0);
+});
+
 function admin(){
   const e=editing||{type:'kbo',date:TS,time:'',title:'',place:'',homeAway:'',program:'',channel:'',players:[],desc:''};
   const allList=Repo.all().slice().sort((a,b)=>b.date.localeCompare(a.date));
@@ -1257,11 +1292,19 @@ function admin(){
   const kboPanel=editing?.kboGameId?`<div class="note"><label><input id="kbo_manual" type="checkbox" style="width:auto" ${editing.manualOverride?'checked':''}> 이 경기의 수동 기록을 우선 사용</label>기록을 수정하면 자동으로 켜집니다. 해제 후 저장하면 KBO 자동 기록으로 돌아갑니다.</div>${editing.batting?.length?batterTable(editing.batting,true):''}`:'';
   return `${kboWarn?`<div class="note">${esc(kboWarn)}</div>`:''}<div class="brand"><div class="logo">관리자</div><a href="#/" class="demo" style="text-decoration:none">← 앱</a></div>
   <button class="btn g" id="admin_back" style="margin:0 0 12px">← 일정 관리로</button><button class="btn g" id="logout" style="margin:0 0 12px">로그아웃</button><div class="note">KBO 자동 일정은 kbo_game_records에 저장된 미래 경기까지 자동 표시됩니다. 같은 game_id가 경기 종료 후 갱신되면 결과와 선수 기록도 자동 반영됩니다.</div><div class="card"><b>${editing?'일정 수정':'일정 추가'}</b>
-  <label for="f_cancelReason">경기 취소</label><select id="f_cancelReason"><option value=""${!isCancelled(e)?' selected':''}>정상 경기</option><option value="__cancelled__"${isCancelled(e)&&!cancelReason?' selected':''}>경기 취소 (사유 미지정)</option>${['우천','그라운드 사정','폭염'].map(x=>`<option value="${x}"${cancelReason===x?' selected':''}>${x}</option>`).join('')}<option value="__custom__"${cancelCustom?' selected':''}>직접 입력</option></select>
-  <input id="f_cancelReason_custom" value="${cancelCustom?esc(cancelReason):''}" placeholder="취소 사유 직접 입력" style="margin-top:8px;${cancelCustom?'':'display:none'}">
+  <div class="note" id="admin_step_title">${adminFormStep} / 3 · ${['날짜 선택','선수 선택','정보 입력'][adminFormStep-1]}</div>
+  <section data-admin-step="1" style="${adminFormStep===1?'':'display:none'}">
   <label>종류</label><select id="f_type"${editing?.kboGameId?' disabled':''}>${['kbo','club','fan','broadcast','radio','ticket','edu','etc'].map(k=>`<option value="${k}"${e.type===k?' selected':''}>${TYPES[k]}</option>`).join('')}</select>
   <label>날짜</label><input id="f_date" type="date"${editing?.kboGameId?' disabled':''} value="${e.date}"><label>시간</label><input id="f_time" type="time" value="${e.time||''}">
+  </section>
+  <section data-admin-step="2" style="${adminFormStep===2?'':'display:none'}">
   <div id="edu_editor">${e.type==='edu'?eduEditorHTML(e,'selection'):''}</div>
+  <div id="general_players" style="${e.type==='edu'?'display:none':''}">${adminPlayerChoices(e)}</div>
+  <label${e.type==='edu'?' style="display:none"':''}>관련 선수 (쉼표 구분)</label><input id="f_players" value="${esc((e.players||[]).join(', '))}"${e.type==='edu'?' style="display:none"':''}>
+  </section>
+  <section data-admin-step="3" style="${adminFormStep===3?'':'display:none'}">
+  <label for="f_cancelReason">경기 취소</label><select id="f_cancelReason"><option value=""${!isCancelled(e)?' selected':''}>정상 경기</option><option value="__cancelled__"${isCancelled(e)&&!cancelReason?' selected':''}>경기 취소 (사유 미지정)</option>${['우천','그라운드 사정','폭염'].map(x=>`<option value="${x}"${cancelReason===x?' selected':''}>${x}</option>`).join('')}<option value="__custom__"${cancelCustom?' selected':''}>직접 입력</option></select>
+  <input id="f_cancelReason_custom" value="${cancelCustom?esc(cancelReason):''}" placeholder="취소 사유 직접 입력" style="margin-top:8px;${cancelCustom?'':'display:none'}">
   <label>장소</label><select id="f_place">${['',...VENUES].map(v=>`<option value="${v}" ${e.place===v?'selected':''}>${v||'장소 선택'}</option>`).join('')}<option value="__custom__"${placeCustom?' selected':''}>직접 입력</option></select>
   <input id="f_place_custom" value="${placeCustom?esc(e.place):''}" placeholder="장소를 직접 입력" style="margin-top:8px;${placeCustom?'':'display:none'}">
 
@@ -1291,10 +1334,14 @@ function admin(){
   ${hrEditor(e)}
   <label>포스트시즌 단계 / 차전 / 시리즈 전적</label><div style="display:flex;gap:8px"><select id="f_stage"><option value="">정규시즌</option>${['시범경기','와일드카드','준플레이오프','플레이오프','한국시리즈','관련 없음'].map(x=>`<option${e.stage===x?' selected':''}>${x}</option>`).join('')}</select><input id="f_gno" type="number" min="1" placeholder="차전" value="${e.gameNo||''}"></div><input id="f_series" placeholder="1승 0패" value="${e.series||''}" style="margin-top:8px">
   <label>프로그램명</label><input id="f_program" value="${e.program||''}"><label>방송사</label><input id="f_channel" value="${e.channel||''}">
-  <label>관련 선수 (쉼표 구분)</label><input id="f_players" value="${(e.players||[]).join(', ')}"><label>설명</label><textarea id="f_desc" rows="2">${e.desc||''}</textarea>
+  <label>설명</label><textarea id="f_desc" rows="2">${e.desc||''}</textarea>
   ${kboPanel}
   <div id="edu_records">${e.type==='edu'?eduEditorHTML(e,'records'):''}</div>
-  <button class="btn" id="save">${editing?'수정 저장':'추가'}</button>${editing?'<button class="btn g" id="cancel">취소</button>':''}</div>
+  <button class="btn" id="save">${editing?'수정 저장':'추가'}</button>${editing?'<button class="btn g" id="cancel">취소</button>':''}</section>
+  <div style="display:flex;gap:8px;margin-top:12px">
+    <button class="btn g" id="admin_step_prev" style="${adminFormStep>1?'':'display:none'}">← 이전</button>
+    <button class="btn" id="admin_step_next" style="${adminFormStep<3?'':'display:none'}">다음 →</button>
+  </div></div>
   `;
 }
 
@@ -1416,7 +1463,7 @@ document.addEventListener('click',ev=>{
     adminCalDate='';
     keep()
   }
-  else if(t.id==='admin_new'){eduDraft=null;editing=null;adminView='form';keep()}
+  else if(t.id==='admin_new'){adminFormStep=1;eduDraft=null;editing=null;adminView='form';keep()}
   else if(t.id==='admin_back'){editing=null;adminView='manage';keep()}
   else if(t.dataset.osort){
     const k=t.dataset.osort;
@@ -1493,7 +1540,7 @@ if(!v('date')){
     Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp,cancelReason,cancelled,status,cancellationOverride,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
   }
   else if(t.id==='cancel'){editing=null;adminView='manage';keep()}
-  else if(t.dataset.edit){eduDraft=null;editing=Repo.all().find(x=>x.id===t.dataset.edit);adminView='form';keep()}
+  else if(t.dataset.edit){adminFormStep=1;eduDraft=null;editing=Repo.all().find(x=>x.id===t.dataset.edit);adminView='form';keep()}
   else if(t.dataset.del){const target=Repo.all().find(x=>x.id===t.dataset.del);if(target?.kboGameId){alert('KBO 자동 기록은 여기서 삭제하지 않습니다.');return}if(confirm('삭제할까요?')){Repo.remove(t.dataset.del).catch(e=>alert('삭제하지 못했습니다: '+(e.message||''))).finally(keep)}}
 });
 
