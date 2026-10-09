@@ -1039,8 +1039,49 @@ function opponentStatHistory(name,stat,opp){
   return rows.sort((a,b)=>b.date.localeCompare(a.date));
 }
 
+function opponentBattingSplits(name){
+  const year=String(TODAY.getFullYear()),byTeam=new Map(TEAMS.map(opp=>[opp,{opp,ab:0,hit:0,hr:0}]));
+  Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&!isCancelled(e)&&hasScore(e)&&S(e.date).slice(0,4)===year&&Array.isArray(e.batting)).forEach(e=>{
+    const row=byTeam.get(S(e.opp));if(!row)return;
+    for(const p of e.batting){
+      if(S(p.name)!==S(name))continue;
+      row.ab+=+p.atBats||0;row.hit+=+p.hits||0;row.hr+=+p.homeRuns||0;
+    }
+  });
+  return [...byTeam.values()].map(r=>({...r,avg:r.ab?(r.hit/r.ab>=1?'1.000':(r.hit/r.ab).toFixed(3).slice(1)):'—'}));
+}
+function opponentBattingSheetHTML(name){
+  const rows=opponentBattingSplits(name);
+  return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div>
+    <div class="sheethead"><div><b>${esc(name)}</b><div class="sb">${TODAY.getFullYear()} 시즌 · 상대 구단별 타율</div></div><button class="sheetclose" data-oppclose>×</button></div>
+    <div class="historybox" style="border-top:0;margin-top:12px;padding-top:0;max-height:50vh">
+      <table class="rec" style="width:100%;text-align:center"><thead><tr><th>상대 구단</th><th>타수</th><th>안타</th><th>타율</th></tr></thead><tbody>
+      ${rows.map(r=>`<tr${r.opp===h2h?' style="background:var(--chip)"':''}><td>${esc(r.opp)}</td><td>${r.ab}</td><td>${r.hit}</td><td><button class="playerlink" data-opphist="avgdetail" data-oppplayer="${esc(name)}" data-oppteam="${esc(r.opp)}">${r.avg}</button></td></tr>`).join('')}
+      </tbody></table>
+      <div class="note">정규시즌 종료 경기 기준 · 타율 = 안타 ÷ 타수<br>타수가 없는 상대 구단은 —로 표시됩니다.</div>
+    </div>
+  </div></div>`;
+}
+
+function opponentBattingDetailSheetHTML(name,opp){
+  const row=opponentBattingSplits(name).find(r=>r.opp===opp)||{ab:0,hit:0,hr:0,avg:'—'};
+  return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div>
+    <div class="sheethead"><div><b>${esc(name)}</b><div class="sb">${TODAY.getFullYear()} 시즌 · ${esc(opp)}전 타격 기록</div></div><button class="sheetclose" data-oppclose>×</button></div>
+    <button class="link" style="margin-top:12px" data-opphist="avg" data-oppplayer="${esc(name)}" data-oppteam="${esc(opp)}">← 상대 구단별 타율</button>
+    <div class="ordergrid" style="grid-template-columns:repeat(2,1fr)">
+      <div class="orderbox"><b>${row.avg}</b><span>타율</span></div>
+      <div class="orderbox"><b>${row.ab}</b><span>타수</span></div>
+      <div class="orderbox"><b>${row.hit}개</b><span>안타</span></div>
+      <div class="orderbox"><b>${row.hr}개</b><span>홈런</span></div>
+    </div>
+    <div class="note">정규시즌 종료 경기 기준 · 홈런은 안타 개수에 포함됩니다.</div>
+  </div></div>`;
+}
+
 function opponentHistorySheetHTML(){
   if(!oppHistorySheet)return '';
+  if(oppHistorySheet.stat==='avgdetail')return opponentBattingDetailSheetHTML(oppHistorySheet.name,oppHistorySheet.opp);
+  if(oppHistorySheet.stat==='avg')return opponentBattingSheetHTML(oppHistorySheet.name);
   const label={hit:'안타',sb:'도루',hr:'홈런'}[oppHistorySheet.stat]||'기록';
   const rows=opponentStatHistory(oppHistorySheet.name,oppHistorySheet.stat,oppHistorySheet.opp);
   const total=rows.reduce((s,x)=>s+(+x.count||0),0);
@@ -1073,7 +1114,7 @@ function opponentStatsView(){
   let body='';
   if(h2h){
     const m={};
-    Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&hasScore(e)&&S(e.date).slice(0,4)===String(yr)&&e.opp===h2h&&Array.isArray(e.batting)).forEach(e=>{
+    Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&!isCancelled(e)&&hasScore(e)&&S(e.date).slice(0,4)===String(yr)&&e.opp===h2h&&Array.isArray(e.batting)).forEach(e=>{
       e.batting.forEach(p=>{
         const n=S(p.name);if(!n)return;
         if(!m[n])m[n]={n,ab:0,hit:0,hr:0,sb:0};
@@ -1099,7 +1140,7 @@ function opponentStatsView(){
 <th><button class="opp-th${oppSort==='avg'?' active':''}" data-osort="avg">타율</button></th>
 </tr></thead><tbody>${rows.map((r,i)=>`<tr>
 <td>${i+1}</td>
-<td>${esc(r.n)}</td>
+<td><button class="playerlink" data-opphist="avg" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${esc(r.n)}</button></td>
 <td>${r.ab}</td>
 <td><button class="playerlink" data-opphist="hit" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${r.hit}</button></td>
 <td><button class="playerlink" data-opphist="sb" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${r.sb}</button></td>
