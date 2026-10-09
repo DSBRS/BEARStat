@@ -535,7 +535,7 @@ function calendarMarks(events,includeOther=false){
     const games=events.filter(e=>e.type===type),groups=new Map();
     for(const game of games){
       const side=game.homeAway||'',reason=S(game.cancelReason);
-      const cancellation=isCancelled(game)?(/폭염/.test(reason)?['☀','폭염 취소']:/폭설/.test(reason)?['❆','폭설 취소']:/그라운드/.test(reason)?['⛈','그라운드 사정 취소']:/우천|강우|비로|rain/i.test(reason)?['☂','우천 취소']:['','경기 취소']):['',''];
+      const cancellation=isCancelled(game)?(/폭염/.test(reason)?['☀','폭염 취소']:/폭설/.test(reason)?['❆','폭설 취소']:/그라운드/.test(reason)?['⛈','그라운드 사정 취소']:/강풍/.test(reason)?['༄','강풍 취소']:/미세먼지/.test(reason)?['☁︎','미세먼지 취소']:/황사/.test(reason)?['❖','황사 취소']:/우천|강우|비로|rain/i.test(reason)?['☂','우천 취소']:['','경기 취소']):['',''];
       groups.set(side+':'+cancellation[1],{side,cancellation});
     }
     for(const {side,cancellation} of groups.values()){
@@ -1581,7 +1581,7 @@ function admin(){
   const oppCustom=!!e.opp&&!TEAMS.includes(e.opp);
   const homeCustom=!!e.homeAway&&!['home','away'].includes(e.homeAway);
   const cancelReason=S(e.cancelReason);
-  const cancelCustom=!!cancelReason&&!['우천','그라운드 사정','폭염','폭설'].includes(cancelReason);
+  const cancelCustom=!!cancelReason&&!['우천','그라운드 사정','폭염','폭설','강풍','미세먼지','황사'].includes(cancelReason);
 
   if(!isOwner)return `<div class="brand"><div class="logo">관리자</div></div><div class="card">${SB?`<label>이메일</label><input id="em" type="email" autocomplete="username"><label>비밀번호</label><input id="pw" type="password" autocomplete="current-password"><button class="btn" id="login">로그인</button>${SB&&document.body.dataset.r==='admin'&&isOwner===false?'':''}`:'<div class="empty">Supabase 설정 후 사용할 수 있습니다.</div>'}<div class="note">일정 수정은 관리자로 등록된 계정만 가능하며 서버에서 확인합니다. <a href="#/">← 돌아가기</a></div></div>`;
   if(adminView==='manage')return `<div class="brand"><div class="logo">관리자</div><a href="#/" class="demo" style="text-decoration:none">← 앱</a></div>
@@ -1626,7 +1626,7 @@ function admin(){
   <label${e.type==='edu'?' style="display:none"':''}>관련 선수 (쉼표 구분)</label><input id="f_players" value="${esc((e.players||[]).join(', '))}"${e.type==='edu'?' style="display:none"':''}>
   </section>
   <section data-admin-step="3" style="${adminFormStep===3?'':'display:none'}">
-  <label for="f_cancelReason">경기 취소</label><select id="f_cancelReason"><option value=""${!isCancelled(e)?' selected':''}>정상 경기</option><option value="__cancelled__"${isCancelled(e)&&!cancelReason?' selected':''}>경기 취소 (사유 미지정)</option>${['우천','그라운드 사정','폭염','폭설'].map(x=>`<option value="${x}"${cancelReason===x?' selected':''}>${x}</option>`).join('')}<option value="__custom__"${cancelCustom?' selected':''}>직접 입력</option></select>
+  <label for="f_cancelReason">경기 취소</label><select id="f_cancelReason"><option value=""${!isCancelled(e)?' selected':''}>정상 경기</option><option value="__cancelled__"${isCancelled(e)&&!cancelReason?' selected':''}>경기 취소 (사유 미지정)</option>${['우천','그라운드 사정','폭염','폭설','강풍','미세먼지','황사'].map(x=>`<option value="${x}"${cancelReason===x?' selected':''}>${x}</option>`).join('')}<option value="__custom__"${cancelCustom?' selected':''}>직접 입력</option></select>
   <input id="f_cancelReason_custom" value="${cancelCustom?esc(cancelReason):''}" placeholder="취소 사유 직접 입력" style="margin-top:8px;${cancelCustom?'':'display:none'}">
   <label>장소</label><select id="f_place">${['',...VENUES].map(v=>`<option value="${v}" ${e.place===v?'selected':''}>${v||'장소 선택'}</option>`).join('')}<option value="__custom__"${placeCustom?' selected':''}>직접 입력</option></select>
   <input id="f_place_custom" value="${placeCustom?esc(e.place):''}" placeholder="장소를 직접 입력" style="margin-top:8px;${placeCustom?'':'display:none'}">
