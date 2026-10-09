@@ -207,6 +207,11 @@ function mergeEvents(manual,automatic){
     const old=matches[0],index=rows.indexOf(old),merged=old.manualOverride?{...auto,...old}:{...old,...auto};
     if(old.manualOverride&&Array.isArray(old.pitching)&&Array.isArray(auto.pitching))merged.pitching=old.pitching.map(p=>{const base=auto.pitching.find(x=>S(x.name)===S(p.name)&&(!S(p.teamId)||S(x.teamId)===S(p.teamId)));return base?{...base,...p}:p});
     for(const key of ['title','desc','channel','program','players','series'])if(old[key]!==undefined&&old[key]!=='')merged[key]=old[key];
+    // 경기 취소 설정은 선수 기록의 수동 우선 여부와 별도로 보존합니다.
+    if(old.cancellationOverride||(old.cancellationOverride===undefined&&S(old.cancelReason))){
+      merged.cancelReason=S(old.cancelReason);merged.cancelled=isCancelled(old);
+      merged.status=merged.cancelled?'cancelled':(auto.status==='cancelled'?(hasScore(merged)?'final':'scheduled'):auto.status);
+    }
     merged.id=old.id;merged.kboGameId=auto.kboGameId;merged.kbo=auto.kbo;merged.manualOverride=!!old.manualOverride;rows[index]=merged;
   }
   return{rows,warnings};
@@ -233,7 +238,7 @@ Repo.upsert=async function(ev){
 };
 
 function isUpcomingKbo(e){
-  return e&&e.type==='kbo'&&!e.cancelled&&!hasScore(e)&&S(e.date)>=TS;
+  return e&&e.type==='kbo'&&!isCancelled(e)&&!hasScore(e)&&S(e.date)>=TS;
 }
 
 function rerender(){const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;const y=scrollY;route2();scrollTo(0,y)}
@@ -278,7 +283,7 @@ const eduRosterForYear=y=>normRoster(EDU_ROSTERS_BY_YEAR[+y]||[]);
 const othersForYear=y=>Array.isArray(OTHERS_BY_YEAR[+y])?OTHERS_BY_YEAR[+y]:((+y===TODAY.getFullYear())?OTHERS:[]);
 const hasScore=e=>{const c=e&&e.score;if(!c)return false;const a=S(c.d),b=S(c.v);return a!==''&&b!==''&&!isNaN(+a)&&!isNaN(+b)};
 const isCancelled=e=>!!(e&&(e.cancelled===true||e.status==='cancelled'||e.cancelReason));
-const result=e=>!hasScore(e)?null:(+e.score.d>+e.score.v?'W':+e.score.d<+e.score.v?'L':'D');
+const result=e=>isCancelled(e)||!hasScore(e)?null:(+e.score.d>+e.score.v?'W':+e.score.d<+e.score.v?'L':'D');
 const RL={W:'승',L:'패',D:'무'};
 
 /* ============ 2. UI ============ */
@@ -1215,7 +1220,8 @@ function admin(){
   const placeCustom=!!e.place&&!VENUES.includes(e.place);
   const oppCustom=!!e.opp&&!TEAMS.includes(e.opp);
   const homeCustom=!!e.homeAway&&!['home','away'].includes(e.homeAway);
-  const cancelCustom=!!e.cancelReason&&!['우천','그라운드 사정','폭염'].includes(e.cancelReason);
+  const cancelReason=S(e.cancelReason);
+  const cancelCustom=!!cancelReason&&!['우천','그라운드 사정','폭염'].includes(cancelReason);
 
   if(!isOwner)return `<div class="brand"><div class="logo">관리자</div></div><div class="card">${SB?`<label>이메일</label><input id="em" type="email" autocomplete="username"><label>비밀번호</label><input id="pw" type="password" autocomplete="current-password"><button class="btn" id="login">로그인</button>${SB&&document.body.dataset.r==='admin'&&isOwner===false?'':''}`:'<div class="empty">Supabase 설정 후 사용할 수 있습니다.</div>'}<div class="note">일정 수정은 관리자로 등록된 계정만 가능하며 서버에서 확인합니다. <a href="#/">← 돌아가기</a></div></div>`;
   if(adminView==='manage')return `<div class="brand"><div class="logo">관리자</div><a href="#/" class="demo" style="text-decoration:none">← 앱</a></div>
@@ -1240,7 +1246,7 @@ function admin(){
       <div class="tm">${x.date.slice(5)}</div>
       <div class="bd">
         <div class="ti">${esc(x.title)}</div>
-        <div class="sb">${TYPES[x.type]}${x.cancelReason?' · '+esc(x.cancelReason)+'취소':''}${x.kboGameId?' · KBO 자동연동':''}${x.venue?' · '+esc(x.venue):''}</div>
+        <div class="sb">${TYPES[x.type]}${isCancelled(x)?' · '+(x.cancelReason?esc(x.cancelReason)+'취소':'경기취소'):''}${x.kboGameId?' · KBO 자동연동':''}${x.venue?' · '+esc(x.venue):''}</div>
         <button class="link" data-edit="${x.id}">수정</button>${x.kboGameId?'':`<button class="link" data-del="${x.id}">삭제</button>`}
       </div>
     </div>`).join(''):'<div class="empty">해당 일정이 없습니다.</div>'}
@@ -1268,8 +1274,8 @@ function admin(){
 <input id="f_homeAway_custom" value="${homeCustom?esc(e.homeAway):''}" placeholder="예: 중립" style="margin-top:8px;${homeCustom?'':'display:none'}"${editing?.kboGameId?' disabled':''}>
 <label>두산 선발</label><input id="f_starter" value="${e.starter||''}" placeholder="예: 곽빈">
 <label>상대팀 선발</label><input id="f_oppStarter" value="${e.oppStarter||''}" placeholder="예: 임찬규">
-  <label>경기 취소</label><select id="f_cancelReason"><option value="">정상 경기</option>${['우천','그라운드 사정','폭염'].map(x=>`<option value="${x}"${e.cancelReason===x?' selected':''}>${x}</option>`).join('')}<option value="__custom__"${cancelCustom?' selected':''}>직접 입력</option></select>
-  <input id="f_cancelReason_custom" value="${cancelCustom?esc(e.cancelReason):''}" placeholder="취소 사유 직접 입력" style="margin-top:8px;${cancelCustom?'':'display:none'}">
+  <label for="f_cancelReason">경기 취소</label><select id="f_cancelReason"><option value=""${!isCancelled(e)?' selected':''}>정상 경기</option><option value="__cancelled__"${isCancelled(e)&&!cancelReason?' selected':''}>경기 취소 (사유 미지정)</option>${['우천','그라운드 사정','폭염'].map(x=>`<option value="${x}"${cancelReason===x?' selected':''}>${x}</option>`).join('')}<option value="__custom__"${cancelCustom?' selected':''}>직접 입력</option></select>
+  <input id="f_cancelReason_custom" value="${cancelCustom?esc(cancelReason):''}" placeholder="취소 사유 직접 입력" style="margin-top:8px;${cancelCustom?'':'display:none'}">
   <label>스코어 두산 : 상대 (종료 시)</label><div style="display:flex;gap:8px"><input id="f_sd" type="number" min="0" value="${e.score?e.score.d:''}"><input id="f_so" type="number" min="0" value="${e.score?e.score.v:''}"></div>
   <label>경기시간</label><input id="f_duration" value="${esc(e.duration)}" placeholder="예: 3시간 12분">
   <label>승리투수</label><input id="f_winP" value="${esc(e.winP)}" placeholder="예: 곽빈">
@@ -1448,8 +1454,16 @@ document.addEventListener('click',ev=>{
     const type=v('type'),
       opp=customVal('opp'),
       homeAway=customVal('homeAway'),
-      cancelReason=customVal('cancelReason'),
+      cancelChoice=v('cancelReason'),
+      cancelled=cancelChoice!=='',
+      cancelReason=cancelChoice==='__cancelled__'?'':customVal('cancelReason'),
       g=type==='kbo'||type==='edu';
+
+if(cancelChoice==='__custom__'&&!cancelReason){
+  alert('취소 사유를 직접 입력해주세요');
+  $('#f_cancelReason_custom')?.focus();
+  return;
+}
 
 if(g&&!homeAway){
   alert('경기는 홈/원정을 선택해주세요');
@@ -1471,7 +1485,9 @@ if(!v('date')){
     const hrEntries=[...document.querySelectorAll('.hr-row')].map(row=>({player:S(row.querySelector('.hr-player')?.value),inning:+(row.querySelector('.hr-inning')?.value||0),runs:+(row.querySelector('.hr-runs')?.value||0)})).filter(x=>x.player&&x.inning&&x.runs);
     const homeRuns=hrEntries.map(x=>`${x.player} ${x.inning}회 ${x.runs}점`).join('\n');
     const old=editing||{},f=k=>$('#f_'+k)?v(k):S(old[k]);
-    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp, cancelReason,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
+    const cancellationOverride=!!old.cancellationOverride||cancelled!==isCancelled(old)||cancelReason!==S(old.cancelReason);
+    const status=cancelled?'cancelled':(old.status==='cancelled'||!old.status?((sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?'final':'scheduled'):old.status);
+    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp,cancelReason,cancelled,status,cancellationOverride,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
   }
   else if(t.id==='cancel'){editing=null;adminView='manage';keep()}
   else if(t.dataset.edit){eduDraft=null;editing=Repo.all().find(x=>x.id===t.dataset.edit);adminView='form';keep()}
