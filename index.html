@@ -169,6 +169,8 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 .opp-record-table .record-total td{font-weight:800}
 
 .recstats td.selected-stat,.recstats td.selected-stat .playerlink{font-weight:800}
+
+.order-game-toggle{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}.order-game-toggle:focus-visible{outline:2px solid var(--navy);outline-offset:3px}.order-play-detail{margin-top:10px;padding-left:8px;border-left:2px solid var(--line);line-height:1.7;font-size:12px}
 </style>
 
 <style>
@@ -402,7 +404,7 @@ function isUpcomingKbo(e){
   return e&&e.type==='kbo'&&!isCancelled(e)&&!hasScore(e)&&S(e.date)>=TS;
 }
 
-function rerender(){if(document.body.dataset.r==='admin'&&adminView==='form'&&document.querySelector('[data-admin-step]'))return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;const y=scrollY,opponentScroll=document.querySelector('.opp-scroll,.record-scroll')?.scrollLeft;route2();if(opponentScroll!==undefined){const scroller=document.querySelector('.opp-scroll,.record-scroll');if(scroller)scroller.scrollLeft=opponentScroll;}scrollTo(0,y)}
+function rerender(){if(document.body.dataset.r==='admin'&&adminView==='form'&&document.querySelector('[data-admin-step]'))return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;const historyTop=document.querySelector('.historybox')?.scrollTop;const y=scrollY,opponentScroll=document.querySelector('.opp-scroll,.record-scroll')?.scrollLeft;route2();if(opponentScroll!==undefined){const scroller=document.querySelector('.opp-scroll,.record-scroll');if(scroller)scroller.scrollLeft=opponentScroll;}const history=document.querySelector('.historybox');if(history&&historyTop!==undefined)history.scrollTop=historyTop;scrollTo(0,y)}
 let authRevision=0;
 async function setUser(sess){
   const revision=++authRevision;isOwner=false;
@@ -949,7 +951,7 @@ function battingOrderHistory(name){
       if(!Array.isArray(e.batting))return;
       const p=e.batting.find(x=>S(x.name)===S(name));
       const o=+(p&&p.order);
-      if(o>=1&&o<=9){const ab=recordNumber(p,['atBats','ab']),hit=recordNumber(p,['hits','hit']);rows.push({date:S(e.date),opp:S(e.opp)||'상대팀',order:o,ab,hit,avg:ab!==null&&hit!==null&&ab>0?opponentAverage(ab,hit):'—',headerNo:+e.headerNo||0});}
+      if(o>=1&&o<=9){const ab=recordNumber(p,['atBats','ab']),hit=recordNumber(p,['hits','hit']);rows.push({date:S(e.date),opp:S(e.opp)||'상대팀',order:o,ab,hit,avg:ab!==null&&hit!==null&&ab>0?opponentAverage(ab,hit):'—',headerNo:+e.headerNo||0,event:e,key:S(e.kboGameId||e.id||e.date+'-'+e.headerNo)});}
     });
   return rows.sort((a,b)=>b.date.localeCompare(a.date));
 }
@@ -1067,6 +1069,35 @@ function statHistory(name,stat){
   return out.sort((a,b)=>b.date.localeCompare(a.date));
 }
 function historyHTML(name){if(!playerHistoryStat)return'';const label={hit:'안타',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루',bb:'볼넷',hbp:'사구',ibb:'고의4구',rbi:'타점',runs:'득점',gdp:'병살타'}[playerHistoryStat],rows=statHistory(name,playerHistoryStat);return `<div class="historybox"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${pitcherHistoryRole==='start'?'선발 · ':pitcherHistoryRole==='relief'?'구원 · ':''}${label} 경기별 기록</b><span class="sb">총 ${rows.reduce((s,x)=>s+(+x.count||0),0)}개</span></div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>${esc(x.date.slice(5).replace('-','.'))}</b> · vs ${esc(x.opp||'상대팀')}${x.detail?`<br><span class="sb">${esc(x.detail)}</span>`:''}</div><b style="white-space:nowrap">${x.count}개</b></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`}
+let orderPlayOpen=null;
+const ORDER_PLAY_REQUESTS=new Map();
+function orderPlayKey(row,name=playerSheet){return JSON.stringify([recLeague,recYear,recSeason,name,row.key]);}
+function orderGamePlaysHTML(row){
+  const key=orderPlayKey(row),id=S(row.event.kboGameId);
+  if(recLeague!=='kbo'||!/^\d{8}[A-Z]{4}\d$/.test(id))return '<div class="order-play-detail sb">이 경기의 문자중계 내역이 없습니다.</div>';
+  const relay=cachedPlayerRelay(id,playerSheet,'hitter'),request=ORDER_PLAY_REQUESTS.get(key);
+  if(!relay)return `<div class="order-play-detail sb" role="status">${request?.error?'타석 내역을 불러오지 못했어요. 닫았다 다시 눌러주세요.':'타석 내역 불러오는 중…'}</div>`;
+  if(!relayPlayerAvailable(relay,id,playerSheet,'hitter'))return '<div class="order-play-detail sb">이 선수의 타석 내역을 확인할 수 없습니다.</div>';
+  const side=id.slice(8,10)==='OB'?'away':'home';
+  const plays=relay.plays.filter(p=>p.side===side&&p.batter===playerSheet);
+  return `<div class="order-play-detail">${plays.length?plays.map(p=>`<div>${p.inning}회${p.side==='away'?'초':'말'} · ${esc(p.result)}</div>`).join(''):'<span class="sb">확인된 타석 내역이 없습니다.</span>'}</div>`;
+}
+function orderGameHistoryRow(row,order){
+  const open=orderPlayOpen===orderPlayKey(row);
+  return `<div class="historyrow"><button type="button" class="order-game-toggle" data-ordergame="${esc(row.key)}" aria-expanded="${open}">
+    <div><b>${esc(row.date.slice(5).replace('-','.'))}</b> · vs ${esc(row.opp)}${row.headerNo?' · 더블헤더 '+row.headerNo+'차전':''}<br><span class="sb">${row.ab??'—'}타수 ${row.hit??'—'}안타 · 타석 내역 ${open?'▴':'▾'}</span></div>
+    <div style="text-align:right;white-space:nowrap"><b>타율 ${row.avg}</b><br><span class="sb">${order}번 타자</span></div>
+  </button>${open?orderGamePlaysHTML(row):''}</div>`;
+}
+async function loadOrderGamePlays(row,name,key){
+  const id=S(row.event.kboGameId);
+  if(recLeague!=='kbo'||!/^\d{8}[A-Z]{4}\d$/.test(id)||cachedPlayerRelay(id,name,'hitter')||ORDER_PLAY_REQUESTS.get(key)?.loading)return;
+  const state={loading:true,error:false};ORDER_PLAY_REQUESTS.set(key,state);
+  try{await primePlayerRelay([id],name,'hitter');await readSituationRelay(id,name,'hitter');}
+  catch{state.error=true;}
+  finally{state.loading=false;if(playerSheet===name&&orderPlayOpen===key)rerender();}
+}
+
 function playerSheetHTML(){
   if(!playerSheet)return '';
   if((recKind==='pitcher'?recPitchTab:recBatTab)==='situational')return situationPlayerSheetHTML();
@@ -1105,11 +1136,7 @@ function playerSheetHTML(){
              <span class="sb">총 ${selectedRows.length}경기</span>
            </div>
            ${selectedRows.length
-             ? selectedRows.map(x=>`
-               <div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-                 <div><b>${esc(x.date.slice(5).replace('-','.'))}</b> · vs ${esc(x.opp)}${x.headerNo?' · 더블헤더 '+x.headerNo+'차전':''}<br><span class="sb">${x.ab??'—'}타수 ${x.hit??'—'}안타</span></div>
-                 <div style="text-align:right;white-space:nowrap"><b>타율 ${x.avg}</b><br><span class="sb">${selected}번 타자</span></div>
-               </div>`).join('')
+             ? selectedRows.map(x=>orderGameHistoryRow(x,selected)).join('')
              : '<div class="empty">저장된 기록이 없습니다.</div>'}
          </div>`
       : '';
@@ -2261,9 +2288,9 @@ function route(){
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppdetail-stat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-sdimension],[data-svalue],[data-rleague],[data-hstat],[data-sstat],[data-pstat],[data-prole],[data-rseason],[data-orderhist],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],[data-hide-auto],[data-restore-auto],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
+  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppdetail-stat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-sdimension],[data-svalue],[data-rleague],[data-hstat],[data-sstat],[data-pstat],[data-prole],[data-rseason],[data-orderhist],[data-ordergame],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],[data-hide-auto],[data-restore-auto],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
   if(!isOwner&&(t.dataset.edit||t.dataset.del||['save','saveroster','saveeduroster','admin_new','addhr'].includes(t.id)))return;
-  const keep=()=>{const y=scrollY,left=document.querySelector('.opp-scroll,.record-scroll')?.scrollLeft;route2();const scroller=document.querySelector('.opp-scroll,.record-scroll');if(scroller&&left!==undefined)scroller.scrollLeft=left;scrollTo(0,y)};
+  const keep=()=>{const historyTop=document.querySelector('.historybox')?.scrollTop;const y=scrollY,left=document.querySelector('.opp-scroll,.record-scroll')?.scrollLeft;route2();const scroller=document.querySelector('.opp-scroll,.record-scroll');if(scroller&&left!==undefined)scroller.scrollLeft=left;const history=document.querySelector('.historybox');if(history&&historyTop!==undefined)history.scrollTop=historyTop;scrollTo(0,y)};
   if(t.dataset.d){sel=t.dataset.d;const d=new Date(sel+'T00:00:00');view=new Date(d.getFullYear(),d.getMonth(),1);keep()}
   else if(t.dataset.m!==undefined){const m=+t.dataset.m;if(m===0){sel=TS;view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1)}else view=new Date(view.getFullYear(),view.getMonth()+m,1);keep()}
   else if(t.dataset.x){const id=t.dataset.x;openIds.has(id)?openIds.delete(id):openIds.add(id);keep()}
@@ -2313,6 +2340,13 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.defensepos!==undefined){
     playerDefensePosition=playerDefensePosition===t.dataset.defensepos?null:t.dataset.defensepos;
     keep()
+  }
+  else if(t.dataset.ordergame!==undefined){
+    const row=battingOrderHistory(playerSheet).find(x=>x.key===t.dataset.ordergame&&x.order===+playerOrderHistory);
+    if(!row)return;
+    const key=orderPlayKey(row),name=playerSheet;
+    orderPlayOpen=orderPlayOpen===key?null:key;keep();
+    if(orderPlayOpen===key)loadOrderGamePlays(row,name,key);
   }
   else if(t.dataset.orderhist!==undefined){
     const n=+t.dataset.orderhist;
