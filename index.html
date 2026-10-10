@@ -156,6 +156,12 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 .calendar-cancel-example .letter-corner .cancel-emblem-letter{width:12px;height:12px;right:-3px;bottom:-2px}
 .calendar-cancel-example .storm.letter-inside .cancel-emblem-letter{bottom:8px}
 .record-total td{font-weight:800;background:var(--chip);border-top:2px solid var(--line)}
+
+/* Keep opponent ranking and player name visible during horizontal scrolling. */
+.opp-record-table th,.opp-record-table td{width:auto!important}
+.opp-record-table th:nth-child(1),.opp-record-table td:nth-child(1){position:-webkit-sticky;position:sticky;left:0;z-index:2;background:var(--card)}
+.opp-record-table th:nth-child(2),.opp-record-table td:nth-child(2){position:-webkit-sticky;position:sticky;left:34px;z-index:2;background:var(--card);box-shadow:2px 0 0 var(--line)}
+.recstats .record-total td,.opp-record-table .record-total td{background:var(--chip);font-weight:800}
 </style>
 
 <style>
@@ -1877,7 +1883,7 @@ function opponentStatsView(){
       return d || ((a.ab-b.ab)*dir) || ((a.hit-b.hit)*dir) || a.n.localeCompare(b.n,'ko');
     });
     body=`<div class="card" style="margin-top:14px"><div class="top"><span>${yr} 시즌 · 두산 vs ${h2h}</span></div>
-      ${rows.length?`<div style="overflow-x:auto"><table class="opp-record-table" style="min-width:650px"><thead><tr>
+      ${rows.length?`<div class="recscroll opp-scroll"><table class="opp-record-table" style="width:${34+Math.max(90,...rows.map(r=>Array.from(r.n).length*14+8))+8*64}px"><colgroup><col style="width:34px"><col style="width:${Math.max(90,...rows.map(r=>Array.from(r.n).length*14+8))}px">${Array.from({length:8},()=>'<col style="width:64px">').join('')}</colgroup><thead><tr>
 <th class="opp-rank">순위</th>
 <th>선수</th>
 <th><button class="opp-th${oppSort==='ab'?' active':''}" data-osort="ab">타수</button></th>
