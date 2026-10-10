@@ -1720,15 +1720,21 @@ function h2hView(){
   }
   return `<div class="brand"><div class="logo">맞대결</div></div><div class="chips">${TEAMS.map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${t}</button>`).join('')}</div>${body||'<div class="empty">상대팀을 선택하세요.</div>'}`;
 }
+function opponentWinningHitDescription(e,name){
+  const text=S(e.kbo?.gameWinningHit||e.kbo?.etc?.['결승타']);
+  if(!text.startsWith(S(name)+'(')&&!text.startsWith(S(name)+'（'))return '';
+  return text.slice(S(name).length).replace(/^[（(]/,'').replace(/[）)]$/,'');
+}
+
 function opponentWinningHitGames(name,opp){
   const year=String(TODAY.getFullYear());
   return Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&!isExhibition(e)&&!isCancelled(e)&&hasScore(e)&&S(e.date).slice(0,4)===year&&S(e.opp)===S(opp)&&names(e.gwRbi).includes(S(name)))
-    .map(event=>({event,gw:1})).sort((a,b)=>S(b.event.date).localeCompare(S(a.event.date))||(+b.event.headerNo||0)-(+a.event.headerNo||0)||S(b.event.time).localeCompare(S(a.event.time)));
+    .map(event=>({event,gw:1,winningHitDescription:opponentWinningHitDescription(event,name)})).sort((a,b)=>S(b.event.date).localeCompare(S(a.event.date))||(+b.event.headerNo||0)-(+a.event.headerNo||0)||S(b.event.time).localeCompare(S(a.event.time)));
 }
 
 function opponentStatHistory(name,stat,opp){
-  if(stat==='gw')return opponentWinningHitGames(name,opp).map(g=>({date:S(g.event.date),opp:S(g.event.opp),count:1,detail:+g.event.headerNo>0?'더블헤더 '+g.event.headerNo+'차전':''}));
-  const yr=String(TODAY.getFullYear()),key={hit:'hits',rbi:'rbi',sb:'stolenBases',hr:'homeRuns'}[stat];
+  if(stat==='gw')return opponentWinningHitGames(name,opp).map(g=>({date:S(g.event.date),opp:S(g.event.opp),count:1,detail:[+g.event.headerNo>0?'더블헤더 '+g.event.headerNo+'차전':'',g.winningHitDescription].filter(Boolean).join(' · ')}));
+  const yr=String(TODAY.getFullYear()),key={hit:'hits',rbi:'rbi',runs:'runs',sb:'stolenBases',hr:'homeRuns'}[stat];
   if(!key)return [];
   const rows=[];
   Repo.all()
@@ -1756,7 +1762,7 @@ function opponentStatHistory(name,stat,opp){
 
 const opponentAverage=(ab,hit)=>ab?(hit/ab>=1?'1.000':(hit/ab).toFixed(3).slice(1)):'—';
 function opponentPlayerGames(name,opp=''){
-  const year=String(TODAY.getFullYear()),keys={ab:'atBats',hit:'hits',rbi:'rbi',d2:'doubles',d3:'triples',hr:'homeRuns',sb:'stolenBases'};
+  const year=String(TODAY.getFullYear()),keys={ab:'atBats',hit:'hits',rbi:'rbi',runs:'runs',d2:'doubles',d3:'triples',hr:'homeRuns',sb:'stolenBases'};
   return Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&!isExhibition(e)&&!isCancelled(e)&&hasScore(e)&&S(e.date).slice(0,4)===year&&(!opp||S(e.opp)===S(opp))&&Array.isArray(e.batting)).map(e=>{
     const players=e.batting.filter(p=>S(p.name)===S(name));if(!players.length)return null;
     const stats={};for(const [key,field] of Object.entries(keys))stats[key]=players.reduce((sum,p)=>sum+(+p[field]||0),0);
@@ -1764,10 +1770,10 @@ function opponentPlayerGames(name,opp=''){
   }).filter(Boolean).sort((a,b)=>S(b.event.date).localeCompare(S(a.event.date))||(+b.event.headerNo||0)-(+a.event.headerNo||0)||S(b.event.time).localeCompare(S(a.event.time)));
 }
 function opponentBattingSplits(name){
-  const byTeam=new Map(TEAMS.map(opp=>[opp,{opp,ab:0,hit:0,rbi:0,d2:0,d3:0,hr:0,sb:0,homeAb:0,homeHit:0,awayAb:0,awayHit:0}]));
+  const byTeam=new Map(TEAMS.map(opp=>[opp,{opp,ab:0,hit:0,rbi:0,runs:0,d2:0,d3:0,hr:0,sb:0,homeAb:0,homeHit:0,awayAb:0,awayHit:0}]));
   for(const game of opponentPlayerGames(name)){
     const row=byTeam.get(S(game.event.opp));if(!row)continue;
-    for(const key of ['ab','hit','rbi','d2','d3','hr','sb'])row[key]+=game[key];
+    for(const key of ['ab','hit','rbi','runs','d2','d3','hr','sb'])row[key]+=game[key];
     const side=S(game.event.homeAway);
     if(side==='home'||side==='away'){row[side+'Ab']+=game.ab;row[side+'Hit']+=game.hit;}
   }
@@ -1804,7 +1810,7 @@ function opponentPlayDetails(e,name,stat){
  return relay.plays.filter(p=>p.side===side&&p.batter===name&&(stat==='avg'?p.stats.ab>0:p.stats[stat]>0)).map(p=>`${p.inning}회${p.side==='away'?'초':'말'} · ${p.result}`);
 }
 function opponentDetailHistoryHTML(name,opp,stat){
- const labels={ab:'타수',hit:'안타',rbi:'타점',avg:'타율',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루',gw:'결승타'},label=labels[stat];
+ const labels={ab:'타수',hit:'안타',rbi:'타점',runs:'득점',avg:'타율',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루',gw:'결승타'},label=labels[stat];
  if(!label)return '';
  const games=stat==='gw'?opponentWinningHitGames(name,opp):opponentPlayerGames(name,opp).filter(g=>stat==='avg'?g.ab>0:g[stat]>0),job=OPP_RELAY_STATS.has(stat)?opponentRelayJob:null;
  const progress=job?.running?`${job.done}/${job.total}경기 확인 중`:job?.failed?`${job.failed}경기 내역 조회 실패`:'';
@@ -1814,7 +1820,7 @@ function opponentDetailHistoryHTML(name,opp,stat){
    const e=g.event,side=e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':'홈/원정 미정';
    const gameLabel=[S(e.date).slice(5).replace('-','.'),+e.headerNo>0?'더블헤더 '+e.headerNo+'차전':''].filter(Boolean).join(' · ');
    const value=stat==='avg'?g.avg:`${g[stat]}${stat==='rbi'?'타점':stat==='ab'?'타수':'개'}`;
-   let details=opponentPlayDetails(e,name,stat);
+   let details=stat==='gw'?(g.winningHitDescription?[g.winningHitDescription]:null):opponentPlayDetails(e,name,stat);
    if(details===null&&stat==='hr'){const hrs=parseHrEntries(e).filter(x=>S(x.player)===S(name));if(hrs.length)details=hrs.map(x=>`${x.inning}회 · ${x.runs}점 홈런`);}
    return `<div class="historyrow"><div class="situ-game-body">
     <div class="situ-game-title"><b>${esc(gameLabel)}</b><span>vs ${esc(e.opp)} · ${esc(side)}</span></div>
@@ -1826,10 +1832,10 @@ function opponentDetailHistoryHTML(name,opp,stat){
 }
 
 function opponentBattingDetailSheetHTML(name,opp){
-  const row=opponentBattingSplits(name).find(r=>r.opp===opp)||{ab:0,hit:0,rbi:0,d2:0,d3:0,hr:0,sb:0,avg:'—'};
+  const row=opponentBattingSplits(name).find(r=>r.opp===opp)||{ab:0,hit:0,rbi:0,runs:0,d2:0,d3:0,hr:0,sb:0,avg:'—'};
   row.gw=opponentWinningHitGames(name,opp).length;
   const selected=oppHistorySheet?.detailStat||null;
-  const cards=[['ab','타수'],['hit','안타'],['rbi','타점'],['avg','타율'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['sb','도루'],['gw','결승타']];
+  const cards=[['ab','타수'],['hit','안타'],['rbi','타점'],['runs','득점'],['avg','타율'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['sb','도루'],['gw','결승타']];
   return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div>
     <div class="sheethead"><div><b>${esc(name)}</b><div class="sb">${TODAY.getFullYear()}년 KBO · ${esc(opp)}전 타격 기록</div></div><button class="sheetclose" data-oppclose>×</button></div>
     <div class="ordergrid">${cards.map(([key,label])=>`<button type="button" class="orderbox statclick${selected===key?' on':''}" data-oppdetail-stat="${key}" aria-pressed="${selected===key}" aria-controls="opponent-detail-history"><b>${row[key]}</b><span>${label}</span></button>`).join('')}</div>
@@ -1842,7 +1848,7 @@ function opponentHistorySheetHTML(){
   if(!oppHistorySheet)return '';
   if(oppHistorySheet.stat==='avgdetail')return opponentBattingDetailSheetHTML(oppHistorySheet.name,oppHistorySheet.opp);
   if(oppHistorySheet.stat==='avg')return opponentBattingSheetHTML(oppHistorySheet.name);
-  const label={hit:'안타',rbi:'타점',sb:'도루',hr:'홈런',gw:'결승타'}[oppHistorySheet.stat]||'기록';
+  const label={hit:'안타',rbi:'타점',runs:'득점',sb:'도루',hr:'홈런',gw:'결승타'}[oppHistorySheet.stat]||'기록';
   const unit=oppHistorySheet.stat==='rbi'?'타점':'개';
   const rows=opponentStatHistory(oppHistorySheet.name,oppHistorySheet.stat,oppHistorySheet.opp);
   const total=rows.reduce((s,x)=>s+(+x.count||0),0);
@@ -1913,7 +1919,7 @@ function opponentStatsView(){
 <td>${r.ab}</td>
 <td><button class="playerlink" data-opphist="hit" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${r.hit}</button></td>
 <td><button class="playerlink" data-opphist="rbi" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${r.rbi}</button></td>
-<td>${r.runs}</td>
+<td><button class="playerlink" data-opphist="runs" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${r.runs}</button></td>
 <td><button class="playerlink" data-opphist="sb" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${r.sb}</button></td>
 <td><button class="playerlink" data-opphist="hr" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${r.hr}</button></td>
 <td><button class="playerlink" data-opphist="gw" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${r.gw}</button></td>
