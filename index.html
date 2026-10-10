@@ -167,6 +167,8 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 .opp-record-table .playerlink{font-weight:400}
 .opp-record-table tbody td:nth-child(2),.opp-record-table tbody td:nth-child(2) .playerlink{font-weight:800}
 .opp-record-table .record-total td{font-weight:800}
+
+.recstats td.selected-stat,.recstats td.selected-stat .playerlink{font-weight:800}
 </style>
 
 <style>
@@ -1503,7 +1505,7 @@ function situationRecords(){
   let lastValue,lastRank;
   const body=rows.map((r,i)=>{
     const value=r[metric];const rank=metric==='n'||value===null?'—':(i&&value===lastValue?lastRank:i+1);lastValue=value;lastRank=rank;
-    return `<tr><td>${rank}</td><td><button class="playerlink" data-player="${esc(r.n)}">${esc(r.n)}</button></td>${cols.map(([k])=>`<td>${k==='ab'?situationAtBatCell(r):splitValue(r[k],k==='avg')}</td>`).join('')}</tr>`;
+    return `<tr><td>${rank}</td><td><button class="playerlink" data-player="${esc(r.n)}">${esc(r.n)}</button></td>${cols.map(([k])=>`<td${recSort?.k===k?' class="selected-stat"':''}>${k==='ab'?situationAtBatCell(r):splitValue(r[k],k==='avg')}</td>`).join('')}</tr>`;
   }).join('');
   return `<div class="brand"><div class="logo">개인기록</div></div>${recordTabs()}
   <div class="chips" style="margin-bottom:12px">${Object.keys(options).map(d=>`<button class="chip${state.dimension===d?' on':''}" data-sdimension="${d}">${SITUATION_LABELS[d]}</button>`).join('')}</div>
@@ -1637,7 +1639,7 @@ function records(){
 
   return `<div class="brand"><div class="logo">개인기록</div></div>
   ${recordTabs()}
-  ${rows.length?`<div class="card"><div class="recscroll record-scroll">${recordTableStart(cols,false,rows.map(r=>r.n))}<tr>${head}</tr>${rows.map(r=>`<tr>${cols.map(([k])=>`<td>${k==='n'?`<button class="playerlink" data-player="${esc(r.n)}">${esc(r.n)}</button>`:k==='avg'?(r.avg>=1?'1.000':r.avg.toFixed(3).slice(1)):r[k]===null?'—':r[k]}</td>`).join('')}</tr>`).join('')}${recKind==='pitcher'?pitcherTotalsRow(rows,cols):hitterTotalsRow(rows,cols)}</table></div></div>`:`<div class="card"><div class="empty">아직 집계할 ${recKind==='pitcher'?'투수':'타자'} 기록이 없습니다.</div></div>`}
+  ${rows.length?`<div class="card"><div class="recscroll record-scroll">${recordTableStart(cols,false,rows.map(r=>r.n))}<tr>${head}</tr>${rows.map(r=>`<tr>${cols.map(([k])=>`<td${k!=='n'&&recSort?.k===k?' class="selected-stat"':''}>${k==='n'?`<button class="playerlink" data-player="${esc(r.n)}">${esc(r.n)}</button>`:k==='avg'?(r.avg>=1?'1.000':r.avg.toFixed(3).slice(1)):r[k]===null?'—':r[k]}</td>`).join('')}</tr>`).join('')}${recKind==='pitcher'?pitcherTotalsRow(rows,cols):hitterTotalsRow(rows,cols)}</table></div></div>`:`<div class="card"><div class="empty">아직 집계할 ${recKind==='pitcher'?'투수':'타자'} 기록이 없습니다.</div></div>`}
   <div class="foot">${recYear}년 ${recordLeagueLabel()}${recordSeasonLabel()?' · '+recordSeasonLabel():''} · 두산 선수 명단 기준<br>${st}${recLeague==='futures'?'<br>'+futuresRecordNote():''}</div>${playerSheetHTML()}`;
 }
 
