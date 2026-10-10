@@ -162,6 +162,11 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 .opp-record-table th:nth-child(1),.opp-record-table td:nth-child(1){position:-webkit-sticky;position:sticky;left:0;z-index:2;background:var(--card)}
 .opp-record-table th:nth-child(2),.opp-record-table td:nth-child(2){position:-webkit-sticky;position:sticky;left:34px;z-index:2;background:var(--card);box-shadow:2px 0 0 var(--line)}
 .recstats .record-total td,.opp-record-table .record-total td{background:var(--chip);font-weight:800}
+
+.opp-record-table td,.opp-record-table th,.opp-record-table .opp-th{font-weight:400}
+.opp-record-table .playerlink{font-weight:400}
+.opp-record-table tbody td:nth-child(2),.opp-record-table tbody td:nth-child(2) .playerlink{font-weight:800}
+.opp-record-table .record-total td{font-weight:800}
 </style>
 
 <style>
@@ -395,7 +400,7 @@ function isUpcomingKbo(e){
   return e&&e.type==='kbo'&&!isCancelled(e)&&!hasScore(e)&&S(e.date)>=TS;
 }
 
-function rerender(){if(document.body.dataset.r==='admin'&&adminView==='form'&&document.querySelector('[data-admin-step]'))return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;const y=scrollY;route2();scrollTo(0,y)}
+function rerender(){if(document.body.dataset.r==='admin'&&adminView==='form'&&document.querySelector('[data-admin-step]'))return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;const y=scrollY,opponentScroll=document.querySelector('.opp-scroll')?.scrollLeft;route2();if(opponentScroll!==undefined){const scroller=document.querySelector('.opp-scroll');if(scroller)scroller.scrollLeft=opponentScroll;}scrollTo(0,y)}
 let authRevision=0;
 async function setUser(sess){
   const revision=++authRevision;isOwner=false;
