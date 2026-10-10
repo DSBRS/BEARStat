@@ -1899,7 +1899,7 @@ function admin(){
       <div class="bd">
         <div class="ti">${esc(x.title)}</div>
         <div class="sb">${TYPES[x.type]}${isCancelled(x)?' · '+(x.cancelReason?esc(x.cancelReason)+'취소':'경기취소'):''}${x.kboGameId?' · KBO 자동연동':''}${x.venue?' · '+esc(x.venue):''}</div>
-        ${adminEditActions(x)}${x.kboGameId?`<button class="link" data-hide-auto="${esc(x.kboGameId)}">일정 숨기기</button>`:`<button class="link" data-del="${x.id}">삭제</button>`}
+        ${adminEditActions(x)}<div style="display:flex;justify-content:flex-end;margin-top:20px;padding-top:12px;border-top:1px solid var(--line)">${x.kboGameId?`<button type="button" class="link" style="margin:0;padding:8px 12px" data-hide-auto="${esc(x.kboGameId)}">일정 숨기기</button>`:`<button type="button" class="link" style="margin:0;padding:8px 12px" data-del="${x.id}">삭제</button>`}</div>
       </div>
     </div>`).join(''):'<div class="empty">해당 일정이 없습니다.</div>'}
   </div>`;
