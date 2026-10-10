@@ -934,6 +934,13 @@ function battingOrders(name){
   });
   return counts;
 }
+function battingOrderAverage(history,order){
+  const games=history.filter(x=>x.order===order);
+  if(!games.length||games.some(x=>x.ab===null||x.hit===null||x.ab===undefined||x.hit===undefined))return '—';
+  const ab=games.reduce((sum,x)=>sum+x.ab,0),hit=games.reduce((sum,x)=>sum+x.hit,0);
+  return opponentAverage(ab,hit);
+}
+
 function battingOrderHistory(name){
   const yr=String(recYear),rows=[];
   Repo.all()
@@ -1085,7 +1092,7 @@ function playerSheetHTML(){
     const c=battingOrders(playerSheet),rows=[],history=battingOrderHistory(playerSheet);
     for(let i=1;i<=9;i++){
       if(c[i]){
-        rows.push(`<button type="button" class="orderbox statclick${+playerOrderHistory===i?' on':''}" data-orderhist="${i}" aria-pressed="${+playerOrderHistory===i}"><b>${c[i]}경기</b><span>${i}번 타자</span></button>`);
+        rows.push(`<button type="button" class="orderbox statclick${+playerOrderHistory===i?' on':''}" data-orderhist="${i}" aria-pressed="${+playerOrderHistory===i}"><b>${c[i]}경기</b><span>${i}번 타자</span><span style="display:block;margin-top:6px;font-size:15px;color:var(--ink)">타율 ${battingOrderAverage(history,i)}</span></button>`);
       }
     }
 
