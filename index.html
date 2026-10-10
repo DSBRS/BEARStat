@@ -1720,7 +1720,14 @@ function h2hView(){
   }
   return `<div class="brand"><div class="logo">맞대결</div></div><div class="chips">${TEAMS.map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${t}</button>`).join('')}</div>${body||'<div class="empty">상대팀을 선택하세요.</div>'}`;
 }
+function opponentWinningHitGames(name,opp){
+  const year=String(TODAY.getFullYear());
+  return Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&!isExhibition(e)&&!isCancelled(e)&&hasScore(e)&&S(e.date).slice(0,4)===year&&S(e.opp)===S(opp)&&names(e.gwRbi).includes(S(name)))
+    .map(event=>({event,gw:1})).sort((a,b)=>S(b.event.date).localeCompare(S(a.event.date))||(+b.event.headerNo||0)-(+a.event.headerNo||0)||S(b.event.time).localeCompare(S(a.event.time)));
+}
+
 function opponentStatHistory(name,stat,opp){
+  if(stat==='gw')return opponentWinningHitGames(name,opp).map(g=>({date:S(g.event.date),opp:S(g.event.opp),count:1,detail:+g.event.headerNo>0?'더블헤더 '+g.event.headerNo+'차전':''}));
   const yr=String(TODAY.getFullYear()),key={hit:'hits',rbi:'rbi',sb:'stolenBases',hr:'homeRuns'}[stat];
   if(!key)return [];
   const rows=[];
@@ -1797,9 +1804,9 @@ function opponentPlayDetails(e,name,stat){
  return relay.plays.filter(p=>p.side===side&&p.batter===name&&(stat==='avg'?p.stats.ab>0:p.stats[stat]>0)).map(p=>`${p.inning}회${p.side==='away'?'초':'말'} · ${p.result}`);
 }
 function opponentDetailHistoryHTML(name,opp,stat){
- const labels={ab:'타수',hit:'안타',rbi:'타점',avg:'타율',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루'},label=labels[stat];
+ const labels={ab:'타수',hit:'안타',rbi:'타점',avg:'타율',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루',gw:'결승타'},label=labels[stat];
  if(!label)return '';
- const games=opponentPlayerGames(name,opp).filter(g=>stat==='avg'?g.ab>0:g[stat]>0),job=opponentRelayJob;
+ const games=stat==='gw'?opponentWinningHitGames(name,opp):opponentPlayerGames(name,opp).filter(g=>stat==='avg'?g.ab>0:g[stat]>0),job=OPP_RELAY_STATS.has(stat)?opponentRelayJob:null;
  const progress=job?.running?`${job.done}/${job.total}경기 확인 중`:job?.failed?`${job.failed}경기 내역 조회 실패`:'';
  return `<div class="historybox situ-history" id="opponent-detail-history">
   <div class="situ-history-head"><b>${label} 경기별 기록</b><span class="situ-history-status" role="status">${esc(progress)}</span></div>
@@ -1820,8 +1827,9 @@ function opponentDetailHistoryHTML(name,opp,stat){
 
 function opponentBattingDetailSheetHTML(name,opp){
   const row=opponentBattingSplits(name).find(r=>r.opp===opp)||{ab:0,hit:0,rbi:0,d2:0,d3:0,hr:0,sb:0,avg:'—'};
+  row.gw=opponentWinningHitGames(name,opp).length;
   const selected=oppHistorySheet?.detailStat||null;
-  const cards=[['ab','타수'],['hit','안타'],['rbi','타점'],['avg','타율'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['sb','도루']];
+  const cards=[['ab','타수'],['hit','안타'],['rbi','타점'],['avg','타율'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['sb','도루'],['gw','결승타']];
   return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div>
     <div class="sheethead"><div><b>${esc(name)}</b><div class="sb">${TODAY.getFullYear()}년 KBO · ${esc(opp)}전 타격 기록</div></div><button class="sheetclose" data-oppclose>×</button></div>
     <div class="ordergrid">${cards.map(([key,label])=>`<button type="button" class="orderbox statclick${selected===key?' on':''}" data-oppdetail-stat="${key}" aria-pressed="${selected===key}" aria-controls="opponent-detail-history"><b>${row[key]}</b><span>${label}</span></button>`).join('')}</div>
@@ -1834,7 +1842,7 @@ function opponentHistorySheetHTML(){
   if(!oppHistorySheet)return '';
   if(oppHistorySheet.stat==='avgdetail')return opponentBattingDetailSheetHTML(oppHistorySheet.name,oppHistorySheet.opp);
   if(oppHistorySheet.stat==='avg')return opponentBattingSheetHTML(oppHistorySheet.name);
-  const label={hit:'안타',rbi:'타점',sb:'도루',hr:'홈런'}[oppHistorySheet.stat]||'기록';
+  const label={hit:'안타',rbi:'타점',sb:'도루',hr:'홈런',gw:'결승타'}[oppHistorySheet.stat]||'기록';
   const unit=oppHistorySheet.stat==='rbi'?'타점':'개';
   const rows=opponentStatHistory(oppHistorySheet.name,oppHistorySheet.stat,oppHistorySheet.opp);
   const total=rows.reduce((s,x)=>s+(+x.count||0),0);
@@ -1908,7 +1916,7 @@ function opponentStatsView(){
 <td>${r.runs}</td>
 <td><button class="playerlink" data-opphist="sb" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${r.sb}</button></td>
 <td><button class="playerlink" data-opphist="hr" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${r.hr}</button></td>
-<td>${r.gw}</td>
+<td><button class="playerlink" data-opphist="gw" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${r.gw}</button></td>
 <td>${avg(r)}</td>
 </tr>`).join('')}${hitterTotalsRow(rows,[['n','선수'],['ab','타수'],['hit','안타'],['rbi','타점'],['runs','득점'],['sb','도루'],['hr','홈런'],['gw','결승타'],['avg','타율']],true)}</tbody></table></div>`:'<div class="empty">저장된 상대 타격 기록이 없습니다.</div>'}
     </div>`;
