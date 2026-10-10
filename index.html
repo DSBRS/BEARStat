@@ -1142,15 +1142,24 @@ function situationRelayCandidates(name,stat){
 const RELAY_PLAYER_CACHE=new Map();
 const relayPlayerKey=(id,name,role)=>JSON.stringify([id,name,role]);
 function cachedPlayerRelay(id,name,role){return SITUATION_RELAY_CACHE.get(id)||RELAY_PLAYER_CACHE.get(relayPlayerKey(id,name,role));}
-const RELAY_REQUEST_QUEUE=[];let relayRequestsActive=0;
-function relayRequest(task){return new Promise((resolve,reject)=>{RELAY_REQUEST_QUEUE.push({task,resolve,reject});pumpRelayRequests()})}
+const RELAY_REQUEST_QUEUE=[];let relayRequestsActive=0,relayBackgroundActive=0;
+function relayRequest(task,priority='interactive',requestKey=''){
+ return new Promise((resolve,reject)=>{RELAY_REQUEST_QUEUE.push({task,resolve,reject,priority,requestKey});pumpRelayRequests()});
+}
+function promoteRelayRequest(key){const item=RELAY_REQUEST_QUEUE.find(item=>item.requestKey===key);if(item){item.priority='interactive';pumpRelayRequests();}}
 function pumpRelayRequests(){
  while(relayRequestsActive<2&&RELAY_REQUEST_QUEUE.length){
-  const item=RELAY_REQUEST_QUEUE.shift();relayRequestsActive++;
-  Promise.resolve().then(item.task).then(item.resolve,item.reject).finally(()=>{relayRequestsActive--;pumpRelayRequests()});
+  // Reserve one request slot for the record the user is opening.
+  let index=RELAY_REQUEST_QUEUE.findIndex(item=>item.priority!=='background');
+  if(index<0){if(relayBackgroundActive>=1)return;index=0;}
+  const [item]=RELAY_REQUEST_QUEUE.splice(index,1),background=item.priority==='background';
+  relayRequestsActive++;if(background)relayBackgroundActive++;
+  Promise.resolve().then(item.task).then(item.resolve,item.reject).finally(()=>{
+   relayRequestsActive--;if(background)relayBackgroundActive--;pumpRelayRequests();
+  });
  }
 }
-async function relayJSON(url,timeout){
+async function relayJSON(url,timeout,priority='interactive',requestKey=''){
  return relayRequest(async()=>{
   for(let attempt=0;attempt<2;attempt++){
    try{
@@ -1168,25 +1177,35 @@ async function relayJSON(url,timeout){
     throw error;
    }
   }
- });
+ },priority,requestKey);
 }
-async function primePlayerRelay(ids,name,role){
+const RELAY_BATCH_INFLIGHT=new Map();
+async function primePlayerRelay(ids,name,role,priority='interactive'){
  const missing=[...new Set(ids)].filter(id=>!cachedPlayerRelay(id,name,role));
  for(let i=0;i<missing.length;i+=100){
   const chunk=missing.slice(i,i+100),query=new URLSearchParams({gameIds:chunk.join(','),player:name,role});
-  const b=await relayJSON(SUPABASE_URL+'/functions/v1/kbo-relay?'+query,20000);
-  for(const game of b.games||[])if(chunk.includes(game.gameId)&&game.schemaVersion===1&&Array.isArray(game.plays))RELAY_PLAYER_CACHE.set(relayPlayerKey(game.gameId,name,role),game);
+  const key=JSON.stringify([name,role,[...chunk].sort()]);
+  let pending=RELAY_BATCH_INFLIGHT.get(key);
+  if(!pending){
+   pending=(async()=>{
+    const b=await relayJSON(SUPABASE_URL+'/functions/v1/kbo-relay?'+query,20000,priority,key);
+    for(const game of b.games||[])if(chunk.includes(game.gameId)&&game.schemaVersion===1&&Array.isArray(game.plays))RELAY_PLAYER_CACHE.set(relayPlayerKey(game.gameId,name,role),game);
+   })();
+   RELAY_BATCH_INFLIGHT.set(key,pending);
+  }
+  if(priority!=='background')promoteRelayRequest(key);
+  try{await pending}finally{if(RELAY_BATCH_INFLIGHT.get(key)===pending)RELAY_BATCH_INFLIGHT.delete(key);}
  }
 }
-async function readSituationRelay(id,name,role){
+async function readSituationRelay(id,name,role,priority='interactive'){
  const existing=cachedPlayerRelay(id,name,role);if(existing)return existing;
- if(RELAY_INFLIGHT.has(id))return RELAY_INFLIGHT.get(id);
- const pending=fetchSituationRelay(id,name,role);RELAY_INFLIGHT.set(id,pending);
+ if(RELAY_INFLIGHT.has(id)){if(priority!=='background')promoteRelayRequest('game:'+id);return RELAY_INFLIGHT.get(id);}
+ const pending=fetchSituationRelay(id,name,role,priority);RELAY_INFLIGHT.set(id,pending);
  try{return await pending}finally{RELAY_INFLIGHT.delete(id)}
 }
-async function fetchSituationRelay(id,name,role){
+async function fetchSituationRelay(id,name,role,priority='interactive'){
  const existing=cachedPlayerRelay(id,name,role);if(existing)return existing;
- const b=await relayJSON(SUPABASE_URL+'/functions/v1/kbo-relay?gameId='+encodeURIComponent(id),90000);
+ const b=await relayJSON(SUPABASE_URL+'/functions/v1/kbo-relay?gameId='+encodeURIComponent(id),90000,priority,'game:'+id);
  if(b.schemaVersion!==1||b.gameId!==id||!Array.isArray(b.plays))throw Error('응답 기록 형식 또는 경기 ID 불일치');
  SITUATION_RELAY_CACHE.set(id,b);return b;
 }
@@ -1289,9 +1308,9 @@ function scheduleSituationAtBats(rows){
  Promise.resolve().then(()=>Promise.all(Array.from({length:2},async()=>{
   while(next<tasks.length){
    const task=tasks[next++];
-   try{await primePlayerRelay(task.games.map(e=>e.kboGameId),task.name,'pitcher')}catch{}
+   try{await primePlayerRelay(task.games.map(e=>e.kboGameId),task.name,'pitcher','background')}catch{}
    for(const e of task.games){
-    try{await readSituationRelay(e.kboGameId,task.name,'pitcher')}
+    try{await readSituationRelay(e.kboGameId,task.name,'pitcher','background')}
     catch(error){job.errors.push({name:task.name,date:e.date,reason:error.message})}
    }
    job.pending.delete(task.name);rerender();
@@ -1367,10 +1386,10 @@ function scheduleHitterInningRecords(){
   Promise.resolve().then(()=>Promise.all(Array.from({length:2},async()=>{
     while(next<tasks.length){
       const task=tasks[next++],ids=task.games.map(g=>g.event.kboGameId).filter(id=>/^\d{8}[A-Z]{4}\d$/.test(S(id)));
-      try{await primePlayerRelay(ids,task.name,'hitter')}catch{}
+      try{await primePlayerRelay(ids,task.name,'hitter','background')}catch{}
       for(const {event:e,players} of task.games){
         if(verifiedHitterPlays(e,task.name,players)||!ids.includes(e.kboGameId))continue;
-        try{await readSituationRelay(e.kboGameId,task.name,'hitter')}catch(error){job.errors.push({name:task.name,id:e.kboGameId,reason:error.message})}
+        try{await readSituationRelay(e.kboGameId,task.name,'hitter','background')}catch(error){job.errors.push({name:task.name,id:e.kboGameId,reason:error.message})}
       }
       job.pending.delete(task.name);job.done++;rerender();
     }
