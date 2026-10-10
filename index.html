@@ -1053,7 +1053,7 @@ function playerSheetHTML(){
 // Split rows use exact official categories; never derive splits from season totals.
 const SITUATION_COUNTS=['0-0','1-0','2-0','3-0','0-1','1-1','2-1','3-1','0-2','1-2','2-2','3-2'];
 const SITUATION_OPTIONS={
-  hitter:{runners:['주자없음','1루','2루','3루','1,2루','1,3루','2,3루','만루','주자있음','득점권'],count:SITUATION_COUNTS,pitcherType:['좌투수','우투수','언더투수'],outs:['0아웃','1아웃','2아웃']},
+  hitter:{runners:['주자없음','1루','2루','3루','1,2루','1,3루','2,3루','만루','주자있음','득점권'],count:SITUATION_COUNTS,pitcherType:['좌투수','우투수','언더투수'],inning:['1회','2회','3회','4회','5회','6회','7회','8회','9회','연장'],order:['1번타자','2번타자','3번타자','4번타자','5번타자','6번타자','7번타자','8번타자','9번타자'],outs:['0아웃','1아웃','2아웃']},
   pitcher:{runners:['주자없음','1루','1,2루','만루','1,3루','2루','2,3루','주자있음','득점권'],count:SITUATION_COUNTS,inning:['6회','7회','8회','9회','연장','4~6회','7회이후'],order:['1번타자','2번타자','3번타자','4번타자','5번타자','6번타자','7번타자','8번타자','9번타자','상위(1~2번)','중심(3~5번)','하위(6~9번)'],batterType:['좌타자','우타자'],outs:['0아웃','1아웃','2아웃']}
 };
 const SITUATION_LABELS={runners:'주자 상황별',count:'볼카운트별',pitcherType:'투수 유형별',inning:'이닝별',order:'타순별',batterType:'타자 유형별',outs:'아웃카운트별'};
@@ -1101,7 +1101,8 @@ function situationalRows(){
     r.avg=r.ab!==null&&r.ab>0&&r.hit!==null?r.hit/r.ab:null;
     out.set(n,r);
   }
-  return [...out.values()].filter(r=>Object.keys(SPLIT_ALIASES).some(k=>r[k]!==null)).map(pitcherSituationAtBats);
+  if(recKind==='hitter'&&['inning','order'].includes(state.dimension)){for(const r of hitterExtraSplitRows())if(!out.has(r.n))out.set(r.n,r);}
+  return [...out.values()].filter(r=>r.pending||r.incomplete||Object.keys(SPLIT_ALIASES).some(k=>r[k]!==null)).map(pitcherSituationAtBats);
 }
 function splitValue(v,avg=false){return v===null||v===undefined?'—':avg?(v===1?'1.000':v.toFixed(3).replace(/^0/,'')):String(v)}
 function recordTableStart(cols,ranked=false,names=[]){
@@ -1303,7 +1304,85 @@ function situationAtBatCell(row){
  return job?.pending.has(row.n)?'<span role="status" aria-label="타수 자동 확인 중">…</span>':'—';
 }
 
+// Hitter inning splits require verified plate appearances; batting order uses each saved box-score row.
+const HITTER_INNING_JOBS=new Map();
+function hitterSplitGames(){
+  return Repo.all().filter(e=>e.type===recLeague&&!isCancelled(e)&&recordSeasonMatches(e)&&!isExhibition(e)&&hasScore(e)&&S(e.date).slice(0,4)===String(recYear)&&Array.isArray(e.batting));
+}
+function hitterInningJobKey(){return JSON.stringify([recYear,recSeason,hitterSplitGames().map(e=>[e.id,e.kboGameId,e.batting.map(p=>[S(p.name),p.atBats,p.hits])]).sort((a,b)=>S(a[0]).localeCompare(S(b[0])))]);}
+function hitterSplitPlayers(){
+  const allowed=new Set(recordRoster().filter(p=>p.t==='hitter').map(p=>p.n)),by=new Map();
+  for(const e of hitterSplitGames())for(const p of e.batting){const n=S(p.name);if(!allowed.has(n))continue;if(!by.has(n))by.set(n,new Map());const games=by.get(n);if(!games.has(e.id))games.set(e.id,{event:e,players:[]});games.get(e.id).players.push(p);}
+  return by;
+}
+function blankHitterSplit(n){return {n,...Object.fromEntries(Object.keys(SPLIT_ALIASES).map(k=>[k,null]))};}
+function verifiedHitterPlays(e,name,players){
+  if(!/^\d{8}[A-Z]{4}\d$/.test(S(e.kboGameId)))return null;
+  const relay=cachedPlayerRelay(e.kboGameId,name,'hitter');
+  if(!relay||!relayPlayerAvailable(relay,e.kboGameId,name,'hitter'))return null;
+  const side=e.kboGameId.slice(8,10)==='OB'?'away':'home';
+  const plays=relay.plays.filter(p=>p.side===side&&p.batter===name);
+  for(const [stat,keys] of [['ab',SPLIT_ALIASES.ab],['hit',SPLIT_ALIASES.hit]]){
+    const expected=players.map(p=>recordNumber(p,keys));
+    if(expected.some(v=>v===null)||plays.some(p=>recordNumber(p.stats,[stat])===null))return null;
+    if(plays.reduce((sum,p)=>sum+Number(p.stats[stat]),0)!==expected.reduce((a,b)=>a+b,0))return null;
+  }
+  if(plays.some(p=>!Number.isInteger(+p.inning)||+p.inning<1))return null;
+  return plays;
+}
+function hitterExtraSplitRows(){
+  const state=recSituation.hitter,rows=[],job=HITTER_INNING_JOBS.get(hitterInningJobKey());
+  for(const [name,games] of hitterSplitPlayers()){
+    const parts=[];let incomplete=false,matched=false;
+    for(const {event:e,players} of games.values()){
+      if(state.dimension==='order'){
+        for(const p of players){
+          const order=recordNumber(p,['order']);
+          if(!Number.isInteger(order)||order<1||order>9){if(recordNumber(p,SPLIT_ALIASES.ab)===null||Object.values(SPLIT_ALIASES).some(keys=>(recordNumber(p,keys)||0)>0)||(+p.intentionalWalks||0)>0)incomplete=true;continue;}
+          if(state.value!==order+'번타자')continue;
+          matched=true;const raw=normalizedSplit(p,name),bb=recordNumber(p,['walks','BB','bb']),ibb=recordNumber(p,['intentionalWalks','IBB']);
+          if(bb!==null)raw.bb=bb+(ibb||0);parts.push(raw);
+        }
+      }else{
+        const plays=verifiedHitterPlays(e,name,players);
+        if(!plays){incomplete=true;continue;}
+        for(const p of plays.filter(p=>relayMatches(p,state))){matched=true;parts.push(normalizedSplit(p.stats,name));}
+      }
+    }
+    const row=blankHitterSplit(name);
+    if(incomplete){row.pending=state.dimension==='inning'&&!!job?.pending.has(name);row.incomplete=!row.pending;rows.push(row);continue;}
+    if(!matched&&state.dimension==='order')continue;
+    for(const k of Object.keys(SPLIT_ALIASES).filter(k=>k!=='avg'))row[k]=parts.length?(parts.every(p=>p[k]!==null)?parts.reduce((sum,p)=>sum+p[k],0):null):0;
+    row.avg=row.ab>0&&row.hit!==null?row.hit/row.ab:null;rows.push(row);
+  }
+  return rows;
+}
+function scheduleHitterInningRecords(){
+  if(recKind!=='hitter'||recLeague!=='kbo'||recSituation.hitter.dimension!=='inning')return;
+  const key=hitterInningJobKey();if(HITTER_INNING_JOBS.has(key))return;
+  const tasks=[...hitterSplitPlayers()].map(([name,games])=>({name,games:[...games.values()]}));
+  if(!tasks.length)return;
+  const job={running:true,pending:new Set(tasks.map(t=>t.name)),done:0,total:tasks.length,errors:[]};HITTER_INNING_JOBS.set(key,job);
+  let next=0;
+  Promise.resolve().then(()=>Promise.all(Array.from({length:2},async()=>{
+    while(next<tasks.length){
+      const task=tasks[next++],ids=task.games.map(g=>g.event.kboGameId).filter(id=>/^\d{8}[A-Z]{4}\d$/.test(S(id)));
+      try{await primePlayerRelay(ids,task.name,'hitter')}catch{}
+      for(const {event:e,players} of task.games){
+        if(verifiedHitterPlays(e,task.name,players)||!ids.includes(e.kboGameId))continue;
+        try{await readSituationRelay(e.kboGameId,task.name,'hitter')}catch(error){job.errors.push({name:task.name,id:e.kboGameId,reason:error.message})}
+      }
+      job.pending.delete(task.name);job.done++;rerender();
+    }
+  }))).finally(()=>{job.running=false;rerender()});
+}
+function hitterSplitStatus(){
+  if(recKind!=='hitter'||!['inning','order'].includes(recSituation.hitter.dimension))return '';
+  const job=HITTER_INNING_JOBS.get(hitterInningJobKey());
+  return `<div class="note" role="status">저장된 경기 기준${recSituation.hitter.dimension==='inning'&&job?.running?' · 이닝 기록 확인 중 '+job.done+' / '+job.total+'명':''} · —: 해당 조건의 기록 확인 불가 또는 타수 없음</div>`;
+}
 function situationRecords(){
+  scheduleHitterInningRecords();
   const state=recSituation[recKind],options=SITUATION_OPTIONS[recKind],rows=situationalRows();
   scheduleSituationAtBats(rows);
   const cols=situationColumns();
@@ -1324,6 +1403,7 @@ function situationRecords(){
   return `<div class="brand"><div class="logo">개인기록</div></div>${recordTabs()}
   <div class="chips" style="margin-bottom:12px">${Object.keys(options).map(d=>`<button class="chip${state.dimension===d?' on':''}" data-sdimension="${d}">${SITUATION_LABELS[d]}</button>`).join('')}</div>
   <div class="chips" style="margin-bottom:12px">${options[state.dimension].map(v=>`<button class="chip${state.value===v?' on':''}" data-svalue="${esc(v)}">${esc(v)}</button>`).join('')}</div>
+  ${hitterSplitStatus()}
   <div class="card"><div class="recscroll">${recordTableStart([['n','선수'],...cols],true,rows.map(r=>r.n))}<tr><th>순위</th>${heads}</tr>${body||`<tr><td colspan="${cols.length+2}" class="empty">${KBO_SITUATIONAL_WARNING&&recLeague==='kbo'?'상황별 기록을 불러오지 못했습니다. 잠시 후 다시 확인해주세요.':'선택한 조건의 상황별 기록이 아직 없습니다.'}</td></tr>`}</table></div></div>
   ${playerSheetHTML()}`;
 }
