@@ -1092,7 +1092,7 @@ function playerSheetHTML(){
     const c=battingOrders(playerSheet),rows=[],history=battingOrderHistory(playerSheet);
     for(let i=1;i<=9;i++){
       if(c[i]){
-        rows.push(`<button type="button" class="orderbox statclick${+playerOrderHistory===i?' on':''}" data-orderhist="${i}" aria-pressed="${+playerOrderHistory===i}"><b>${c[i]}경기</b><span>${i}번 타자</span><span style="display:block;margin-top:6px;font-size:15px;color:var(--ink)">타율 ${battingOrderAverage(history,i)}</span></button>`);
+        rows.push(`<button type="button" class="orderbox statclick${+playerOrderHistory===i?' on':''}" data-orderhist="${i}" aria-pressed="${+playerOrderHistory===i}"><b>${i}번 타자</b><span style="display:block;margin-top:4px;font-size:15px;color:var(--ink)">${c[i]}경기</span><span style="display:block;margin-top:6px">타율 ${battingOrderAverage(history,i)}</span></button>`);
       }
     }
 
