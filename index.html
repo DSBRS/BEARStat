@@ -2457,19 +2457,19 @@ function milestoneEditorHTML(){
  <label for="mile_source">기록 출처 (선택)</label><input id="mile_source" value="${esc(entry.sources?.[metric.key]||'')}" placeholder="예: KBO 선수 페이지"><button class="btn" id="mile_save">저장</button><div id="mile_error" class="sb" role="status"></div></div></div>`;
 }
 function milestonesView(){
- const metric=milestoneMetricInfo(),{rows,events}=milestoneRows(),valid=rows.filter(r=>r.current!==null),last=events.map(e=>S(e.date)).sort().pop();
+ const metric=milestoneMetricInfo(),{rows,events}=milestoneRows(),valid=rows.filter(r=>r.current!==null&&r.target!==null&&(r.current>0||r.custom)),last=events.map(e=>S(e.date)).sort().pop();
  return `<div class="brand"><div class="logo">예상 달성 기록</div></div>
  <div class="chips" style="margin-bottom:12px">${[['career','통산'],['season','올 시즌']].map(([key,label])=>`<button class="chip${milestoneScope===key?' on':''}" data-milescope="${key}" aria-pressed="${milestoneScope===key}">${label}</button>`).join('')}</div>
  <div class="chips" style="margin-bottom:12px">${[['hitter','타자'],['pitcher','투수']].map(([key,label])=>`<button class="chip${milestoneRole===key?' on':''}" data-milerole="${key}" aria-pressed="${milestoneRole===key}">${label}</button>`).join('')}</div>
  <div class="chips" style="margin-bottom:14px">${MILESTONE_METRICS[milestoneRole].map(m=>`<button class="chip${metric.key===m.key?' on':''}" data-milemetric="${m.key}" aria-pressed="${metric.key===m.key}">${m.label}</button>`).join('')}</div>
  <div class="note">${TODAY.getFullYear()}년 KBO 정규시즌 · ${milestoneScope==='career'?'이전 소속팀을 포함한 지난 시즌까지의 통산 + 올해 두산 기록':'올해 저장된 두산 경기 기록'}${last?`<br>${last.replace(/-/g,'.')} 경기까지 집계`:''}<br>남은 기록이 적은 순서로 표시해요. 달성 날짜는 예측하지 않아요.</div>
  ${MILESTONE_WARNING?`<div class="note">${esc(MILESTONE_WARNING)}</div>`:''}
- ${milestoneScope==='career'&&valid.length<rows.length?`<div class="note">통산 기준이 없는 선수는 확인 전으로 표시해요.${isOwner?' 선수 옆 ‘기록 설정’에서 지난 시즌까지의 기록을 입력해주세요.':' 관리자에서 통산 기준을 입력하면 목표가 나와요.'}</div>`:''}
- <div class="milestone-list">${rows.length?rows.map(r=>{
+ ${isOwner&&rows.length?`<details class="card" style="margin-bottom:12px"><summary style="cursor:pointer;font-size:13px;font-weight:700">기록 설정</summary><label for="mile_player">선수 선택</label><select id="mile_player">${rows.slice().sort((a,b)=>a.n.localeCompare(b.n,'ko')).map(r=>`<option value="${esc(r.n)}">${esc(r.n)}</option>`).join('')}</select><button class="btn g" data-milechoose>선수 기록 설정</button></details>`:''}
+ <div class="milestone-list">${valid.length?valid.map(r=>{
   const progress=r.current===null||!r.target?0:Math.min(100,Math.max(0,r.current/r.target*100));
   return `<div class="card milestone-card"><div class="milestone-head"><b>${esc(r.n)}</b>${isOwner?`<button class="link" data-mileedit="${esc(r.n)}">기록 설정</button>`:''}</div>
   ${r.current===null?`<div class="empty">${milestoneScope==='career'&&milestoneNumber(milestoneEntry(r.n).baseline?.[metric.key])===null?'통산 기록 확인 전':'경기별 기록 확인 필요'}</div>`:`<div class="milestone-goal">${metric.label} <b>${milestoneDisplay(r.target,metric)}</b>${metric.unit} ${r.remaining===0?'달성':'까지'}</div><div class="milestone-values"><span>현재 ${milestoneDisplay(r.current,metric)}${metric.unit}</span><span>${r.remaining===0?'목표 달성!':`${milestoneDisplay(r.remaining,metric,true)}${metric.unit} 남음`}</span></div><div class="milestone-track" role="progressbar" aria-label="${esc(r.n)} ${metric.label} 목표" aria-valuenow="${Math.min(r.current,r.target)}" aria-valuemin="0" aria-valuemax="${r.target}"><span style="width:${progress}%"></span></div>`}</div>`;
- }).join(''):'<div class="card"><div class="empty">두산 선수 명단이 아직 없습니다.</div></div>'}</div>${milestoneEditorHTML()}`;
+ }).join(''):`<div class="card"><div class="empty">${rows.length?'표시할 예상 달성 기록이 아직 없습니다.':'두산 선수 명단이 아직 없습니다.'}</div></div>`}</div>${milestoneEditorHTML()}`;
 }
 function parseMilestoneInput(raw,metric){
  const text=S(raw).trim();if(!text)return null;
@@ -2509,13 +2509,14 @@ function route(){
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-milescope],[data-milerole],[data-milemetric],[data-mileedit],[data-mileclose],[data-mileback],#mile_save,[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-oppkind],[data-oppsort-pitch],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppdetail-stat],[data-opppitchstat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-sdimension],[data-svalue],[data-rleague],[data-hstat],[data-sstat],[data-pstat],[data-prole],[data-rseason],[data-orderhist],[data-ordergame],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],[data-hide-auto],[data-restore-auto],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
+  const t=ev.target.closest('[data-milescope],[data-milerole],[data-milemetric],[data-mileedit],[data-milechoose],[data-mileclose],[data-mileback],#mile_save,[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-oppkind],[data-oppsort-pitch],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppdetail-stat],[data-opppitchstat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-sdimension],[data-svalue],[data-rleague],[data-hstat],[data-sstat],[data-pstat],[data-prole],[data-rseason],[data-orderhist],[data-ordergame],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],[data-hide-auto],[data-restore-auto],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
   if(!isOwner&&(t.dataset.edit||t.dataset.del||['save','saveroster','saveeduroster','admin_new','addhr'].includes(t.id)))return;
   const keep=()=>{const historyTop=document.querySelector('.historybox')?.scrollTop;const y=scrollY,left=document.querySelector('.opp-scroll,.record-scroll')?.scrollLeft;route2();const scroller=document.querySelector('.opp-scroll,.record-scroll');if(scroller&&left!==undefined)scroller.scrollLeft=left;const history=document.querySelector('.historybox');if(history&&historyTop!==undefined)history.scrollTop=historyTop;scrollTo(0,y)};
   if(t.id==='mile_save'){saveMilestoneEntry()}
   else if(t.dataset.milescope){if(['career','season'].includes(t.dataset.milescope)){milestoneScope=t.dataset.milescope;milestoneEdit=null;keep()}}
   else if(t.dataset.milerole){if(['pitcher','hitter'].includes(t.dataset.milerole)){milestoneRole=t.dataset.milerole;milestoneMetric=MILESTONE_METRICS[milestoneRole][0].key;milestoneEdit=null;keep()}}
   else if(t.dataset.milemetric){if(MILESTONE_METRICS[milestoneRole].some(m=>m.key===t.dataset.milemetric)){milestoneMetric=t.dataset.milemetric;milestoneEdit=null;keep()}}
+  else if(t.dataset.milechoose!==undefined){if(isOwner){const name=document.getElementById('mile_player')?.value;if(rosterForYear(TODAY.getFullYear()).some(p=>p.n===name&&p.t===milestoneRole)){milestoneEdit=name;keep()}}}
   else if(t.dataset.mileedit){if(isOwner){milestoneEdit=t.dataset.mileedit;keep()}}
   else if(t.dataset.mileclose!==undefined){milestoneEdit=null;keep()}
   else if(t.dataset.mileback!==undefined&&ev.target===t){milestoneEdit=null;keep()}
