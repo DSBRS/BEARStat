@@ -273,7 +273,7 @@ nav a:last-child{flex:1.35}
 
 </style>
 
-<style>nav div{display:grid;grid-template-columns:0.65fr 0.65fr 1fr 0.9fr 1fr 1.65fr;box-sizing:border-box;padding-inline:8px}nav a,nav a:last-child{min-width:0;padding:12px 1px;white-space:nowrap;font-size:12px}@media(max-width:380px){nav a,nav a:last-child{font-size:11px}}</style></head>
+<style>nav div{display:grid;grid-template-columns:0.65fr 0.65fr 0.9fr 1fr 1fr 1.65fr;box-sizing:border-box;padding-inline:8px}nav a,nav a:last-child{min-width:0;padding:12px 1px;white-space:nowrap;font-size:12px}@media(max-width:380px){nav a,nav a:last-child{font-size:11px}}</style></head>
 <body>
 <div id="app"></div>
 <nav><div id="nav"></div></nav>
@@ -2647,7 +2647,7 @@ function bearsFranchiseCards(rows){
 function route(){
   const r=location.hash.replace('#/','')||'home';
   $('#app').innerHTML=r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='players'?playerManagement():home();
-  $('#nav').innerHTML=[['home','홈'],['standings','순위'],['records','개인기록'],['h2h','맞대결'],['opponent','상대전적'],['milestones','예상 달성 기록']].map(([k,l])=>`<a href="#/${k==='home'?'':k}" class="${r===k?'on':''}">${l}</a>`).join('');
+  $('#nav').innerHTML=[['home','홈'],['standings','순위'],['h2h','맞대결'],['records','개인기록'],['opponent','상대전적'],['milestones','예상 달성 기록']].map(([k,l])=>`<a href="#/${k==='home'?'':k}" class="${r===k?'on':''}">${l}</a>`).join('');
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
 document.addEventListener('input',ev=>{if(ev.target.matches('[data-careerinput]'))updateCareerRates()});
