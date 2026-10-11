@@ -1925,7 +1925,7 @@ function startOpponentRelay(){
 function opponentPlayDetails(e,name,stat){
  const relay=cachedPlayerRelay(e.kboGameId,name,'hitter');if(!relay||!OPP_RELAY_STATS.has(stat)||!relayPlayerAvailable(relay,e.kboGameId,name,'hitter'))return null;
  const side=S(e.kboGameId).slice(8,10)==='OB'?'away':'home';
- return relay.plays.filter(p=>p.side===side&&p.batter===name&&(stat==='avg'?p.stats.ab>0:p.stats[stat]>0)).map(p=>`${p.inning}회${p.side==='away'?'초':'말'} · ${S(p.pitcher)?'상대 투수 '+S(p.pitcher):'상대 투수 미확인'} · ${p.result}`);
+ return relay.plays.filter(p=>p.side===side&&p.batter===name&&(stat==='avg'?p.stats.ab>0:p.stats[stat]>0)).map(p=>`${p.inning}회${p.side==='away'?'초':'말'} · ${S(p.pitcher)?S(p.pitcher):'투수 미확인'} · ${p.result}`);
 }
 function opponentDetailHistoryHTML(name,opp,stat){
  const labels={ab:'타수',hit:'안타',rbi:'타점',runs:'득점',avg:'타율',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루',gw:'결승타'},label=labels[stat];
