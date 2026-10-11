@@ -2457,6 +2457,7 @@ function milestoneRows(){
    for(const metric of metrics){
     const current=sums[metric.key];if(!Number.isSafeInteger(current)||current<=0)continue;
     const step=CAREER_STEPS[metric.key],target=(Math.floor(current/step)+1)*step;
+    if(!milestoneClose(target-current,metric))continue;
     rows.push({n:p.n,current,target,remaining:target-current,metric});
    }
   }
@@ -2467,7 +2468,7 @@ function milestoneRows(){
  for(const metric of metrics)for(const player of season.rows){
   const current=player.stats[metric.key];if(current===null||current<=0)continue;
   const target=(Math.floor(current/metric.step)+1)*metric.step,remaining=target-current;
-  if(remaining>metric.near)continue;
+  if(!milestoneClose(remaining,metric))continue;
   rows.push({n:player.n,current,target,remaining,metric});
  }
  return {...season,rows};
@@ -2485,10 +2486,10 @@ function milestonesView(){
  <div class="chips" style="margin-bottom:12px">${[['hitter','타자'],['pitcher','투수']].map(([key,label])=>`<button class="chip${milestoneRole===key?' on':''}" data-milerole="${key}">${label}</button>`).join('')}</div>
  ${milestoneScope==='career'&&isOwner?careerSetupHTML():''}
  <div class="chips" style="margin-bottom:14px">${[{key:'all',label:'전체'},...MILESTONE_METRICS[milestoneRole]].map(m=>`<button class="chip${milestoneMetric===m.key?' on':''}" data-milemetric="${m.key}">${m.label}</button>`).join('')}</div>
- <div class="note">${milestoneScope==='career'?'<a href="https://www.doosanbears.com/stats/expect" target="_blank" rel="noopener" style="color:inherit">두산베어스 예상 달성 기록 · 참고 사이트</a><br>입력한 기준 연도까지의 통산 + 이후 저장된 KBO 정규시즌 기록':`${TODAY.getFullYear()}년 KBO 정규시즌 · 저장된 경기 기록으로 가까운 목표를 자동 표시해요.`}</div>
+ <div class="note">${milestoneScope==='career'?'<a href="https://www.doosanbears.com/stats/expect" target="_blank" rel="noopener" style="color:inherit">두산베어스 예상 달성 기록 · 참고 사이트</a><br>입력한 기준 연도까지의 통산 + 이후 저장된 KBO 정규시즌 기록<br>목표까지 15 미만 남은 기록만 표시해요. 이닝은 15이닝 미만이에요.':`${TODAY.getFullYear()}년 KBO 정규시즌 · 목표까지 15 미만 남은 기록만 표시해요. 이닝은 15이닝 미만이에요.`}</div>
  ${CAREER_WARNING&&milestoneScope==='career'?`<div class="note">${esc(CAREER_WARNING)}</div>`:''}
  ${missing?'<div class="note">일부 경기의 선수 기록이 없어 해당 항목은 표시하지 않아요.</div>':''}
- <div class="milestone-list">${rows.length?MILESTONE_METRICS[milestoneRole].filter(m=>rows.some(r=>r.metric.key===m.key)).map(m=>`<h2>${m.label}</h2>${milestoneCards(rows.filter(r=>r.metric.key===m.key))}`).join(''):`<div class="card"><div class="empty">${milestoneScope==='career'?'통산 기준 기록을 저장하면 예상 달성 기록이 나와요.':'지금 표시할 예상 달성 기록이 없어요.'}</div></div>`}</div>${careerEditorHTML()}`;
+ <div class="milestone-list">${rows.length?MILESTONE_METRICS[milestoneRole].filter(m=>rows.some(r=>r.metric.key===m.key)).map(m=>`<h2>${m.label}</h2>${milestoneCards(rows.filter(r=>r.metric.key===m.key))}`).join(''):`<div class="card"><div class="empty">${milestoneScope==='career'?'기준 기록이 입력된 선수 중 목표까지 15 미만 남은 기록이 없어요.':'지금 표시할 예상 달성 기록이 없어요.'}</div></div>`}</div>${careerEditorHTML()}`;
 }
 const CAREER_STEPS={hit:100,hr:50,rbi:100,runs:100,sb:50,g:100,tb:500,w:10,s:50,h:10,strikeouts:100,ipOuts:300};
 const careerKey=(role,name)=>'bears_career_'+role+'_'+encodeURIComponent(name);
@@ -2527,6 +2528,8 @@ async function saveCareerBaseline(){
  CAREER_BASELINES[key]=body;CAREER_WARNING='';milestoneEdit=null;route2();
  }catch(e){error.textContent=e.message||'저장하지 못했습니다.';button.disabled=false}
 }
+
+function milestoneClose(remaining,metric){return remaining>0&&remaining<(metric.key==='ipOuts'?45:15)}
 
 const CAREER_INPUT_FIELDS={
  hitter:[['g','경기 수'],['pa','타석'],['ab','타수'],['runs','득점'],['hit','안타'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['tb','루타'],['rbi','타점'],['sb','도루'],['cs','도루 실패'],['bb','볼넷'],['hbp','사구'],['strikeouts','삼진'],['gdp','병살타'],['errors','실책'],['sf','희생플라이']],
