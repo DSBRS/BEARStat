@@ -1919,12 +1919,14 @@ function opponentPitcherGames(name,opp){
 function opponentPitcherSheetHTML(name,opp){
   const games=opponentPitcherGames(name,opp),total=opponentPitchingRows(opp).find(r=>r.n===name),display=v=>v===null||v===undefined?'—':v;
   const cards=[['g','등판'],['ip','이닝'],['era','평균자책점'],['hits','피안타'],['strikeouts','탈삼진'],['runs','실점']];
+  const selected=oppHistorySheet?.detailStat,label=cards.find(([key])=>key===selected)?.[1];
+  const shown=selected?games.filter(g=>selected==='g'||selected==='ip'||selected==='era'?true:g[selected]!==null&&g[selected]>0):[];
   return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div>
     <div class="sheethead"><div><b>${esc(name)}</b><div class="sb">${TODAY.getFullYear()}년 KBO · ${esc(opp)}전 투구 기록</div></div><button class="sheetclose" data-oppclose>×</button></div>
-    ${total?`<div class="ordergrid">${cards.map(([key,label])=>`<div class="orderbox"><b>${display(total[key])}</b><span>${label}</span></div>`).join('')}</div>`:''}
-    <div class="historybox" style="max-height:45vh"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>경기별 투구 기록</b><span class="sb">총 ${games.length}경기</span></div>
-    ${games.length?games.map(g=>{const e=g.event,side=e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':'';return `<div class="historyrow"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(S(e.date).slice(5).replace('-','.'))}${+e.headerNo>0?' · 더블헤더 '+e.headerNo+'차전':''} · vs ${esc(e.opp)}</b><span>${g.result}</span></div><div class="sb" style="margin-top:4px">${side?side+' · ':''}${g.ip}이닝 · ${display(g.runs)}실점 · ${display(g.earnedRuns)}자책 · 평균자책점 ${g.era}</div><div class="sb" style="margin-top:3px">피안타 ${display(g.hits)} · 피홈런 ${display(g.homeRuns)} · 탈삼진 ${display(g.strikeouts)} · 볼넷 ${display(g.walks)} · 사구 ${display(g.hitByPitch)}</div></div>`;}).join(''):'<div class="empty">저장된 등판 기록이 없습니다.</div>'}
-    </div></div></div>`;
+    ${total?`<div class="ordergrid">${cards.map(([key,label])=>`<button type="button" class="orderbox statclick${selected===key?' on':''}" data-opppitchstat="${key}" aria-pressed="${selected===key}" aria-controls="opponent-pitcher-history"><b>${display(total[key])}</b><span>${label}</span></button>`).join('')}</div>`:''}
+    ${label?`<div id="opponent-pitcher-history" class="historybox" style="max-height:45vh"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>${label} 경기별 기록</b><span class="sb">총 ${shown.length}경기</span></div>
+    ${shown.length?shown.map(g=>{const e=g.event,side=e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':'';return `<div class="historyrow"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(S(e.date).slice(5).replace('-','.'))}${+e.headerNo>0?' · 더블헤더 '+e.headerNo+'차전':''} · vs ${esc(e.opp)}</b><span>${selected==='g'?g.result||'등판':label+' '+display(g[selected])}</span></div><div class="sb" style="margin-top:4px">${side?side+' · ':''}${g.ip}이닝 · ${display(g.runs)}실점 · ${display(g.earnedRuns)}자책 · 평균자책점 ${g.era}</div><div class="sb" style="margin-top:3px">피안타 ${display(g.hits)} · 피홈런 ${display(g.homeRuns)} · 탈삼진 ${display(g.strikeouts)} · 볼넷 ${display(g.walks)} · 사구 ${display(g.hitByPitch)}</div></div>`;}).join(''):'<div class="empty">해당 기록이 있는 경기가 없습니다.</div>'}
+    </div>`:''}</div></div>`;
 }
 
 function opponentHistorySheetHTML(){
@@ -2350,7 +2352,7 @@ function route(){
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-oppkind],[data-oppsort-pitch],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppdetail-stat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-sdimension],[data-svalue],[data-rleague],[data-hstat],[data-sstat],[data-pstat],[data-prole],[data-rseason],[data-orderhist],[data-ordergame],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],[data-hide-auto],[data-restore-auto],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
+  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-oppkind],[data-oppsort-pitch],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppdetail-stat],[data-opppitchstat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-sdimension],[data-svalue],[data-rleague],[data-hstat],[data-sstat],[data-pstat],[data-prole],[data-rseason],[data-orderhist],[data-ordergame],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],[data-hide-auto],[data-restore-auto],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
   if(!isOwner&&(t.dataset.edit||t.dataset.del||['save','saveroster','saveeduroster','admin_new','addhr'].includes(t.id)))return;
   const keep=()=>{const historyTop=document.querySelector('.historybox')?.scrollTop;const y=scrollY,left=document.querySelector('.opp-scroll,.record-scroll')?.scrollLeft;route2();const scroller=document.querySelector('.opp-scroll,.record-scroll');if(scroller&&left!==undefined)scroller.scrollLeft=left;const history=document.querySelector('.historybox');if(history&&historyTop!==undefined)history.scrollTop=historyTop;scrollTo(0,y)};
   if(t.dataset.d){sel=t.dataset.d;const d=new Date(sel+'T00:00:00');view=new Date(d.getFullYear(),d.getMonth(),1);keep()}
@@ -2369,6 +2371,13 @@ document.addEventListener('click',ev=>{
   }
   else if(t.dataset.gameclose!==undefined){gameBatterSheet=null;keep()}
   else if(t.dataset.gameback!==undefined&&ev.target===t){gameBatterSheet=null;keep()}
+  else if(t.dataset.opppitchstat!==undefined){
+    if(oppHistorySheet?.stat!=='pitcher')return;
+    const key=t.dataset.opppitchstat;
+    if(!['g','ip','era','hits','strikeouts','runs'].includes(key))return;
+    oppHistorySheet.detailStat=oppHistorySheet.detailStat===key?null:key;
+    keep();
+  }
   else if(t.dataset.oppdetailStat!==undefined){
     if(oppHistorySheet?.stat!=='avgdetail')return;
     const key=t.dataset.oppdetailStat;
