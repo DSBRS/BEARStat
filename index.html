@@ -1920,12 +1920,13 @@ function opponentPitcherSheetHTML(name,opp){
   const games=opponentPitcherGames(name,opp),total=opponentPitchingRows(opp).find(r=>r.n===name),display=v=>v===null||v===undefined?'—':v;
   const cards=[['g','등판'],['ip','이닝'],['era','평균자책점'],['hits','피안타'],['strikeouts','탈삼진'],['runs','실점']];
   const selected=oppHistorySheet?.detailStat,label=cards.find(([key])=>key===selected)?.[1];
-  const shown=selected?games.filter(g=>selected==='g'||selected==='ip'||selected==='era'?true:g[selected]!==null&&g[selected]>0):[];
+  const shown=selected?games:[];
+  const statValue=g=>selected==='ip'?display(g.ip)+'이닝':selected==='era'?'평균자책점 '+display(g.era):label+' '+display(g[selected])+'개';
   return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div>
     <div class="sheethead"><div><b>${esc(name)}</b><div class="sb">${TODAY.getFullYear()}년 KBO · ${esc(opp)}전 투구 기록</div></div><button class="sheetclose" data-oppclose>×</button></div>
     ${total?`<div class="ordergrid">${cards.map(([key,label])=>`<button type="button" class="orderbox statclick${selected===key?' on':''}" data-opppitchstat="${key}" aria-pressed="${selected===key}" aria-controls="opponent-pitcher-history"><b>${display(total[key])}</b><span>${label}</span></button>`).join('')}</div>`:''}
     ${label?`<div id="opponent-pitcher-history" class="historybox" style="max-height:45vh"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>${label} 경기별 기록</b><span class="sb">총 ${shown.length}경기</span></div>
-    ${shown.length?shown.map(g=>{const e=g.event,side=e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':'';return `<div class="historyrow"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(S(e.date).slice(5).replace('-','.'))}${+e.headerNo>0?' · 더블헤더 '+e.headerNo+'차전':''} · vs ${esc(e.opp)}</b><span>${selected==='g'?g.result||'등판':label+' '+display(g[selected])}</span></div><div class="sb" style="margin-top:4px">${side?side+' · ':''}${g.ip}이닝 · ${display(g.runs)}실점 · ${display(g.earnedRuns)}자책 · 평균자책점 ${g.era}</div><div class="sb" style="margin-top:3px">피안타 ${display(g.hits)} · 피홈런 ${display(g.homeRuns)} · 탈삼진 ${display(g.strikeouts)} · 볼넷 ${display(g.walks)} · 사구 ${display(g.hitByPitch)}</div></div>`;}).join(''):'<div class="empty">해당 기록이 있는 경기가 없습니다.</div>'}
+    ${shown.length?shown.map(g=>{const e=g.event,side=e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':'';return `<div class="historyrow"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(S(e.date).slice(5).replace('-','.'))}${+e.headerNo>0?' · 더블헤더 '+e.headerNo+'차전':''} · vs ${esc(e.opp)}${side?' · '+side:''}</b>${selected==='g'?'':`<span>${statValue(g)}</span>`}</div></div>`;}).join(''):'<div class="empty">저장된 등판 기록이 없습니다.</div>'}
     </div>`:''}</div></div>`;
 }
 
