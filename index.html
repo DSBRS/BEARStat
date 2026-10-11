@@ -2203,19 +2203,19 @@ function admin(){
   <label${e.type==='edu'?' style="display:none"':''}>관련 선수 (쉼표 구분)</label><input id="f_players" value="${esc((e.players||[]).join(', '))}"${e.type==='edu'?' style="display:none"':''}>
   </section>`}
   <section data-admin-step="3" style="${adminFormStep===3?'':'display:none'}">
-  <label for="f_cancelReason">경기 취소</label><select id="f_cancelReason"><option value=""${!isCancelled(e)?' selected':''}>정상 경기</option><option value="__cancelled__"${isCancelled(e)&&!cancelReason?' selected':''}>⊘ 경기 취소 (사유 미지정)</option>${['우천','그라운드 사정','폭염','폭설','강풍','미세먼지','황사'].map(x=>`<option value="${x}"${cancelReason===x?' selected':''}>${CANCEL_ICONS[x]} ${x}</option>`).join('')}<option value="__custom__"${cancelCustom?' selected':''}>✎ 직접 입력</option></select>
+  <label for="f_cancelReason">경기 취소</label><select id="f_cancelReason"><option value="__custom__"${cancelCustom?' selected':''}>✎ 직접 입력</option><option value=""${!isCancelled(e)?' selected':''}>정상 경기</option><option value="__cancelled__"${isCancelled(e)&&!cancelReason?' selected':''}>⊘ 경기 취소 (사유 미지정)</option>${['우천','그라운드 사정','폭염','폭설','강풍','미세먼지','황사'].map(x=>`<option value="${x}"${cancelReason===x?' selected':''}>${CANCEL_ICONS[x]} ${x}</option>`).join('')}</select>
   <input id="f_cancelReason_custom" value="${cancelCustom?esc(cancelReason):''}" placeholder="✎ 취소 사유 직접 입력" style="margin-top:8px;${cancelCustom?'':'display:none'}">
-  <label>장소</label><select id="f_place">${['',...VENUES].map(v=>`<option value="${v}" ${e.place===v?'selected':''}>${v||'장소 선택'}</option>`).join('')}<option value="__custom__"${placeCustom?' selected':''}>✎ 직접 입력</option></select>
+  <label>장소</label><select id="f_place"><option value="__custom__"${placeCustom?' selected':''}>✎ 직접 입력</option>${['',...VENUES].map(v=>`<option value="${v}" ${(e.place===v||(!e.place&&v===''))?'selected':''}>${v||'장소 선택'}</option>`).join('')}</select>
   <input id="f_place_custom" value="${placeCustom?esc(e.place):''}" placeholder="✎ 장소를 직접 입력" style="margin-top:8px;${placeCustom?'':'display:none'}">
 
-  <label>상대팀 (경기)</label><select id="f_opp"${editing?.kboGameId?' disabled':''}>${['',...TEAMS].map(t=>`<option value="${t}"${e.opp===t?' selected':''}>${t||'상대팀 선택'}</option>`).join('')}<option value="__custom__"${oppCustom?' selected':''}>✎ 직접 입력</option></select>
+  <label>상대팀 (경기)</label><select id="f_opp"${editing?.kboGameId?' disabled':''}><option value="__custom__"${oppCustom?' selected':''}>✎ 직접 입력</option>${['',...TEAMS].map(t=>`<option value="${t}"${(e.opp===t||(!e.opp&&t===''))?' selected':''}>${t||'상대팀 선택'}</option>`).join('')}</select>
   <input id="f_opp_custom" value="${oppCustom?esc(e.opp):''}" placeholder="✎ 상대팀을 직접 입력 (예: 요미우리)" style="margin-top:8px;${oppCustom?'':'display:none'}"${editing?.kboGameId?' disabled':''}>
 
-<label>홈 / 원정</label><select id="f_homeAway"${editing?.kboGameId?' disabled':''}>
-<option value="">홈/원정 선택</option>
+<label>홈 / 원정</label><select id="f_homeAway"${editing?.kboGameId?' disabled':''}><option value="__custom__"${homeCustom?' selected':''}>✎ 직접 입력</option>
+<option value=""${!e.homeAway?' selected':''}>홈/원정 선택</option>
 <option value="home"${e.homeAway==='home'?' selected':''}>홈</option>
 <option value="away"${e.homeAway==='away'?' selected':''}>원정</option>
-<option value="__custom__"${homeCustom?' selected':''}>✎ 직접 입력</option>
+
 </select>
 <input id="f_homeAway_custom" value="${homeCustom?esc(e.homeAway):''}" placeholder="예: 중립" style="margin-top:8px;${homeCustom?'':'display:none'}"${editing?.kboGameId?' disabled':''}>
 <label>두산 선발</label><input id="f_starter" value="${e.starter||''}" placeholder="예: 곽빈">
