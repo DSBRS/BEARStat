@@ -2487,10 +2487,10 @@ function milestonesView(){
  <div class="chips" style="margin-bottom:12px">${[['hitter','타자'],['pitcher','투수']].map(([key,label])=>`<button class="chip${milestoneRole===key?' on':''}" data-milerole="${key}">${label}</button>`).join('')}</div>
  ${milestoneScope==='career'&&isOwner?careerSetupHTML():''}
  <div class="chips" style="margin-bottom:14px">${[{key:'all',label:'전체'},...MILESTONE_METRICS[milestoneRole]].map(m=>`<button class="chip${milestoneMetric===m.key?' on':''}" data-milemetric="${m.key}">${m.label}</button>`).join('')}</div>
- <div class="note">${milestoneScope==='bears'?'OB·두산 KBO 정규시즌 개인 누적 최다 기록<br>기록 보유자와 신기록까지 20 미만 남은 선수를 표시해요.':milestoneScope==='career'?'<a href="https://www.doosanbears.com/stats/expect" target="_blank" rel="noopener" style="color:inherit">두산베어스 예상 달성 기록 · 참고 사이트</a><br>입력한 기준 연도까지의 통산 + 이후 저장된 KBO 정규시즌 기록<br>목표까지 20 미만 남은 기록만 표시해요.':`${TODAY.getFullYear()}년 KBO 정규시즌 · 목표까지 20 미만 남은 기록만 표시해요.`}${milestoneRole==='pitcher'?'<br>이닝 기록은 목표까지 20이닝 미만 남았을 때 표시해요.':''}</div>
+ <div class="note">${milestoneScope==='bears'?'OB·두산 KBO 정규시즌 개인 누적 최다 기록<br>항목별로 현재 두산 선수 중 기록이 가장 많은 선수와 다음 2명까지 표시해요.<br>순위는 OB·두산 소속 기록만 비교하며 은퇴·이적 선수는 도전 선수 순위에서 제외해요.':milestoneScope==='career'?'<a href="https://www.doosanbears.com/stats/expect" target="_blank" rel="noopener" style="color:inherit">두산베어스 예상 달성 기록 · 참고 사이트</a><br>입력한 기준 연도까지의 통산 + 이후 저장된 KBO 정규시즌 기록<br>목표까지 20 미만 남은 기록만 표시해요.':`${TODAY.getFullYear()}년 KBO 정규시즌 · 목표까지 20 미만 남은 기록만 표시해요.`}${milestoneRole==='pitcher'?'<br>이닝 기록은 목표까지 20이닝 미만 남았을 때 표시해요.':''}</div>
  ${CAREER_WARNING&&milestoneScope==='career'?`<div class="note">${esc(CAREER_WARNING)}</div>`:''}
  ${missing?'<div class="note">일부 경기의 선수 기록이 없어 해당 항목은 표시하지 않아요.</div>':''}
- <div class="milestone-list">${rows.length?MILESTONE_METRICS[milestoneRole].filter(m=>rows.some(r=>r.metric.key===m.key)).map(m=>`<h2>${m.label}</h2>${(milestoneScope==='bears'?bearsFranchiseCards:milestoneCards)(rows.filter(r=>r.metric.key===m.key))}`).join(''):`<div class="card"><div class="empty">${milestoneScope==='bears'?'현재 표시할 구단 기록 보유자나 신기록이 가까운 선수가 없어요.':milestoneScope==='career'?'기준 기록이 입력된 선수 중 목표까지 20 미만 남은 기록이 없어요.':'지금 표시할 예상 달성 기록이 없어요.'}</div></div>`}</div>${milestoneScope==='career'?careerEditorHTML():''}`;
+ <div class="milestone-list">${rows.length?MILESTONE_METRICS[milestoneRole].filter(m=>rows.some(r=>r.metric.key===m.key)).map(m=>`<h2>${m.label}</h2>${(milestoneScope==='bears'?bearsFranchiseCards:milestoneCards)(rows.filter(r=>r.metric.key===m.key))}`).join(''):`<div class="card"><div class="empty">${milestoneScope==='bears'?'현재 비교할 수 있는 두산 선수 기록이 없어요.':milestoneScope==='career'?'기준 기록이 입력된 선수 중 목표까지 20 미만 남은 기록이 없어요.':'지금 표시할 예상 달성 기록이 없어요.'}</div></div>`}</div>${milestoneScope==='career'?careerEditorHTML():''}`;
 }
 const CAREER_STEPS={hit:100,hr:50,rbi:100,runs:100,sb:50,g:100,tb:100,w:10,s:50,h:10,strikeouts:100,ipOuts:300};
 const careerKey=(role,name)=>'bears_career_'+role+'_'+encodeURIComponent(name);
@@ -2623,13 +2623,13 @@ function bearsFranchiseRows(){
   if(players.some(p=>active.has(p.name)&&!Number.isSafeInteger(p.stats[metric.key])))continue;
   const best=Math.max(record.value,...players.map(p=>p.stats[metric.key]).filter(Number.isSafeInteger));
   const holders=[...new Set([...(best===record.value?[record.name]:[]),...players.filter(p=>p.stats[metric.key]===best).map(p=>p.name)])];
-  for(const p of players){
-   if(!active.has(p.name))continue;
-   const current=p.stats[metric.key];if(!Number.isSafeInteger(current)||current<=0)continue;
-   const leading=current===best,remaining=best+1-current;
-   if(!leading&&!milestoneClose(remaining,metric))continue;
-   rows.push({n:p.name,current,target:best+1,remaining,metric,leading,holders,record:best,sourceUrl:p.sourceUrl});
-  }
+  const ranked=players.filter(p=>active.has(p.name)&&Number.isSafeInteger(p.stats[metric.key])&&p.stats[metric.key]>0)
+   .sort((a,b)=>b.stats[metric.key]-a.stats[metric.key]||a.name.localeCompare(b.name,'ko'));
+  const contenders=ranked.slice(0,3).map((p,index)=>({n:p.name,current:p.stats[metric.key],rank:ranked.filter(q=>q.stats[metric.key]>p.stats[metric.key]).length+1,remaining:best+1-p.stats[metric.key]}));
+  if(!contenders.length)continue;
+  const first=contenders[0],p=ranked[0];
+  rows.push({...first,target:best+1,metric,leading:first.current===best,holders,record:best,sourceUrl:p.sourceUrl,following:contenders.slice(1)});
+
  }
  return {rows,events:[...seasons.values()].flatMap(s=>s.events),missing};
 }
@@ -2637,8 +2637,9 @@ function bearsFranchiseCards(rows){
  return rows.slice().sort((a,b)=>Number(b.leading)-Number(a.leading)||a.remaining-b.remaining||a.n.localeCompare(b.n,'ko')).map(r=>{
   const m=r.metric,unit=m.unit,label=m.key==='g'?(milestoneRole==='hitter'?'경기 출장':'등판'):m.label;
   return `<div class="card milestone-card"><div class="milestone-head"><b>${esc(r.n)}</b></div>
-  <div class="milestone-goal">베어스 최다 ${label} <b>${milestoneDisplay(r.current,m)}</b>${unit}</div>
+  <div class="milestone-goal">베어스 최다 ${label}${r.leading?'':' 도전'} <b>${milestoneDisplay(r.current,m)}</b>${unit}</div>
   ${r.leading?`<div class="milestone-values"><span>${r.holders.length>1?'공동 최다 기록':'구단 최다 기록'}</span><b>${r.holders.length>1?'단독 신기록까지 '+milestoneDisplay(1,m,true)+unit:'신기록 경신 중'}</b></div>${r.holders.length>1?`<div style="margin-top:8px;color:var(--muted)">공동 보유자: ${esc(r.holders.join(' · '))}</div>`:''}`:`<div class="milestone-values"><span>${esc(r.holders.join(' · '))} · ${milestoneDisplay(r.record,m)}${unit}</span><b>신기록까지 ${milestoneDisplay(r.remaining,m,true)}${unit}</b></div><div class="milestone-track"><span style="width:${Math.min(100,r.current/r.target*100)}%"></span></div>`}
+  ${(r.following||[]).length?`<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line,#e4e5ed)"><div style="font-size:12px;color:var(--muted);margin-bottom:10px">현재 두산 선수 순위 · OB·두산 소속 기록</div>${r.following.map(p=>`<div style="display:flex;gap:12px;justify-content:space-between;align-items:baseline;flex-wrap:wrap;margin-top:10px"><span><span style="color:var(--muted);margin-right:8px">${[r,...(r.following||[])].filter(q=>q.current===p.current).length>1?'공동 ':''}${p.rank}위</span><b>${esc(p.n)}</b> · ${milestoneDisplay(p.current,m)}${unit}</span><span style="color:var(--muted);font-size:13px">${p.current===r.record?'단독 신기록':'신기록'}까지 ${milestoneDisplay(p.remaining,m,true)}${unit}</span></div>`).join('')}</div>`:''}
   </div>`;
  }).join('');
 }
