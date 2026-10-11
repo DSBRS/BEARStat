@@ -1,0 +1,37 @@
+name: Update Doosan expected milestones
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17,47 * * * *'
+  push:
+    paths:
+      - 'scripts/sync_doosan_milestones.py'
+      - '.github/workflows/doosan-milestones.yml'
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: doosan-milestones-sync
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Read official milestones
+        run: python scripts/sync_doosan_milestones.py
+      - name: Commit refreshed data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add data/doosan-milestones.json
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Update Doosan official milestone records'
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push
+          gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds"
