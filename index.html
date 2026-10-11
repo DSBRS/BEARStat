@@ -2616,7 +2616,7 @@ document.addEventListener('click',ev=>{
   else if(t.id==='mile_save'){saveCareerBaseline()}
   else if(t.id==='mile_copycareer'){copyCareerToBears()}
   else if(t.id==='mile_import'){fillCareerFromTable()}
-  else if(t.dataset.milescope){if(['career','season'].includes(t.dataset.milescope)){milestoneScope=t.dataset.milescope;milestoneMetric='all';milestoneEdit=null;keep()}}
+  else if(t.dataset.milescope){if(['career','season','bears'].includes(t.dataset.milescope)){milestoneScope=t.dataset.milescope;milestoneMetric='all';milestoneEdit=null;keep()}}
   else if(t.dataset.milerole){if(['pitcher','hitter'].includes(t.dataset.milerole)){milestoneRole=t.dataset.milerole;milestoneMetric='all';milestoneEdit=null;keep()}}
   else if(t.dataset.milemetric){if(t.dataset.milemetric==='all'||MILESTONE_METRICS[milestoneRole].some(m=>m.key===t.dataset.milemetric)){milestoneMetric=t.dataset.milemetric;keep()}}
   else if(t.dataset.d){sel=t.dataset.d;const d=new Date(sel+'T00:00:00');view=new Date(d.getFullYear(),d.getMonth(),1);keep()}
