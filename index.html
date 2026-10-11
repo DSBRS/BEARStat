@@ -950,7 +950,8 @@ function battingDoublePlays(p,e){
   return total;
 }
 
-function recStats(){
+function recStats(){return recordRenderMemo('stats:'+recYear+':'+recLeague+':'+recSeason,uncachedRecStats)}
+function uncachedRecStats(){
   const yr=String(recYear),m={},roster=(recordRoster()),role=new Map(roster.map(x=>[x.n,x.t]));
   const row=(n,want)=>{if(role.get(n)!==want)return null;if(!m[n])m[n]={n,w:0,l:0,s:0,h:0,g:0,hr:0,d2:0,d3:0,hit:0,sb:0,ab:0,bb:0,hbp:0,ibb:0,rbi:0,runs:0,gdp:0,avg:0,o1:0,o2:0,o3:0,o4:0,o5:0,o6:0,o7:0,o8:0,o9:0};return m[n]};
   const addNames=(v,k,want)=>names(v).forEach(n=>{const r=row(n,want);if(r)r[k]++});
@@ -2637,7 +2638,8 @@ function fillCareerFromTable(){
 
 // Shared qualification filters and compact dropdowns.
 const RECORD_LIMITS={season:{hitter:'reg',pitcher:'reg'},career:{hitter:'all',pitcher:'all'},opponent:{hitter:'reg',pitcher:'reg'}};
-function recordFilterGames(context='season'){
+function recordFilterGames(context='season'){return recordRenderMemo('filter-games:'+context+':'+recYear+':'+recLeague+':'+recSeason+':'+S(h2h),()=>uncachedRecordFilterGames(context))}
+function uncachedRecordFilterGames(context='season'){
  const year=context==='opponent'?TODAY.getFullYear():recYear,league=context==='opponent'?'kbo':recLeague;
  const seen=new Set();
  return Repo.all().filter(e=>{
@@ -2666,7 +2668,8 @@ function recordPlateAppearances(p,e){
  // Older box scores without sacrifice details provide a confirmed lower bound.
  return known?value:null;
 }
-function recordParticipation(context,role){
+function recordParticipation(context,role){return recordRenderMemo('participation:'+context+':'+role+':'+recYear+':'+recLeague+':'+recSeason+':'+S(h2h),()=>uncachedRecordParticipation(context,role))}
+function uncachedRecordParticipation(context,role){
  const map=new Map();
  for(const e of recordFilterGames(context)){
   const entries=e[role==='pitcher'?'pitching':'batting'];if(!Array.isArray(entries))continue;
@@ -2744,7 +2747,7 @@ document.addEventListener('click',ev=>{
   if(select&&menu){select.value=native.dataset.choicevalue;menu.querySelector('summary span').textContent=native.textContent;menu.querySelectorAll('.choice-option').forEach(option=>{const selected=option===native;option.classList.toggle('selected',selected);option.setAttribute('aria-pressed',String(selected))});menu.open=false;select.dispatchEvent(new Event('change',{bubbles:true}))}return;
  }
  const target=ev.target.closest('[data-recordlimit]');
- if(target){const {recordlimit:key,limitcontext:context,limitrole:role}=target.dataset;if(RECORD_LIMITS[context]&&recordLimitOptions(context,role).some(([k])=>k===key)){RECORD_LIMITS[context][role]=key;keep()}return}
+ if(target){const {recordlimit:key,limitcontext:context,limitrole:role}=target.dataset;if(RECORD_LIMITS[context]&&recordLimitOptions(context,role).some(([k])=>k===key)){RECORD_LIMITS[context][role]=key;rerender()}return}
  document.querySelectorAll('.choice-dropdown[open]').forEach(menu=>{if(!menu.contains(ev.target)||ev.target.closest('.choice-option'))menu.open=false});
 });
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape')document.querySelectorAll('.choice-dropdown[open]').forEach(menu=>{menu.open=false;menu.querySelector('summary')?.focus()})});
@@ -2903,6 +2906,20 @@ function bearsFranchiseCards(rows){
 
 function playerSheetHTML(){return addPlayerMilestonesToSheet(recScope==='career'?personalCareerSheetHTML():playerSheetBaseHTML(),playerSheet,recKind)}
 function opponentHistorySheetHTML(){return opponentHistorySheetBaseHTML()}
+// Share calculations only while producing one screen; never reuse stale data on later renders.
+let recordRenderCache=null;
+function recordRenderMemo(key,calculate){
+ if(!recordRenderCache)return calculate();
+ if(!recordRenderCache.has(key))recordRenderCache.set(key,calculate());
+ return recordRenderCache.get(key);
+}
+function renderWithRecordCache(render){
+ const previous=recordRenderCache;recordRenderCache=new Map();
+ try{return render()}finally{recordRenderCache=previous}
+}
+const recordUncachedEvents=Repo.all.bind(Repo);
+Repo.all=function(){return recordRenderMemo('events',recordUncachedEvents)};
+
 function recordTabs(){return recordScopeTabs()+recordSeasonTabsHTML()+recordLimitMenu('season',recKind)+recordLimitNote('season',recKind)}
 function route(){
   const r=location.hash.replace('#/','')||'home';
@@ -2910,7 +2927,7 @@ function route(){
     if(r==='records'){recKind='hitter';recBatTab='main';recSort={k:'avg',dir:'desc'};playerSheet=null;}
     if(r==='opponent'){opponentKind='hitter';oppSort='avg';oppSortDir='desc';oppHistorySheet=null;}
   }
-  $('#app').innerHTML=recordMenuLayout(r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='players'?playerManagement():home(),r);
+  $('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='players'?playerManagement():home(),r));
   $('#nav').innerHTML=[['home','홈'],['standings','순위'],['h2h','맞대결'],['records','개인기록'],['opponent','상대전적'],['milestones','예상 달성 기록']].map(([k,l])=>`<a href="#/${k==='home'?'':k}" class="${r===k?'on':''}">${l}</a>`).join('');
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
@@ -3153,7 +3170,7 @@ document.addEventListener('change',ev=>{
 
 document.addEventListener('input',ev=>{if(ev.target.matches('[data-edu-stat]'))captureEduInputs();const box=document.querySelector('#kbo_manual'),el=ev.target;if(box&&(el.matches('[data-batter],.hr-player,.hr-inning,.hr-runs')||/^f_(sd|so|starter|oppStarter|winP|loseP|saveP|holdP|gwRbi|doubles|triples|hits|steals|duration)$/.test(el.id)))box.checked=true});
 
-function route2(){const r=document.body.dataset.r;$('#app').innerHTML=recordMenuLayout(r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='players'?playerManagement():home(),r);}
+function route2(){const r=document.body.dataset.r;$('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='players'?playerManagement():home(),r));}
 addEventListener('hashchange',route);route();
 
 /* ============ 3. PWA (아이콘/manifest 런타임 생성) ============ */
