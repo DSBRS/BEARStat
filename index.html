@@ -1936,7 +1936,42 @@ function opponentHistorySheetHTML(){
   </div></div>`;
 }
 
+let opponentKind='hitter';
+let opponentPitchSort='era',opponentPitchDirection='asc';
+function opponentKindTabs(){
+  return `<div class="chips" style="margin-bottom:12px">${[['pitcher','투수'],['hitter','타자']].map(([key,label])=>`<button class="chip${opponentKind===key?' on':''}" data-oppkind="${key}">${label}</button>`).join('')}</div>`;
+}
+function opponentPitchingRows(opp){
+  const byName=new Map(),year=String(TODAY.getFullYear());
+  const get=name=>{if(!byName.has(name))byName.set(name,{n:name,g:0,ipOuts:0,w:0,l:0,s:0,h:0,hits:0,homeRuns:0,strikeouts:0,walks:0,hitByPitch:0,runs:0,earnedRuns:0});return byName.get(name);};
+  const aliases={hits:['hits','hitsAllowed','h'],homeRuns:['homeRuns','homeRunsAllowed','hr'],strikeouts:['strikeouts','strikeOuts','so','k'],walks:['walks','basesOnBalls','bb'],hitByPitch:['hitByPitch','hitBatters','hbp'],runs:['runs','runsAllowed','r'],earnedRuns:['earnedRuns','er']};
+  for(const e of Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&!isExhibition(e)&&!isCancelled(e)&&hasScore(e)&&S(e.date).slice(0,4)===year&&S(e.opp)===S(opp))){
+    for(const p of Array.isArray(e.pitching)?e.pitching:[]){
+      const name=S(p.name);if(!name)continue;
+      const row=get(name);row.g++;
+      const outs=appearanceOuts(p);if(outs===null)row.ipOuts=null;else if(row.ipOuts!==null)row.ipOuts+=outs;
+      for(const [key,fields] of Object.entries(aliases)){const value=recordNumber(p,fields);if(value===null)row[key]=null;else if(row[key]!==null)row[key]+=value;}
+    }
+    const decisions=!e.manualOverride&&e.kbo?.doosanDecisions?e.kbo.doosanDecisions:e;
+    for(const [field,key] of [['winP','w'],['loseP','l'],['saveP','s'],['holdP','h']])for(const name of new Set(names(decisions[field])))if(byName.has(name)||rosterForYear(+year).some(p=>p.n===name&&p.t==='pitcher'))get(name)[key]++;
+  }
+  return [...byName.values()].map(row=>({...row,ip:row.ipOuts===null?'—':row.ipOuts%3?`${Math.floor(row.ipOuts/3)}.${row.ipOuts%3}`:String(row.ipOuts/3),era:row.ipOuts!==null&&row.ipOuts>0&&row.earnedRuns!==null?(row.earnedRuns*27/row.ipOuts).toFixed(2):null}));
+}
+function opponentPitchingTable(){
+  const rows=opponentPitchingRows(h2h),key=opponentPitchSort,dir=opponentPitchDirection==='asc'?1:-1;
+  const value=row=>key==='ip'?row.ipOuts:row[key];
+  rows.sort((a,b)=>{const av=value(a),bv=value(b);if(av===null)return bv===null?a.n.localeCompare(b.n,'ko'):1;if(bv===null)return -1;return (Number(av)-Number(bv))*dir||a.n.localeCompare(b.n,'ko');});
+  const base=[['g','등판'],['ip','이닝'],['era','평균자책점'],['hits','피안타'],['homeRuns','피홈런'],['strikeouts','탈삼진'],['walks','볼넷'],['hitByPitch','사구'],['runs','실점'],['earnedRuns','자책'],['w','승리'],['l','패전'],['s','세이브'],['h','홀드']];
+  const columns=[...base.filter(([k])=>k===key),...base.filter(([k])=>k!==key)];
+  const sum=k=>rows.every(r=>r[k]!==null)?rows.reduce((n,r)=>n+Number(r[k]),0):null;
+  const outs=sum('ipOuts'),er=sum('earnedRuns');
+  const total={n:'합계',...Object.fromEntries(base.filter(([k])=>!['ip','era'].includes(k)).map(([k])=>[k,sum(k)])),ip:outs===null?'—':outs%3?`${Math.floor(outs/3)}.${outs%3}`:String(outs/3),era:outs!==null&&outs>0&&er!==null?(er*27/outs).toFixed(2):null};
+  const nameWidth=Math.max(90,...rows.map(r=>Array.from(r.n).length*14+8));
+  return `<div class="card"><div class="top"><span>${TODAY.getFullYear()} 시즌 · 두산 vs ${esc(h2h)} · 투수 기록</span></div>${rows.length?`<div class="recscroll opp-scroll"><table class="opp-record-table" style="width:${34+nameWidth+columns.length*72}px"><colgroup><col style="width:34px"><col style="width:${nameWidth}px">${columns.map(()=>'<col style="width:72px">').join('')}</colgroup><thead><tr><th>순위</th><th>선수</th>${columns.map(([k,label])=>`<th><button class="opp-th${key===k?' active':''}" data-oppsort-pitch="${k}">${label}${key===k?(dir===1?' ↑':' ↓'):''}</button></th>`).join('')}</tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.n)}</td>${columns.map(([k])=>`<td>${r[k]===null?'—':r[k]}</td>`).join('')}</tr>`).join('')}<tr class="record-total"><td>—</td><td>합계</td>${columns.map(([k])=>`<td>${total[k]===null?'—':total[k]}</td>`).join('')}</tr></tbody></table></div>`:'<div class="empty">저장된 상대 투수 기록이 없습니다.</div>'}</div>`;
+}
+
 function opponentStatsView(){
+  if(opponentKind==='pitcher')return `<div class="brand"><div class="logo">상대전적</div></div><div class="chips">${TEAMS.map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${t}</button>`).join('')}</div>${opponentKindTabs()}${h2h?opponentPitchingTable():'<div class="empty">상대팀을 선택하세요.</div>'}`;
   const yr=TODAY.getFullYear();
   let body='';
   if(h2h){
@@ -1976,7 +2011,7 @@ ${columns.map(([key])=>`<td>${historyStats.has(key)?`<button class="playerlink" 
 </tr>`).join('')}${hitterTotalsRow(rows,[['n','선수'],...columns],true)}</tbody></table></div>`:'<div class="empty">저장된 상대 타격 기록이 없습니다.</div>'}
     </div>`;
   }
-  return `<div class="brand"><div class="logo">상대전적</div></div><div class="chips">${TEAMS.map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${t}</button>`).join('')}</div>${body||'<div class="empty">상대팀을 선택하세요.</div>'}${opponentHistorySheetHTML()}`;
+  return `<div class="brand"><div class="logo">상대전적</div></div><div class="chips">${TEAMS.map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${t}</button>`).join('')}</div>${opponentKindTabs()}${body||'<div class="empty">상대팀을 선택하세요.</div>'}${opponentHistorySheetHTML()}`;
 }
 
 function adminCalendar(){
@@ -2291,7 +2326,7 @@ function route(){
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppdetail-stat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-sdimension],[data-svalue],[data-rleague],[data-hstat],[data-sstat],[data-pstat],[data-prole],[data-rseason],[data-orderhist],[data-ordergame],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],[data-hide-auto],[data-restore-auto],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
+  const t=ev.target.closest('[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-oppkind],[data-oppsort-pitch],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppdetail-stat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-sdimension],[data-svalue],[data-rleague],[data-hstat],[data-sstat],[data-pstat],[data-prole],[data-rseason],[data-orderhist],[data-ordergame],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],[data-hide-auto],[data-restore-auto],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
   if(!isOwner&&(t.dataset.edit||t.dataset.del||['save','saveroster','saveeduroster','admin_new','addhr'].includes(t.id)))return;
   const keep=()=>{const historyTop=document.querySelector('.historybox')?.scrollTop;const y=scrollY,left=document.querySelector('.opp-scroll,.record-scroll')?.scrollLeft;route2();const scroller=document.querySelector('.opp-scroll,.record-scroll');if(scroller&&left!==undefined)scroller.scrollLeft=left;const history=document.querySelector('.historybox');if(history&&historyTop!==undefined)history.scrollTop=historyTop;scrollTo(0,y)};
   if(t.dataset.d){sel=t.dataset.d;const d=new Date(sel+'T00:00:00');view=new Date(d.getFullYear(),d.getMonth(),1);keep()}
@@ -2394,6 +2429,16 @@ document.addEventListener('click',ev=>{
   }
   else if(t.id==='admin_new'){adminFormStep=1;eduDraft=null;editing=null;adminView='form';keep()}
   else if(t.id==='admin_back'){editing=null;adminView='manage';keep()}
+  else if(t.dataset.oppkind){
+    if(!['pitcher','hitter'].includes(t.dataset.oppkind))return;
+    opponentKind=t.dataset.oppkind;oppHistorySheet=null;keep();const scroller=document.querySelector('.opp-scroll');if(scroller)scroller.scrollLeft=0;
+  }
+  else if(t.dataset.oppsortPitch){
+    const key=t.dataset.oppsortPitch;
+    if(opponentPitchSort===key)opponentPitchDirection=opponentPitchDirection==='asc'?'desc':'asc';
+    else{opponentPitchSort=key;opponentPitchDirection=key==='era'?'asc':'desc';}
+    keep();const scroller=document.querySelector('.opp-scroll');if(scroller)scroller.scrollLeft=0;
+  }
   else if(t.dataset.osort){
     const k=t.dataset.osort;
     if(oppSort===k)oppSortDir=oppSortDir==='desc'?'asc':'desc';
