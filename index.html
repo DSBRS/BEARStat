@@ -2654,25 +2654,24 @@ function recordEtcCount(text,name){
 }
 function recordPlateAppearances(p,e){
  const explicit=recordNumber(p,['plateAppearances','pa','PA']);if(explicit!==null)return explicit;
- const fields=[['atBats','ab'],['walks','bb'],['hitByPitch','hbp']],parts=fields.map(keys=>recordNumber(p,keys));
- if(parts.some(v=>v===null))return null;
- let value=parts.reduce((a,b)=>a+b,0)+(recordNumber(p,['intentionalWalks','ibb'])||0);
+ const fields=[['atBats','ab'],['walks','bb'],['hitByPitch','hbp'],['intentionalWalks','ibb']],parts=fields.map(keys=>recordNumber(p,keys));
+ let known=parts.some(v=>v!==null),value=parts.reduce((a,b)=>a+(b??0),0);
  const extras=[['sacrificeBunts','sac','sh'],['sacrificeFlies','sf'],['interference','catcherInterference']];
  const etcKeys=[['희생번트'],['희생플라이'],['타격방해','타격·주루방해','주루방해']];
  for(let i=0;i<extras.length;i++){
   const number=recordNumber(p,extras[i]);
-  if(number!==null)value+=number;
-  else if(!e.manualOverride&&e.kbo?.etc)value+=etcKeys[i].reduce((sum,key)=>sum+recordEtcCount(e.kbo.etc[key],p.name),0);
+  if(number!==null){known=true;value+=number;}
+  else if(!e.manualOverride&&e.kbo?.etc){const count=etcKeys[i].reduce((sum,key)=>sum+recordEtcCount(e.kbo.etc[key],p.name),0);if(count>0)known=true;value+=count;}
  }
  // Older box scores without sacrifice details provide a confirmed lower bound.
- return value;
+ return known?value:null;
 }
 function recordParticipation(context,role){
  const map=new Map();
  for(const e of recordFilterGames(context)){
   const entries=e[role==='pitcher'?'pitching':'batting'];if(!Array.isArray(entries))continue;
   for(const p of entries){const name=S(p.name);if(!name)continue;const v=role==='pitcher'?appearanceOuts(p):recordPlateAppearances(p,e);
-   if(!map.has(name))map.set(name,0);if(v===null)map.set(name,null);else if(map.get(name)!==null)map.set(name,map.get(name)+v);
+   if(v===null){if(!map.has(name))map.set(name,null);}else map.set(name,(map.get(name)??0)+v);
   }
  }
  return map;
@@ -2710,7 +2709,7 @@ function recordLimitNote(context,role){
  const minimum=recordMinimum(context,role,key),unit=role==='pitcher'?'이닝':'타석';
  const value=Number.isFinite(minimum)?role==='pitcher'?milestoneDisplay(minimum,{key:'ipOuts'}):minimum:'—';
  const relative=key==='reg'||key[0]==='p';
- return `<div class="record-limit-note">기준: ${value}${unit}${relative?' · '+(context==='opponent'?'해당 구단과 치른':'저장된')+' '+recordFilterGames(context).length+'경기 기준':''}${role==='hitter'?' · 희생타 정보가 없는 경기는 확인된 타석만 반영':''}</div>`;
+ return `<div class="record-limit-note">기준: ${value}${unit}${relative?' · '+(context==='opponent'?'해당 구단과 치른':'저장된')+' '+recordFilterGames(context).length+'경기 기준':''}${role==='hitter'?' · 누락 항목을 제외한 확인된 타석 기준':''}</div>`;
 }
 function recordYearMenu(){
  const options=Array.from({length:TODAY.getFullYear()+2-2000},(_,i)=>TODAY.getFullYear()+1-i);
