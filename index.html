@@ -3159,7 +3159,7 @@ function recordYearMenu(){
 function recordMenuLayout(html,route){
  if(['admin','players','home'].includes(route))return html;
  html=html.replace(/<div class="chips"[^>]*>([\s\S]*?)<\/div>/g,(whole,inside)=>{
-  if(!inside.includes('class="chip')||inside.includes('data-recordscope=')||inside.includes('data-milelist='))return whole;
+  if(!inside.includes('class="chip')||inside.includes('data-recordscope=')||inside.includes('data-milescope='))return whole;
   const buttons=[...inside.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)];if(!buttons.length)return whole;
   const chosen=buttons.find(m=>/class="[^"]*\bon\b/.test(m[1]));
   const team=inside.includes('data-t='),label=chosen?chosen[2]:team?'구단 선택':buttons[0][2];
