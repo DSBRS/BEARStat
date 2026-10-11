@@ -740,28 +740,26 @@ function calendarLegendHTML(){
  </div></details>`;
 }
 document.addEventListener('toggle',ev=>{if(ev.target.id==='calendar_legend')calendarLegendOpen=ev.target.open;},true);
-function homeMinorLeague(){
- const year=String(TODAY.getFullYear());
- const games=Repo.all().filter(e=>!e.demo&&['futures','edu'].includes(e.type)&&/^\d{4}-\d{2}-\d{2}$/.test(S(e.date))&&S(e.date).slice(0,4)===year);
- const education=games.filter(e=>e.type==='edu'),futures=games.filter(e=>e.type==='futures');
- const educationStarted=education.some(e=>S(e.date)<=TS);
- const futuresRemaining=futures.some(e=>!isCancelled(e)&&S(e.date)>=TS);
- if(educationStarted&&!futuresRemaining)return 'edu';
- if(futures.length)return 'futures';
- return educationStarted?'edu':null;
+function homeScheduleTime(event){
+ const match=S(event.time).match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+ return match&&+match[1]<24&&+match[2]<60?+match[1]*60+(+match[2]):Infinity;
 }
-function homeMinorLeagueHTML(){
- const league=homeMinorLeague();if(!league)return '';
- const today=byDate(TS).filter(e=>e.type===league&&!e.demo);
- return `<h2>${league==='edu'?'교육리그':'퓨처스리그'}</h2>${today.map(e=>gameCard(e,league)).join('')||gameCard(null,league)}`;
+function homeTodaySchedule(){
+ return byDate(TS).filter(e=>!e.demo&&['kbo','futures','edu','broadcast','radio'].includes(e.type))
+  .map((event,index)=>({event,index})).sort((a,b)=>homeScheduleTime(a.event)-homeScheduleTime(b.event)||a.index-b.index).map(x=>x.event);
+}
+function homeTodayScheduleHTML(){
+ return homeTodaySchedule().map(e=>{
+  const game=['kbo','futures','edu'].includes(e.type);
+  return `<h2>${esc(TYPES[e.type]||'방송 일정')}</h2>${game?gameCard(e,e.type):`<div class="card">${evRow(e)}</div>`}`;
+ }).join('');
 }
 
 function home(){
   const t=byDate(TS),kbo=t.find(e=>e.type==='kbo');
   const evs=byDate(sel),sd=new Date(sel+'T00:00:00');
   return `<div class="brand"><button class="logo admin-secret" id="admin_secret" type="button">BEARS<b>tat</b></button></div>
-  <h2>KBO</h2>${gameCard(kbo,'kbo')}
-  ${homeMinorLeagueHTML()}
+  ${homeTodayScheduleHTML()}
   ${calendarLegendHTML()}
   ${calendar()}
   <h2>${sd.getMonth()+1}월 ${sd.getDate()}일 (${'일월화수목금토'[sd.getDay()]}) 일정</h2>
