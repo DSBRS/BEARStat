@@ -751,7 +751,7 @@ function homeTodaySchedule(){
 function homeTodayScheduleHTML(){
  return homeTodaySchedule().map(e=>{
   const game=['kbo','futures','edu'].includes(e.type);
-  return `<h2>${esc(TYPES[e.type]||'방송 일정')}</h2>${game?gameCard(e,e.type):`<div class="card">${evRow(e)}</div>`}`;
+  return `<h2>${esc(TYPES[e.type]||'방송 일정')}${e.type==='kbo'&&isPostseasonRecord(e)?' <strong style="font-weight:800;color:var(--navy);letter-spacing:0">🍂POST SEASON⚾️</strong>':''}</h2>${game?gameCard(e,e.type):`<div class="card">${evRow(e)}</div>`}`;
  }).join('');
 }
 
