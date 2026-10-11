@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="BEARStat">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#131230">
+<title>BEARStat</title>
 <link rel="icon" type="image/png" href="./favicon.png">
 <link rel="apple-touch-icon" href="./favicon.png">
 <style>
@@ -288,6 +289,19 @@ nav a:last-child{flex:1.35}
 .record-limit-caption,.record-limit-note{color:var(--sub);font-size:12px}
 .record-limit-note{line-height:1.5;margin:0 0 12px}
 select{border:1px solid var(--line,#dedee8);border-radius:10px;background-color:var(--card,#fff);color:var(--navy);min-height:44px}
+
+.matchup-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0 22px}
+.matchup-stat-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:76px;padding:12px 6px;border-radius:14px;background:var(--bg,#f4f5f9);text-align:center;box-sizing:border-box}
+.matchup-stat-card b{font-size:23px;line-height:1.2;color:var(--navy);font-variant-numeric:tabular-nums}
+.matchup-stat-card span{font-size:12px;color:var(--sub)}
+.matchup-history-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.matchup-history-heading>b{font-size:15px}.matchup-history-heading>span{font-size:11px;color:var(--sub)}
+.matchup-game-list{display:grid;gap:12px;padding-bottom:12px}
+.matchup-game-card{min-width:0;padding:14px;border:1px solid var(--line,#e4e5ed);border-radius:16px;background:var(--card,#fff)}
+.matchup-game-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;font-size:14px}.matchup-game-header .tag{flex-shrink:0}
+.matchup-play-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-top:1px solid var(--line,#e4e5ed)}
+.matchup-inning{flex:0 0 auto;min-width:42px;font-size:12px;font-weight:600;line-height:1.6;color:var(--navy)}
+.matchup-play-result{min-width:0;font-size:13px;line-height:1.6;color:var(--sub);overflow-wrap:anywhere}
 </style></head>
 <body>
 <div id="app"></div>
@@ -2200,7 +2214,11 @@ function opponentMatchupTable(){
 function opponentMatchupSheetHTML(){
  const sheet=oppHistorySheet;if(sheet?.stat!=='matchup'||!isOpponentPlayerMatchup())return '';
  const data=recordRenderMemo('opponent-matchups',opponentMatchupData),row=data.rows.find(r=>r.n===sheet.name);if(!row)return '';
- return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div><div class="sheethead"><div><b>${esc(sheet.name)}</b><div class="sb">${TODAY.getFullYear()}년 · vs ${esc(h2h)} ${esc(opponentPlayerTarget.name)}</div></div><button class="sheetclose" data-oppclose>×</button></div><div class="note">${row.pa}타석 · ${row.ab}타수 ${row.hit}안타 · ${opponentKind==='pitcher'?'피안타율':'타율'} ${row.avg===null?'—':row.avg.toFixed(3)} · ${opponentKind==='pitcher'?'피OPS':'OPS'} ${formatOPS(row.ops)}</div><div class="historybox">${row.games.slice().sort((a,b)=>S(b.event.date).localeCompare(S(a.event.date))).map(g=>`<div class="historyrow"><b>${esc(S(g.event.date).slice(5).replace('-','.'))} · vs ${esc(g.event.opp)} · ${g.event.homeAway==='home'?'홈':g.event.homeAway==='away'?'원정':'홈/원정 미확인'}</b>${g.plays.map(p=>`<div class="situ-game-detail">${esc(p.inning+'회'+(p.side==='away'?'초':'말')+' · '+p.batter+' vs '+p.pitcher+' · '+p.result)}</div>`).join('')}</div>`).join('')}</div></div></div>`;
+ const stats=[['pa','타석'],['ab','타수'],['hit',opponentKind==='pitcher'?'피안타':'안타'],['avg',opponentKind==='pitcher'?'피안타율':'타율'],['ops',opponentKind==='pitcher'?'피OPS':'OPS'],['hr',opponentKind==='pitcher'?'피홈런':'홈런'],['so',opponentKind==='pitcher'?'탈삼진':'삼진'],['bb','볼넷'],['hbp','사구']];
+ return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div><div class="sheethead"><div><b>${esc(sheet.name)}</b><div class="sb">${TODAY.getFullYear()}년 · vs ${esc(h2h)} ${esc(opponentPlayerTarget.name)}</div></div><button class="sheetclose" data-oppclose>×</button></div>
+ <div class="matchup-summary-grid">${stats.map(([key,label])=>`<div class="matchup-stat-card"><b>${key==='ops'?formatOPS(row.ops):key==='avg'?row.avg===null?'—':row.avg.toFixed(3):row[key]??'—'}</b><span>${label}</span></div>`).join('')}</div>
+ <div class="matchup-history-heading"><b>경기별 맞대결</b><span>${row.games.length}경기 · 확인된 중계 기준</span></div>
+ <div class="matchup-game-list">${row.games.slice().sort((a,b)=>S(b.event.date).localeCompare(S(a.event.date))||(+b.event.headerNo||0)-(+a.event.headerNo||0)).map(g=>`<section class="matchup-game-card"><div class="matchup-game-header"><b>${esc(S(g.event.date).slice(5).replace('-','.'))}${+g.event.headerNo>0?' · 더블헤더 '+g.event.headerNo+'차전':''} · vs ${esc(g.event.opp)}</b><span class="tag">${g.event.homeAway==='home'?'홈':g.event.homeAway==='away'?'원정':'홈/원정 미확인'}</span></div>${g.plays.map(p=>`<div class="matchup-play-row"><span class="matchup-inning">${esc(p.inning+'회'+(p.side==='away'?'초':'말'))}</span><span class="matchup-play-result">${esc(p.result||'결과 미확인')}</span></div>`).join('')}</section>`).join('')}</div></div></div>`;
 }
 if(typeof document!=='undefined')document.addEventListener('click',ev=>{
  const target=ev.target.closest('[data-opponent-player]');
