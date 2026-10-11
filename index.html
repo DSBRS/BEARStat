@@ -2800,7 +2800,7 @@ function completedBearsNumbers(role,selected='all'){return seasonSpecialMemo('be
  const metrics=MILESTONE_METRICS[role].filter(m=>selected==='all'||selected===m.key),results=new Map(),years=[...new Set(Repo.all().map(e=>Number(S(e.date).slice(0,4))).filter(y=>y>BEARS_ALUMNI_HISTORY.throughYear&&y<=TODAY.getFullYear()))].sort((a,b)=>a-b),games=years.flatMap(y=>orderedStreakGames(y));
  for(const p of BEARS_ALUMNI_HISTORY.players.filter(p=>p.role===role)){
   const totals=Object.fromEntries(metrics.map(m=>[m.key,0]));
-  const register=(m,before,after,year,date=null)=>{const step=CAREER_STEPS[m.key];if(!Number.isSafeInteger(before)||!Number.isSafeInteger(after)||!Number.isSafeInteger(step))return;for(let target=(Math.floor(before/step)+1)*step;target<=after;target+=step){const key=p.playerId+'|'+m.key+'|'+target;if(!results.has(key))results.set(key,{n:p.name,playerId:p.playerId,metric:m,target,year,date,detail:'OB·두산 소속 누적 기록'})}};
+  const register=(m,before,after,year,date=null)=>{const step=CAREER_STEPS[m.key];if(!Number.isSafeInteger(before)||!Number.isSafeInteger(after)||!Number.isSafeInteger(step))return;for(let target=(Math.floor(before/step)+1)*step;target<=after;target+=step){const key=p.playerId+'|'+m.key+'|'+target;if(!results.has(key))results.set(key,{n:p.name,playerId:p.playerId,metric:m,target,year,date,basis:'bearsCareer',detail:'OB·두산 소속 누적 기록'})}};
   for(const year of Object.keys(p.seasons).map(Number).sort((a,b)=>a-b)){const values=completedHistoryStats(p.seasons[year]);for(const m of metrics){const before=totals[m.key],v=values[m.key];totals[m.key]=Number.isFinite(before)&&Number.isFinite(v)?before+v:null;register(m,before,totals[m.key],year)}}
   if(bearsArchivePlayerIsCurrent(p))for(const e of games){const values=completedGameValues(e,p.name,role,metrics);for(const m of metrics){const before=totals[m.key],v=values[m.key];totals[m.key]=Number.isFinite(before)&&Number.isFinite(v)?before+v:null;register(m,before,totals[m.key],Number(S(e.date).slice(0,4)),e.date)}}
  }
@@ -2815,13 +2815,13 @@ function completedBearsSpecials(role,selected='all'){return seasonSpecialMemo('b
   for(const year of Object.keys(p.seasons).map(Number).sort((a,b)=>a-b)){
    const stats=p.seasons[year];if(previous!==year-1)streaks.clear();previous=year;
    for(const m of metrics){const goal=m.key==='ipOuts'?(BEARS_COMPLETED_SEASON_GAMES[year]?BEARS_COMPLETED_SEASON_GAMES[year]*3:seasonRegulationOuts(year)):m.goal,key=m.key+':'+(m.key==='ipOuts'?'regulation':goal),count=goal!==null&&Number.isFinite(stats[m.key])&&stats[m.key]>=goal?(streaks.get(key)||0)+1:0;streaks.set(key,count);
-    if(count>=2&&(selected==='all'||selected===m.key))result.push({n:p.name,playerId:p.playerId,year,label:count+'시즌 연속 '+m.label,kind:'베어스 연속 시즌 기록',detail:(year-count+1)+'–'+year+'년 · OB·두산 소속 기록'});
+    if(count>=2&&(selected==='all'||selected===m.key))result.push({n:p.name,playerId:p.playerId,year,label:count+'시즌 연속 '+m.label,kind:'베어스 연속 시즌 기록',basis:'bearsSeasonStreak',detail:(year-count+1)+'–'+year+'년 · OB·두산 소속 기록'});
    }
-   if(role==='hitter'&&['all','hr','sb'].includes(selected))for(const goal of [20,30])if(Number.isFinite(stats.hr)&&Number.isFinite(stats.sb)&&stats.hr>=goal&&stats.sb>=goal)result.push({n:p.name,playerId:p.playerId,year,label:goal+'–'+goal,kind:'베어스 홈런 · 도루',detail:'OB·두산 소속 '+stats.hr+'홈런 · '+stats.sb+'도루'});
+   if(role==='hitter'&&['all','hr','sb'].includes(selected))for(const goal of [20,30])if(Number.isFinite(stats.hr)&&Number.isFinite(stats.sb)&&stats.hr>=goal&&stats.sb>=goal)result.push({n:p.name,playerId:p.playerId,year,label:goal+'–'+goal,kind:'베어스 홈런 · 도루',basis:'bearsSeason',detail:'OB·두산 소속 '+stats.hr+'홈런 · '+stats.sb+'도루'});
   }
  }
  // Distinct-opponent achievements need game-level evidence; only verified completed sets are added.
- if(selected==='all'||selected===(role==='hitter'?'hr':'w'))for(const year of [...new Set(Repo.all().map(e=>Number(S(e.date).slice(0,4))).filter(y=>y>=1982&&y<=TODAY.getFullYear()))])for(const r of seasonOpponentAchievementRows(role,year).rows.filter(r=>r.remaining.length===0))result.push({n:r.n,year,label:'전 구단 상대 '+(role==='hitter'?'홈런':'승리'),kind:'베어스 전 구단 상대 기록',detail:'OB·두산 소속 경기에서 확인된 기록'});
+ if(selected==='all'||selected===(role==='hitter'?'hr':'w'))for(const year of [...new Set(Repo.all().map(e=>Number(S(e.date).slice(0,4))).filter(y=>y>=1982&&y<=TODAY.getFullYear()))])for(const r of seasonOpponentAchievementRows(role,year).rows.filter(r=>r.remaining.length===0))result.push({n:r.n,year,label:'전 구단 상대 '+(role==='hitter'?'홈런':'승리'),kind:'베어스 전 구단 상대 기록',basis:'bearsSeason',detail:'OB·두산 소속 경기에서 확인된 기록'});
  return result;
 })}
 
@@ -2853,7 +2853,7 @@ function completedNumberMilestones(scope,role,selected='all'){if(scope==='bears'
  const year=TODAY.getFullYear(),metrics=MILESTONE_METRICS[role].filter(m=>selected==='all'||selected===m.key),results=new Map(),active=rosterForYear(year).filter(p=>p.t===role);
  const register=(name,m,before,after,y,date=null)=>{
   const step=scope==='career'?CAREER_STEPS[m.key]:m.step;if(!Number.isSafeInteger(after)||after<=0||!Number.isSafeInteger(before)||!Number.isSafeInteger(step))return;
-  for(let target=(Math.floor(before/step)+1)*step;target<=after;target+=step){const key=[name,m.key,target].join('|');if(!results.has(key))results.set(key,{n:name,metric:m,target,year:y,date})}
+  for(let target=(Math.floor(before/step)+1)*step;target<=after;target+=step){const key=[name,m.key,target].join('|');if(!results.has(key))results.set(key,{n:name,metric:m,target,year:y,date,basis:scope==='career'?'career':'season'})}
  };
  const years=[...new Set(Repo.all().map(e=>Number(S(e.date).slice(0,4))).filter(y=>y>=1982&&y<=year))].sort((a,b)=>a-b),games=years.flatMap(y=>orderedStreakGames(y));
  for(const player of active){
@@ -2886,17 +2886,21 @@ function completedSeasonSpecials(scope,role,selected='all'){if(scope==='bears')r
   for(const y of Object.keys(seasons).map(Number).filter(y=>y<=current).sort((a,b)=>a-b)){
    const stats=seasons[y];if(previous!==y-1)streaks.clear();previous=y;
    for(const m of metrics){const goal=m.key==='ipOuts'?seasonRegulationOuts(y):m.goal,key=m.key+':'+(m.key==='ipOuts'?'regulation':goal),value=stats[m.key],count=goal!==null&&Number.isFinite(value)&&value>=goal?(streaks.get(key)||0)+1:0;streaks.set(key,count);
-    if(count>=2&&(scope==='career'||y===current)&&(selected==='all'||selected===m.key))result.push({n:p.n,year:y,label:count+'시즌 연속 '+m.label,kind:'연속 시즌 기록',detail:(y-count+1)+'–'+y+'년 정규시즌'});
+    if(count>=2&&(scope==='career'||y===current)&&(selected==='all'||selected===m.key))result.push({n:p.n,year:y,label:count+'시즌 연속 '+m.label,kind:'연속 시즌 기록',basis:'seasonStreak',detail:(y-count+1)+'–'+y+'년 정규시즌'});
    }
-   if(role==='hitter'&&(scope==='career'||y===current)&&['all','hr','sb'].includes(selected))for(const goal of [20,30])if(Number.isFinite(stats.hr)&&Number.isFinite(stats.sb)&&stats.hr>=goal&&stats.sb>=goal)result.push({n:p.n,year:y,label:goal+'–'+goal,kind:'홈런 · 도루',detail:stats.hr+'홈런 · '+stats.sb+'도루'});
+   if(role==='hitter'&&(scope==='career'||y===current)&&['all','hr','sb'].includes(selected))for(const goal of [20,30])if(Number.isFinite(stats.hr)&&Number.isFinite(stats.sb)&&stats.hr>=goal&&stats.sb>=goal)result.push({n:p.n,year:y,label:goal+'–'+goal,kind:'홈런 · 도루',basis:'season',detail:stats.hr+'홈런 · '+stats.sb+'도루'});
   }
  }
- if(selected==='all'||selected===(role==='hitter'?'hr':'w'))for(const y of years.filter(y=>scope==='career'||y===current))for(const r of seasonOpponentAchievementRows(role,y).rows.filter(r=>r.remaining.length===0))result.push({n:r.n,year:y,label:'전 구단 상대 '+(role==='hitter'?'홈런':'승리'),kind:'전 구단 상대 기록',detail:'다른 '+TEAMS.length+'개 구단 모두 상대'});
+ if(selected==='all'||selected===(role==='hitter'?'hr':'w'))for(const y of years.filter(y=>scope==='career'||y===current))for(const r of seasonOpponentAchievementRows(role,y).rows.filter(r=>r.remaining.length===0))result.push({n:r.n,year:y,label:'전 구단 상대 '+(role==='hitter'?'홈런':'승리'),kind:'전 구단 상대 기록',basis:'season',detail:'다른 '+TEAMS.length+'개 구단 모두 상대'});
  return result;
 })}
+function completedRecordBasis(r){
+ const labels={career:'KBO 통산',season:(r.year?r.year+'년 ':'')+'시즌',seasonStreak:'연속 시즌',bearsCareer:'베어스 통산',bearsSeason:(r.year?r.year+'년 ':'')+'베어스 시즌',bearsSeasonStreak:'베어스 연속 시즌'};
+ return labels[r.basis]||'기록 기준 확인 필요';
+}
 function completedMilestoneCard(r){
  const role=milestoneRole,title=r.metric?`<b>${milestoneDisplay(r.target,r.metric)}</b> ${milestoneRecordUnit(r.metric)} 달성`:`<b>${esc(r.label)}</b> 달성`,when=r.date?r.date.replace(/-/g,'.')+' 달성':r.year?r.year+'년 달성':'달성 연도 미확인';
- return `<div class="card milestone-card"><div class="milestone-head">${r.playerId?`<b>${esc(r.n)}</b>`:specialPlayerName(r.n,role,true)}</div><div class="milestone-goal"><span style="display:block;font-size:13px;color:var(--sub);margin-bottom:6px">${esc(r.metric?.label||r.kind)}</span>${title}</div><div class="milestone-values"><span>${esc(when)}</span><b>달성 완료</b></div>${r.detail?`<div class="sb" style="margin-top:8px">${esc(r.detail)}</div>`:''}</div>`;
+ return `<div class="card milestone-card"><div class="milestone-head">${r.playerId?`<b>${esc(r.n)}</b>`:specialPlayerName(r.n,role,true)}<span class="tag" style="font-size:12px;font-weight:700">${esc(completedRecordBasis(r))}</span></div><div class="milestone-goal"><span style="display:block;font-size:13px;color:var(--sub);margin-bottom:6px">${esc(r.metric?.label||r.kind)}</span>${title}</div><div class="milestone-values"><span>${esc(when)}</span><b>달성 완료</b></div>${r.detail?`<div class="sb" style="margin-top:8px">${esc(r.detail)}</div>`:''}</div>`;
 }
 function completedRecordYearMenu(rows,scope){
  const current=String(TODAY.getFullYear()),years=[...new Set([current,...rows.filter(r=>r.year).map(r=>String(r.year))])].sort((a,b)=>+b-+a);
