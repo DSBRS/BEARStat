@@ -8,7 +8,6 @@
 <meta name="apple-mobile-web-app-title" content="BEARStat">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#131230">
-<title>BEARStat</title>
 <link rel="icon" type="image/png" href="./favicon.png">
 <link rel="apple-touch-icon" href="./favicon.png">
 <style>
@@ -2105,7 +2104,7 @@ function opponentPitchingTable(){
   return `<div class="card"><div class="top"><span>${TODAY.getFullYear()} 시즌 · 두산 vs ${esc(h2h)} · 투수 기록</span></div>${rows.length?`<div class="recscroll opp-scroll"><table class="opp-record-table" style="width:${34+nameWidth+columns.length*72}px"><colgroup><col style="width:34px"><col style="width:${nameWidth}px">${columns.map(()=>'<col style="width:72px">').join('')}</colgroup><thead><tr><th>순위</th><th>선수</th>${columns.map(([k,label])=>`<th><button class="opp-th${key===k?' active':''}" data-oppsort-pitch="${k}">${label}${key===k?(dir===1?' ↑':' ↓'):''}</button></th>`).join('')}</tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td><button class="playerlink" data-opphist="pitcher" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${esc(r.n)}</button></td>${columns.map(([k])=>`<td>${r[k]===null?'—':r[k]}</td>`).join('')}</tr>`).join('')}<tr class="record-total"><td>—</td><td>합계</td>${columns.map(([k])=>`<td>${total[k]===null?'—':total[k]}</td>`).join('')}</tr></tbody></table></div>`:'<div class="empty">선택한 기준에 해당하는 상대 투수 기록이 없습니다.</div>'}</div>`;
 }
 
-let opponentPlayerTarget=null,opponentMatchupJob=null;
+let opponentPlayerTarget=null,opponentMatchupJob=null,opponentMatchupSort=null;
 function isOpponentPlayerMatchup(){return !!(opponentPlayerTarget&&opponentPlayerTarget.opp===h2h&&opponentPlayerTarget.role===opponentKind)}
 function opponentRosterEntries(e,role){
  const data=e.kbo?.[role==='pitcher'?'pitchers':'hitters'];if(!Array.isArray(data))return [];
@@ -2183,11 +2182,20 @@ function startOpponentMatchups(){
 }
 function opponentMatchupTable(){
  const data=recordRenderMemo('opponent-matchups',opponentMatchupData),target=opponentPlayerTarget.name,role=opponentKind,key=recordSelectedLimit('opponent',role),minimum=key[0]==='n'?+key.slice(1):0;
- const rows=data.rows.filter(r=>r.pa>=minimum).sort((a,b)=>a.avg===null?b.avg===null?a.n.localeCompare(b.n,'ko'):1:b.avg===null?-1:(role==='hitter'?a.avg-b.avg:b.avg-a.avg)||b.pa-a.pa);
- const columns=[['pa','타석'],['ab','타수'],['hit',role==='hitter'?'안타':'피안타'],['avg',role==='hitter'?'타율':'피안타율'],['ops',role==='hitter'?'OPS':'피OPS'],['hr',role==='hitter'?'홈런':'피홈런'],['so',role==='hitter'?'삼진':'탈삼진'],['bb','볼넷'],['hbp','사구']];
+ const sort=opponentMatchupSort||{key:'avg',dir:role==='hitter'?'asc':'desc'};
+ const rows=data.rows.filter(r=>r.pa>=minimum).sort((a,b)=>{
+  const byName=a.n.localeCompare(b.n,'ko');if(sort.key==='n')return sort.dir==='asc'?byName:-byName;
+  const av=a[sort.key],bv=b[sort.key],valid=v=>v!==null&&v!==undefined&&Number.isFinite(v);
+  if(!valid(av)||!valid(bv))return !valid(av)?!valid(bv)?byName:1:-1;
+  return (sort.dir==='asc'?av-bv:bv-av)||b.pa-a.pa||byName;
+ });
+ const baseColumns=[['pa','타석'],['ab','타수'],['hit',role==='hitter'?'안타':'피안타'],['avg',role==='hitter'?'타율':'피안타율'],['ops',role==='hitter'?'OPS':'피OPS'],['hr',role==='hitter'?'홈런':'피홈런'],['so',role==='hitter'?'삼진':'탈삼진'],['bb','볼넷'],['hbp','사구']];
+ const columns=selectedRecordColumns([['n','선수'],...baseColumns],opponentMatchupSort?.key).filter(([key])=>key!=='n');
+ const sortLabel=sort.key==='n'?'선수 이름':baseColumns.find(([key])=>key===sort.key)?.[1]||'기록';
+ const sortText=sortLabel+' '+(sort.key==='n'?(sort.dir==='asc'?'가나다순':'가나다 역순'):['avg','ops'].includes(sort.key)?sort.dir==='desc'?'높은 순':'낮은 순':sort.dir==='desc'?'많은 순':'적은 순');
  const loading=opponentMatchupJob?.running,status=loading?'상대 전적 확인 중 · '+opponentMatchupJob.done+'/'+opponentMatchupJob.total+'경기':data.missing||data.unverified?'일부 경기의 중계 내역을 확인하지 못했어요.':'확인된 '+data.loaded+'경기 기준';
  const empty=loading?'상대 전적 확인 중…':data.missing||data.unverified?'상대 전적을 확인하지 못했어요.':data.rows.length?'선택한 타석 기준에 해당하는 상대 전적 없음.':'상대 전적 없음.';
- return `<div class="note">${TODAY.getFullYear()}년 KBO 정규시즌 · ${esc(h2h)} ${esc(target)} 상대 · ${role==='hitter'?'타율 낮은':'피안타율 높은'} 순<br>선수 맞대결은 타석 기준으로 표시해요. 적은 타석의 성적은 참고용이에요.<br><span role="status">${esc(status)}</span></div><div class="card">${rows.length?`<div class="recscroll opp-scroll">${recordTableStart([['n','선수'],...columns],false,rows.map(r=>r.n))}<tr><th>선수</th>${columns.map(([,label])=>`<th>${label}</th>`).join('')}</tr>${rows.map(r=>`<tr><td><button type="button" class="playerlink" data-matchup-player="${esc(r.n)}">${esc(r.n)}</button></td>${columns.map(([k])=>`<td>${k==='ops'?formatOPS(r.ops):k==='avg'?r.avg===null?'—':r.avg.toFixed(3).replace(/^0/,''):r[k]}</td>`).join('')}</tr>`).join('')}</table></div>`:`<div class="empty">${empty}</div>`}</div>`;
+ return `<div class="note">${TODAY.getFullYear()}년 KBO 정규시즌 · ${esc(h2h)} ${esc(target)} 상대 · ${sortText}<br>선수 맞대결은 타석 기준으로 표시해요. 적은 타석의 성적은 참고용이에요.<br><span role="status">${esc(status)}</span></div><div class="card">${rows.length?`<div class="recscroll opp-scroll">${recordTableStart([['n','선수'],...columns],false,rows.map(r=>r.n))}<tr><th><button type="button" class="opp-th${sort.key==='n'?' active':''}" data-matchup-sort="n">선수${sort.key==='n'?(sort.dir==='desc'?' ↓':' ↑'):''}</button></th>${columns.map(([key,label])=>`<th><button type="button" class="opp-th${sort.key===key?' active':''}" data-matchup-sort="${key}">${label}${sort.key===key?(sort.dir==='desc'?' ↓':' ↑'):''}</button></th>`).join('')}</tr>${rows.map(r=>`<tr><td><button type="button" class="playerlink" data-matchup-player="${esc(r.n)}">${esc(r.n)}</button></td>${columns.map(([k])=>`<td>${k==='ops'?formatOPS(r.ops):k==='avg'?r.avg===null?'—':r.avg.toFixed(3).replace(/^0/,''):r[k]}</td>`).join('')}</tr>`).join('')}</table></div>`:`<div class="empty">${empty}</div>`}</div>`;
 }
 function opponentMatchupSheetHTML(){
  const sheet=oppHistorySheet;if(sheet?.stat!=='matchup'||!isOpponentPlayerMatchup())return '';
@@ -2196,7 +2204,13 @@ function opponentMatchupSheetHTML(){
 }
 if(typeof document!=='undefined')document.addEventListener('click',ev=>{
  const target=ev.target.closest('[data-opponent-player]');
- if(target){opponentPlayerTarget=target.dataset.opponentPlayer?{name:target.dataset.opponentPlayer,opp:h2h,role:opponentKind}:null;oppHistorySheet=null;startOpponentMatchups();rerender();return}
+ if(target){opponentPlayerTarget=target.dataset.opponentPlayer?{name:target.dataset.opponentPlayer,opp:h2h,role:opponentKind}:null;opponentMatchupSort=null;oppHistorySheet=null;startOpponentMatchups();rerender();return}
+ const sortButton=ev.target.closest('[data-matchup-sort]');
+ if(sortButton&&isOpponentPlayerMatchup()){
+  const key=sortButton.dataset.matchupSort;if(!['n','pa','ab','hit','avg','ops','hr','so','bb','hbp'].includes(key))return;
+  opponentMatchupSort=opponentMatchupSort?.key===key?{key,dir:opponentMatchupSort.dir==='desc'?'asc':'desc'}:{key,dir:key==='n'?'asc':'desc'};
+  rerender();const scroller=document.querySelector('.opp-scroll');if(scroller)scroller.scrollLeft=0;return;
+ }
  const player=ev.target.closest('[data-matchup-player]');if(player&&isOpponentPlayerMatchup()){oppHistorySheet={stat:'matchup',name:player.dataset.matchupPlayer};rerender()}
 });
 
@@ -3090,7 +3104,7 @@ function route(){
   const r=location.hash.replace('#/','')||'home';
   if(document.body.dataset.r!==r){
     if(r==='records'){recKind='hitter';recBatTab='main';recSort={k:'avg',dir:'desc'};playerSheet=null;}
-    if(r==='opponent'){opponentPlayerTarget=null;opponentMatchupJob=null;opponentKind='hitter';oppSort='avg';oppSortDir='desc';oppHistorySheet=null;}
+    if(r==='opponent'){opponentPlayerTarget=null;opponentMatchupJob=null;opponentMatchupSort=null;opponentKind='hitter';oppSort='avg';oppSortDir='desc';oppHistorySheet=null;}
   }
   $('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='players'?playerManagement():home(),r));
   $('#nav').innerHTML=[['home','홈'],['standings','순위'],['h2h','맞대결'],['records','개인기록'],['opponent','상대전적'],['milestones','예상 달성 기록']].map(([k,l])=>`<a href="#/${k==='home'?'':k}" class="${r===k?'on':''}">${l}</a>`).join('');
@@ -3222,7 +3236,7 @@ document.addEventListener('click',ev=>{
   else if(t.id==='admin_back'){editing=null;adminView='manage';keep()}
   else if(t.dataset.oppkind){
     if(!['pitcher','hitter'].includes(t.dataset.oppkind))return;
-    opponentKind=t.dataset.oppkind;opponentPlayerTarget=null;opponentMatchupJob=null;oppHistorySheet=null;keep();const scroller=document.querySelector('.opp-scroll');if(scroller)scroller.scrollLeft=0;
+    opponentKind=t.dataset.oppkind;opponentPlayerTarget=null;opponentMatchupJob=null;opponentMatchupSort=null;oppHistorySheet=null;keep();const scroller=document.querySelector('.opp-scroll');if(scroller)scroller.scrollLeft=0;
   }
   else if(t.dataset.oppsortPitch){
     const key=t.dataset.oppsortPitch;
@@ -3235,7 +3249,7 @@ document.addEventListener('click',ev=>{
     if(oppSort===k)oppSortDir=oppSortDir==='desc'?'asc':'desc';
     else{oppSort=k;oppSortDir='desc'}
     rerender();const scroller=document.querySelector('.opp-scroll,.record-scroll');if(scroller)scroller.scrollLeft=0;
-  }  else if(t.dataset.t){h2h=t.dataset.t;opponentPlayerTarget=null;opponentMatchupJob=null;oppHistorySheet=null;keep()}
+  }  else if(t.dataset.t){h2h=t.dataset.t;opponentPlayerTarget=null;opponentMatchupJob=null;opponentMatchupSort=null;oppHistorySheet=null;keep()}
   else if(t.id==='addhr'){const box=$('#hr_rows'),y=+(S($('#f_date')?.value).slice(0,4)||TODAY.getFullYear());if(box)box.insertAdjacentHTML('beforeend',hrRowHTML({},y))}
   else if(t.dataset.hrdel!==undefined){const row=t.closest('.hr-row');if(row){const box=$('#hr_rows');row.remove();if(box&&!box.querySelector('.hr-row'))box.insertAdjacentHTML('beforeend',hrRowHTML({}))}}
   else if(t.id==='login'){SB.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value}).then(r=>{if(r.error)alert('로그인 실패: '+r.error.message)})}
