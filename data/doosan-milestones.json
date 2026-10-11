@@ -1,0 +1,413 @@
+{
+  "schemaVersion": 1,
+  "source": "doosan-official",
+  "sourceUrl": "https://www.doosanbears.com/stats/expect",
+  "fetchedAt": "2026-10-11T15:43:12.310114+00:00",
+  "labels": {
+    "GRP": "경기출장",
+    "HLD": "홀드",
+    "SAV": "세이브",
+    "GRB": "경기출장",
+    "HR": "홈런",
+    "RBI": "타점",
+    "INN": "이닝",
+    "SO": "탈삼진",
+    "WIN": "승",
+    "BASE": "루타",
+    "H": "안타",
+    "SCO": "득점",
+    "SB": "도루"
+  },
+  "records": {
+    "pitcher": {
+      "GRP": [
+        {
+          "forecast": 300,
+          "name": "김명신",
+          "playerId": "67246",
+          "remnant": 3
+        },
+        {
+          "forecast": 500,
+          "name": "박치국",
+          "playerId": "67266",
+          "remnant": 8
+        },
+        {
+          "forecast": 250,
+          "name": "최원준",
+          "playerId": "67263",
+          "remnant": 10
+        },
+        {
+          "forecast": 650,
+          "name": "이용찬",
+          "playerId": "77211",
+          "remnant": 33
+        },
+        {
+          "forecast": 450,
+          "name": "이영하",
+          "playerId": "66291",
+          "remnant": 35
+        }
+      ],
+      "WIN": [
+        {
+          "forecast": 60,
+          "name": "곽빈",
+          "playerId": "68220",
+          "remnant": 2
+        },
+        {
+          "forecast": 70,
+          "name": "이용찬",
+          "playerId": "77211",
+          "remnant": 2
+        },
+        {
+          "forecast": 70,
+          "name": "이영하",
+          "playerId": "66291",
+          "remnant": 4
+        },
+        {
+          "forecast": 50,
+          "name": "최원준",
+          "playerId": "67263",
+          "remnant": 6
+        },
+        {
+          "forecast": 30,
+          "name": "박치국",
+          "playerId": "67266",
+          "remnant": 8
+        }
+      ],
+      "HLD": [
+        {
+          "forecast": 40,
+          "name": "이병헌",
+          "playerId": "52204",
+          "remnant": 1
+        },
+        {
+          "forecast": 30,
+          "name": "이영하",
+          "playerId": "66291",
+          "remnant": 3
+        },
+        {
+          "forecast": 90,
+          "name": "박치국",
+          "playerId": "67266",
+          "remnant": 3
+        },
+        {
+          "forecast": 50,
+          "name": "김명신",
+          "playerId": "67246",
+          "remnant": 5
+        },
+        {
+          "forecast": 30,
+          "name": "최지강",
+          "playerId": "52206",
+          "remnant": 8
+        }
+      ],
+      "SAV": [
+        {
+          "forecast": 50,
+          "name": "김택연",
+          "playerId": "54263",
+          "remnant": 3
+        },
+        {
+          "forecast": 40,
+          "name": "이영하",
+          "playerId": "66291",
+          "remnant": 5
+        },
+        {
+          "forecast": 180,
+          "name": "이용찬",
+          "playerId": "77211",
+          "remnant": 6
+        }
+      ],
+      "INN": [
+        {
+          "forecast": 500,
+          "name": "최승용",
+          "playerId": "51264",
+          "remnant": 21
+        },
+        {
+          "forecast": 900,
+          "name": "이영하",
+          "playerId": "66291",
+          "remnant": 30
+        },
+        {
+          "forecast": 500,
+          "name": "박치국",
+          "playerId": "67266",
+          "remnant": 32
+        },
+        {
+          "forecast": 900,
+          "name": "곽빈",
+          "playerId": "68220",
+          "remnant": 57
+        },
+        {
+          "forecast": 600,
+          "name": "벤자민",
+          "playerId": "52043",
+          "remnant": 61
+        }
+      ],
+      "SO": [
+        {
+          "forecast": 700,
+          "name": "이영하",
+          "playerId": "66291",
+          "remnant": 26
+        },
+        {
+          "forecast": 600,
+          "name": "최원준",
+          "playerId": "67263",
+          "remnant": 31
+        },
+        {
+          "forecast": 900,
+          "name": "이용찬",
+          "playerId": "77211",
+          "remnant": 31
+        },
+        {
+          "forecast": 400,
+          "name": "최승용",
+          "playerId": "51264",
+          "remnant": 64
+        },
+        {
+          "forecast": 600,
+          "name": "벤자민",
+          "playerId": "52043",
+          "remnant": 69
+        }
+      ]
+    },
+    "hitter": {
+      "GRB": [
+        {
+          "forecast": 2100,
+          "name": "양의지",
+          "playerId": "76232",
+          "remnant": 3
+        },
+        {
+          "forecast": 600,
+          "name": "이유찬",
+          "playerId": "67207",
+          "remnant": 34
+        },
+        {
+          "forecast": 1200,
+          "name": "양석환",
+          "playerId": "64153",
+          "remnant": 36
+        },
+        {
+          "forecast": 2000,
+          "name": "정수빈",
+          "playerId": "79231",
+          "remnant": 48
+        },
+        {
+          "forecast": 1300,
+          "name": "박찬호",
+          "playerId": "64646",
+          "remnant": 70
+        }
+      ],
+      "HR": [
+        {
+          "forecast": 200,
+          "name": "손아섭",
+          "playerId": "77532",
+          "remnant": 17
+        },
+        {
+          "forecast": 200,
+          "name": "양석환",
+          "playerId": "64153",
+          "remnant": 30
+        },
+        {
+          "forecast": 100,
+          "name": "강승호",
+          "playerId": "63123",
+          "remnant": 31
+        },
+        {
+          "forecast": 350,
+          "name": "양의지",
+          "playerId": "76232",
+          "remnant": 45
+        }
+      ],
+      "H": [
+        {
+          "forecast": 2100,
+          "name": "양의지",
+          "playerId": "76232",
+          "remnant": 21
+        },
+        {
+          "forecast": 2700,
+          "name": "손아섭",
+          "playerId": "77532",
+          "remnant": 46
+        },
+        {
+          "forecast": 1100,
+          "name": "양석환",
+          "playerId": "64153",
+          "remnant": 70
+        },
+        {
+          "forecast": 1800,
+          "name": "정수빈",
+          "playerId": "79231",
+          "remnant": 86
+        },
+        {
+          "forecast": 1200,
+          "name": "박찬호",
+          "playerId": "64646",
+          "remnant": 98
+        }
+      ],
+      "BASE": [
+        {
+          "forecast": 3500,
+          "name": "양의지",
+          "playerId": "76232",
+          "remnant": 111
+        },
+        {
+          "forecast": 2500,
+          "name": "정수빈",
+          "playerId": "79231",
+          "remnant": 216
+        },
+        {
+          "forecast": 2000,
+          "name": "양석환",
+          "playerId": "64153",
+          "remnant": 243
+        },
+        {
+          "forecast": 4000,
+          "name": "손아섭",
+          "playerId": "77532",
+          "remnant": 256
+        }
+      ],
+      "RBI": [
+        {
+          "forecast": 1300,
+          "name": "양의지",
+          "playerId": "76232",
+          "remnant": 26
+        },
+        {
+          "forecast": 700,
+          "name": "양석환",
+          "playerId": "64153",
+          "remnant": 43
+        },
+        {
+          "forecast": 700,
+          "name": "정수빈",
+          "playerId": "79231",
+          "remnant": 66
+        },
+        {
+          "forecast": 500,
+          "name": "박찬호",
+          "playerId": "64646",
+          "remnant": 93
+        },
+        {
+          "forecast": 1200,
+          "name": "손아섭",
+          "playerId": "77532",
+          "remnant": 99
+        }
+      ],
+      "SCO": [
+        {
+          "forecast": 600,
+          "name": "박찬호",
+          "playerId": "64646",
+          "remnant": 1
+        },
+        {
+          "forecast": 1000,
+          "name": "양의지",
+          "playerId": "76232",
+          "remnant": 14
+        },
+        {
+          "forecast": 1100,
+          "name": "정수빈",
+          "playerId": "79231",
+          "remnant": 32
+        },
+        {
+          "forecast": 1500,
+          "name": "손아섭",
+          "playerId": "77532",
+          "remnant": 84
+        },
+        {
+          "forecast": 600,
+          "name": "양석환",
+          "playerId": "64153",
+          "remnant": 92
+        }
+      ],
+      "SB": [
+        {
+          "forecast": 200,
+          "name": "조수행",
+          "playerId": "66209",
+          "remnant": 1
+        },
+        {
+          "forecast": 250,
+          "name": "손아섭",
+          "playerId": "77532",
+          "remnant": 18
+        },
+        {
+          "forecast": 400,
+          "name": "정수빈",
+          "playerId": "79231",
+          "remnant": 27
+        },
+        {
+          "forecast": 250,
+          "name": "박찬호",
+          "playerId": "64646",
+          "remnant": 30
+        }
+      ]
+    }
+  }
+}
