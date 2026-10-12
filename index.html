@@ -455,7 +455,7 @@ Repo.load=async function(){
       const b=row.body;if(!b||typeof b!=='object')continue;
       const future=b.type==='futures'||S(b.kbo?.leagueId)==='2'||S(row.raw?.game?.LE_ID)==='2';
       const event=future?futuresEvent(row):{...b,type:'kbo',source:b.source||'kbo',status:b.status||((b.score&&S(b.score.d)!==''&&S(b.score.v)!=='')?'final':'scheduled')};
-      if(event)automatic.set(event.type+':'+(event.kboGameId||event.id),event);
+      if(event){const before=KBO_AUTO.find(e=>e.kboGameId===event.kboGameId);if(before&&isLiveGame(before)){SITUATION_RELAY_CACHE.delete(event.kboGameId);for(const key of RELAY_PLAYER_CACHE.keys())if(key.includes(event.kboGameId))RELAY_PLAYER_CACHE.delete(key);}automatic.set(event.type+':'+(event.kboGameId||event.id),event);}
     }
     KBO_AUTO=[...automatic.values()];
     KBO_WARNING=''
@@ -464,6 +464,7 @@ Repo.load=async function(){
   await _manualLoad();
   await loadCareerBaselines();
   await loadKboSituational();
+  await loadOfficialPinchHit();
   await loadFuturesProgress();
   rerender();
 };
@@ -501,13 +502,18 @@ async function setUser(sess){
  * - 열린 상태에서는 60초마다 KBO/수동기록/명단을 다시 읽기
  */
 let _lastAutoReload=0;
+let latestDataPending=null,latestDataAgain=false;
 async function refreshLatestData(force=false){
   if(!SB)return;
-  const now=Date.now();
-  if(!force&&now-_lastAutoReload<15000)return;
+  const now=Date.now();if(!force&&now-_lastAutoReload<15000)return;
+  if(latestDataPending){latestDataAgain=true;return latestDataPending;}
   _lastAutoReload=now;
-  try{await Repo.load()}catch(e){}
+  latestDataPending=(async()=>{try{await Repo.load()}catch{}finally{latestDataPending=null;if(latestDataAgain){latestDataAgain=false;queueMicrotask(()=>refreshLatestData(true));}}})();
+  return latestDataPending;
 }
+let liveRefreshTimer=null;
+function queueLiveRefresh(){if(document.hidden)return;clearTimeout(liveRefreshTimer);liveRefreshTimer=setTimeout(()=>refreshLatestData(true),800);}
+if(SB){SB.channel('bearstat-live-records').on('postgres_changes',{event:'*',schema:'public',table:'kbo_game_records'},queueLiveRefresh).on('postgres_changes',{event:'*',schema:'public',table:'events'},queueLiveRefresh).on('postgres_changes',{event:'*',schema:'public',table:'kv'},payload=>{if(/^(kbo_pinch_hit_|kbo_situational_|standings_auto_|career_|bears_roster)/.test(S(payload.new?.key||payload.old?.key)))queueLiveRefresh()}).subscribe();}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){refreshLatestData(true)}});
 window.addEventListener('focus',()=>{refreshLatestData(true)});
 setInterval(()=>{if(!document.hidden)refreshLatestData(false)},60000);
@@ -534,7 +540,8 @@ const isCancelled=e=>!!(e&&(e.cancelled===true||e.status==='cancelled'||e.cancel
 const CANCEL_ICONS={'우천':'☂','그라운드 사정':'⛈','폭염':'☀','폭설':'❆','강풍':'༄','미세먼지':'☁︎','황사':'≋'};
 function cancellationIcon(reason){const text=S(reason);if(!text)return '⊘';for(const [name,icon] of Object.entries(CANCEL_ICONS))if(text.includes(name))return icon;return /강우|비로|rain/i.test(text)?'☂':'⊘';}
 const cancellationMessage=e=>S(e?.cancelReason)?`${cancellationIcon(e.cancelReason)} 이 경기는 ${esc(e.cancelReason)}으로 인해 취소되었습니다.`:'⊘ 이 경기는 취소되었습니다.';
-const result=e=>isCancelled(e)||!hasScore(e)?null:(+e.score.d>+e.score.v?'W':+e.score.d<+e.score.v?'L':'D');
+const isLiveGame=e=>['live','inprogress'].includes(S(e?.status).toLowerCase());
+const result=e=>isLiveGame(e)||isCancelled(e)||!hasScore(e)?null:(+e.score.d>+e.score.v?'W':+e.score.d<+e.score.v?'L':'D');
 const RL={W:'승',L:'패',D:'무'};
 
 /* ============ 2. UI ============ */
@@ -676,12 +683,12 @@ function gameCard(e,kind){
 
   return `<div class="card"><div class="top"><span>${e.venue||''}${e.homeAway?` <span class="tag">${e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':esc(e.homeAway)}</span>`:''}</span><span>${e.stage?`<span class="badge">${sub}</span>`:'정규시즌'}${e.series?` <span class="tag" style="margin:0 0 0 4px">${e.series}</span>`:''}</span></div>
   <div class="vs"><span class="vh">vs</span><span class="t">${e.opp||'상대팀 미정'}</span></div>
-  ${isCancelled(e)?`<div class="sb" style="margin-top:8px">${esc(e.venue||e.place||'')}</div><div class="note" style="margin-top:16px;font-weight:800">${cancellationMessage(e)}</div>`:(r?`<div class="score">${e.score.d} : ${e.score.v}<span class="res ${r}">${RL[r]}</span></div>`:`<div class="time">${e.time||'<span class=tbd>시간 미정</span>'}</div>`)}
+  ${isCancelled(e)?`<div class="sb" style="margin-top:8px">${esc(e.venue||e.place||'')}</div><div class="note" style="margin-top:16px;font-weight:800">${cancellationMessage(e)}</div>`:(hasScore(e)?`<div class="score">${e.score.d} : ${e.score.v}<span class="res ${r}">${RL[r]||esc(e.statusText||'진행 중')}</span></div>`:`<div class="time">${e.time||'<span class=tbd>시간 미정</span>'}</div>`)}
   ${isCancelled(e)?'':`<div class="meta"><span>경기장</span><span>${e.venue||'미정'}</span><span>두산 선발</span><span>${e.starter||'<span class=tbd>미정</span>'}</span><span>${e.opp||'상대팀'} 선발</span><span>${e.oppStarter||'<span class=tbd>미정</span>'}</span></div>`}</div>`;
 }
 function evRow(e){
   let sb='';
-  if(['kbo','edu','futures'].includes(e.type)){const r=result(e);sb=isCancelled(e)?[e.venue,e.cancelReason?`취소 사유: ${e.cancelReason}`:'취소 경기'].filter(Boolean).join(' · '):[e.venue,hasScore(e)?`${e.score.d}:${e.score.v} ${RL[r]}`:'',e.stage?[e.stage,e.gameNo?e.gameNo+'차전':''].join(' '):'',e.starter].filter(Boolean).join(' · ');}
+  if(['kbo','edu','futures'].includes(e.type)){const r=result(e);sb=isCancelled(e)?[e.venue,e.cancelReason?`취소 사유: ${e.cancelReason}`:'취소 경기'].filter(Boolean).join(' · '):[e.venue,hasScore(e)?`${e.score.d}:${e.score.v} ${RL[r]||esc(e.statusText||'진행 중')}`:'',e.stage?[e.stage,e.gameNo?e.gameNo+'차전':''].join(' '):'',e.starter].filter(Boolean).join(' · ');}
   else if(e.type==='broadcast'||e.type==='radio')sb=[e.program,e.players&&e.players.join(', '),e.channel].filter(Boolean).join(' · ');
   else sb=[e.place].filter(Boolean).join(' · ');
   const g=['kbo','edu','futures'].includes(e.type),o=g&&openIds.has(e.id);
@@ -968,15 +975,24 @@ function battingDoublePlays(p,e){
 
 // Official KBO PH-BA snapshots: ratios only, never infer pinch hits from full-game batting lines.
 const KBO_PINCH_HIT_SNAPSHOT={source:'https://www.koreabaseball.com/Record/Player/HitterBasic/Basic2.aspx',checkedAt:'2026-10-12',years:{"2000":{"장원진":0.0,"김동주":0.0,"우즈":0.0,"정수근":0.0,"홍성흔":0.0,"심정수":0.0,"안경현":0.0,"홍원기":0.0,"강혁":0.0,"김민호":0.0,"이종민":0.0,"전상렬":0.0,"최훈재":0.0,"이도형":0.0,"김태형":0.0,"문희성":0.0,"정원석":0.0,"김실":0.0,"전형도":0.0,"윤상무":0.0,"강규철":0.0,"강봉규":0.0,"이광우":0.0},"2003":{"안경현":0.0,"전상렬":0.125,"장원진":0.391,"홍원기":0.667,"김창희":0.267,"김동주":0.5,"최경환":0.3,"심재학":0.304,"나주환":0.0,"정수근":0.37,"김민호":0.0,"홍성흔":0.0,"문희성":0.25,"강인권":0.0,"손시헌":0.0,"쿨바":0.25,"이동수":0.167,"고영민":0.0,"이승준":0.3,"이경환":0.0,"정종수":0.0,"백대운":0.0,"이민택":0.0,"강봉규":0.0,"윤태수":0.2,"이재영":0.0,"백승훈":0.0,"이리키":0.0,"구자운":0.0,"키퍼":0.0},"2004":{"홍성흔":0.0,"장원진":0.143,"전상렬":0.25,"최경환":0.182,"안경현":0.0,"김동주":1.0,"손시헌":0.0,"김창희":0.143,"홍원기":0.222,"강인권":0.0,"유재웅":0.111,"나주환":1.0,"이승준":0.273,"정원석":0.0,"임재철":0.0,"강봉규":0.125,"알칸트라":0.0,"김재호":0.0,"문희성":0.267,"윤재국":0.5,"채상병":0.4,"방승재":0.0,"정성훈":0.0,"홍마태":0.0,"백승훈":0.0,"용덕한":1.0,"구자운":0.0,"윤상무":0.0,"윤석민":0.0,"이재영":0.0},"2002":{"안경현":0.0,"장원진":0.375,"홍성흔":0.0,"최경환":0.167,"전상렬":0.167,"정수근":0.0,"김동주":0.25,"심재학":0.333,"우즈":0.0,"홍원기":0.4,"김민호":1.0,"강봉규":0.281,"김호":0.429,"유재웅":0.235,"송원국":0.368,"강인권":0.0,"고영민":0.0,"이종민":0.0,"문희성":0.0,"김성균":0.0,"윤태수":0.5,"김학재":0.0,"이상훈":0.0,"이재영":0.0,"레스":0.0,"이경환":0.0,"이혜천":0.0,"진필중":0.0,"차명주":0.0},"2001":{"안경현":0.0,"장원진":0.375,"정수근":0.0,"홍성흔":1.0,"우즈":0.5,"심재학":0.0,"김민호":0.0,"김동주":0.375,"전상렬":0.0,"이종민":0.143,"최훈재":0.118,"홍원기":0.0,"강봉규":0.167,"이도형":0.154,"김원섭":0.0,"송원국":0.364,"문희성":0.0,"김호":0.333,"이대현":0.0,"니일":0.0,"전형도":0.0,"정원석":0.0,"김성균":0.0,"강규철":0.0,"오세학":0.0,"유필선":0.0,"김태형":0.0,"박명환":0.0,"진필중":0.0,"이상훈":0.0},"2008":{"고영민":0.0,"김현수":0.0,"이종욱":0.0,"오재원":0.375,"홍성흔":0.0,"김재호":0.0,"채상병":0.0,"김동주":0.0,"유재웅":0.458,"이대수":0.333,"정원석":0.5,"민병헌":0.0,"이성열":0.222,"최준석":0.5,"최승환":0.0,"전상렬":0.286,"안경현":0.267,"최주환":0.143,"김재환":0.2,"정재훈":0.0,"임태훈":0.0,"김진수":0.0,"이재우":0.0,"김태영":0.0,"레이어":0.0,"박민석":0.0,"진야곱":0.0,"금민철":0.0,"김강률":0.0,"김덕윤":0.0},"2005":{"손시헌":0.0,"장원진":0.0,"윤승균":0.0,"홍성흔":0.0,"문희성":0.318,"임재철":0.0,"안경현":0.0,"최경환":0.2,"나주환":1.0,"김동주":0.154,"전상렬":0.0,"홍원기":0.0,"김창희":0.0,"용덕한":0.0,"황윤성":0.176,"강봉규":0.3,"김재호":0.0,"이승준":0.091,"강인권":0.0,"고영민":0.0,"정원석":0.0,"이원희":0.0,"정재훈":0.0,"방승재":0.0,"김성배":0.0,"김주호":1.0,"이재우":0.0,"조현근":0.0,"이재영":0.0,"금민철":0.0},"2006":{"손시헌":0.0,"안경현":0.0,"이종욱":0.0,"홍성흔":0.25,"강동우":0.0,"고영민":0.0,"나주환":0.0,"최준석":0.071,"임재철":0.5,"장원진":0.233,"전상렬":0.0,"민병헌":0.0,"정원석":0.167,"용덕한":0.0,"김동주":0.25,"문희성":0.182,"윤석민":0.222,"김진수":0.0,"김주호":0.0,"이승엽":0.0,"정재훈":0.0,"송수":0.0,"김승회":0.0,"강인권":0.0,"김명제":0.0,"장교성":0.0,"윤승균":0.0,"최주환":0.0,"김성배":0.0,"박정배":0.0},"2007":{"고영민":0.0,"이종욱":0.0,"최준석":0.2,"김동주":0.333,"민병헌":0.0,"안경현":0.2,"이대수":0.0,"김현수":0.2,"채상병":0.0,"홍성흔":0.077,"정원석":0.4,"전상렬":0.0,"윤재국":0.091,"오재원":0.0,"안상준":0.273,"김진수":0.0,"윤석민":0.0,"강동우":0.308,"장원진":0.067,"유재웅":0.0,"정재훈":0.0,"임태훈":0.0,"김혜겸":0.333,"금민철":0.0,"이승학":0.0,"김명제":0.0,"양의지":0.0,"이경필":0.0,"최주환":0.0},"2009":{"김현수":0.0,"이원석":0.0,"손시헌":0.0,"임재철":0.0,"최준석":0.125,"민병헌":0.182,"오재원":0.0,"김동주":0.0,"고영민":0.0,"정수빈":0.0,"최승환":0.0,"이종욱":0.0,"김재호":0.0,"용덕한":0.0,"유재웅":0.229,"이대수":0.111,"이성열":0.25,"김진수":0.0,"왓슨":0.0,"최주환":0.0,"이용찬":0.0,"박건우":0.333,"고창성":0.0,"임태훈":0.0,"금민철":0.0,"김명제":0.0,"오현택":0.0,"이재우":0.0,"김태영":0.0,"김성배":0.0},"2011":{"김현수":1.0,"오재원":0.0,"정수빈":0.2,"최준석":0.286,"이종욱":0.5,"김동주":0.4,"양의지":0.0,"이원석":0.0,"고영민":0.0,"손시헌":0.0,"이성열":0.091,"윤석민":0.2,"용덕한":0.5,"김재호":1.0,"정진호":0.1,"임재철":0.5,"김재환":0.19,"최승환":0.0,"유재웅":0.0,"김동길":0.0,"안동현":0.0,"정재훈":0.0,"김태영":0.0,"김성배":0.0,"박정배":0.0,"정대현":0.0},"2013":{"홍성흔":0.333,"정수빈":0.3,"김현수":0.0,"민병헌":0.6,"양의지":0.0,"오재원":0.333,"이종욱":0.333,"최준석":0.321,"손시헌":0.667,"김재호":0.0,"이원석":0.333,"허경민":0.0,"임재철":0.25,"최재훈":0.0,"오재일":0.429,"최주환":0.24,"박건우":0.333,"김동주":0.0,"김동한":0.333,"윤석민":0.0,"박세혁":0.0,"고영민":0.0,"오현근":0.0,"정재훈":0.0,"김태영":0.0,"원용묵":0.0,"유희관":0.0,"홍상삼":0.0},"2010":{"김현수":0.0,"이성열":0.0,"손시헌":0.333,"양의지":0.0,"최준석":0.5,"오재원":0.0,"이종욱":0.0,"김동주":0.0,"이원석":0.333,"고영민":0.0,"임재철":0.286,"김재호":0.0,"정수빈":0.5,"민병헌":0.0,"유재웅":0.2,"용덕한":0.0,"최승환":0.0,"이두환":0.286,"김동길":0.0,"정재훈":0.0,"고창성":0.0,"오현근":0.0,"이용찬":0.0,"홍상삼":0.0,"김승회":0.0,"박정배":0.0,"조승수":0.0,"노경은":0.0,"성영훈":0.0,"오현택":0.0},"2014":{"정수빈":0.667,"김현수":0.0,"민병헌":0.5,"홍성흔":0.0,"김재호":0.0,"칸투":0.083,"오재원":0.25,"허경민":0.167,"양의지":0.125,"최주환":0.222,"이원석":0.25,"오재일":0.0,"고영민":0.294,"김재환":0.3,"최재훈":1.0,"박건우":0.077,"장민석":0.167,"김진형":0.0,"김응민":0.0,"양종민":0.0,"이성곤":0.0,"최영진":0.0,"이용찬":0.0,"니퍼트":0.0,"오장훈":0.0,"이현승":0.0,"최병욱":0.0},"2012":{"김현수":0.0,"양의지":0.125,"이종욱":0.0,"윤석민":0.1,"이원석":0.0,"정수빈":0.0,"허경민":0.143,"최준석":0.357,"오재일":0.214,"손시헌":0.0,"김재호":0.0,"최주환":0.235,"오재원":0.2,"최재훈":0.0,"김동주":0.333,"임재철":0.2,"고영민":0.0,"정진호":0.667,"김재환":0.0,"김동한":0.0,"오장훈":0.0,"박세혁":0.0,"프록터":0.0,"국해성":0.0,"류지혁":0.0,"민병헌":0.0,"변시원":0.0,"홍상삼":0.0,"김창훈":0.0,"안규영":0.0},"2016":{"허경민":0.0,"김재호":0.333,"김재환":0.8,"민병헌":0.25,"박건우":0.143,"오재원":0.667,"에반스":0.0,"정수빈":0.0,"양의지":0.2,"오재일":0.5,"류지혁":0.0,"박세혁":0.5,"최주환":0.357,"조수행":1.0,"국해성":0.0,"서예일":0.0,"정진호":0.25,"최재훈":0.0,"홍성흔":0.0,"김인태":0.429,"고영민":0.333,"이원석":0.0,"이현호":0.0,"최용제":0.0,"강동연":0.0,"이우성":0.0,"이현승":0.0,"정진철":0.0,"고봉재":0.0,"김성배":0.0},"2015":{"김현수":0.0,"김재호":0.0,"양의지":0.4,"민병헌":0.5,"정수빈":0.0,"오재원":0.4,"허경민":0.0,"최주환":0.214,"홍성흔":0.3,"정진호":0.0,"로메로":0.0,"최재훈":0.0,"박건우":0.429,"오재일":0.25,"장민석":0.143,"김재환":0.0,"고영민":0.444,"양종민":0.333,"유민상":0.0,"김진형":0.333,"류지혁":0.0,"국해성":0.0,"루츠":0.0,"김응민":0.5,"이현승":0.0,"진야곱":0.0,"함덕주":0.0,"노경은":0.0,"니퍼트":0.0,"양현":0.0},"2018":{"김재환":1.0,"최주환":0.25,"양의지":0.333,"허경민":0.25,"오재원":0.0,"김재호":0.5,"류지혁":0.571,"박건우":0.5,"오재일":0.0,"조수행":1.0,"정진호":0.0,"박세혁":0.222,"김인태":0.4,"이유찬":0.0,"황경태":0.0,"정수빈":0.0,"백동훈":0.0,"김민혁":0.0,"양종민":0.0,"파레디스":0.0,"장승현":1.0,"신성현":0.0,"국해성":0.167,"반슬라이크":0.0,"전민재":0.0,"이흥련":0.0,"함덕주":0.0,"김정후":0.0,"박성모":0.0,"변시원":0.0},"2017":{"김재환":0.0,"에반스":0.667,"박건우":0.25,"허경민":0.0,"최주환":0.2,"오재일":0.333,"오재원":0.3,"류지혁":0.0,"민병헌":0.0,"양의지":0.154,"박세혁":0.25,"정진호":0.333,"김재호":0.0,"조수행":0.0,"국해성":0.118,"신성현":0.2,"김인태":0.125,"서예일":0.0,"김민혁":0.182,"이성곤":0.0,"이용찬":0.0,"김강률":0.0,"박유연":0.0,"이우성":0.0,"황경태":0.0,"김명신":0.0},"2019":{"페르난데스":0.5,"박세혁":0.0,"김재환":0.25,"허경민":1.0,"김재호":0.5,"오재일":0.0,"박건우":0.333,"정수빈":0.5,"류지혁":0.25,"오재원":0.091,"최주환":0.25,"정진호":0.2,"백동훈":0.0,"신성현":0.333,"장승현":0.0,"김경호":0.25,"이흥련":0.222,"김인태":0.5,"이유찬":0.0,"국해성":0.167,"정병곤":0.0,"김대한":0.0,"김태근":0.0,"서예일":0.0,"박유연":0.0,"배영수":0.0,"송승환":0.0,"전민재":0.0,"권혁":0.0,"김승회":0.0},"2024":{"양석환":0.667,"강승호":0.2,"김재환":0.667,"정수빈":0.0,"조수행":0.25,"양의지":0.5,"허경민":0.5,"이유찬":0.333,"전민재":0.0,"김기연":0.125,"라모스":0.0,"박준영":0.6,"김대한":0.0,"김재호":0.25,"김태근":0.0,"제러드":0.0,"전다민":0.333,"박계범":0.0,"서예일":0.0,"홍성호":0.2,"양찬열":0.0,"김인태":0.0,"여동건":0.0,"장승현":0.0,"김민혁":0.0,"박민준":0.0,"이교훈":0.0,"홍건희":0.0,"안승한":0.5,"김명신":0.0},"2020":{"페르난데스":0.0,"정수빈":1.0,"김재환":1.0,"최주환":0.75,"박건우":0.5,"오재일":0.0,"박세혁":0.077,"김재호":0.0,"허경민":0.0,"이유찬":1.0,"오재원":0.25,"김인태":0.214,"안권수":0.0,"권민석":1.0,"국해성":0.278,"조수행":0.0,"정상호":0.5,"서예일":0.5,"최용제":0.333,"백동훈":0.0,"장승현":0.0,"양찬열":0.0,"박지훈":0.0,"신성현":0.333,"오명진":0.0,"김민규":0.0,"이승민":0.0,"김강률":0.0,"함덕주":0.0,"권휘":0.0},"2021":{"페르난데스":0.0,"김재환":0.5,"허경민":0.444,"김인태":0.381,"양석환":0.25,"박건우":0.25,"박계범":0.0,"조수행":0.143,"강승호":0.0,"정수빈":0.25,"박세혁":0.273,"안재석":0.182,"장승현":0.0,"김재호":0.222,"안권수":0.0,"최용제":0.371,"오재원":0.111,"박지훈":0.0,"권민석":0.0,"신성현":0.0,"전민재":0.0,"김강률":0.0,"김민혁":0.0,"백동훈":0.0,"서예일":0.0,"국해성":0.0,"김명신":0.0,"윤명준":0.0,"권휘":0.0,"김민규":0.0},"2022":{"페르난데스":0.5,"강승호":0.25,"김재환":0.333,"박세혁":0.2,"정수빈":0.0,"허경민":0.0,"조수행":0.0,"양석환":0.0,"김재호":0.2,"안재석":0.5,"김인태":0.25,"박계범":0.0,"안권수":0.0,"장승현":0.0,"김대한":0.5,"양찬열":0.5,"강진성":0.273,"김민혁":0.294,"서예일":0.0,"전민재":0.0,"안승한":1.0,"오재원":0.0,"신성현":0.0,"권민석":0.0,"박유연":0.333,"이유찬":0.0,"홍성호":0.0,"송승환":0.667,"홍건희":0.0,"김강률":0.0},"2023":{"양석환":0.0,"정수빈":0.5,"김재환":0.214,"허경민":0.667,"양의지":0.667,"강승호":0.167,"조수행":0.0,"로하스":0.0,"이유찬":0.333,"김재호":0.222,"박계범":0.143,"장승현":0.0,"박준영":0.714,"김인태":0.316,"양찬열":0.0,"김태근":0.0,"김대한":0.0,"송승환":0.167,"안재석":0.333,"박지훈":0.0,"안승한":0.0,"김민혁":0.111,"홍성호":0.0,"전민재":0.0,"신성현":0.2,"박유연":0.0,"서예일":0.0,"홍건희":0.0,"정철원":0.0,"박정수":0.0},"2025":{"케이브":0.0,"정수빈":1.0,"양의지":0.5,"강승호":0.333,"조수행":0.5,"오명진":0.25,"김인태":0.341,"김재환":0.0,"김기연":0.278,"김민석":0.118,"박계범":0.3,"박준순":0.0,"이유찬":0.0,"양석환":0.0,"박준영":0.0,"박지훈":0.667,"김동준":0.333,"안재석":0.0,"추재현":0.286,"임종성":1.0,"전다민":0.0,"여동건":0.333,"류현준":0.25,"김대한":0.0,"김민혁":0.0,"이선우":0.333,"김준상":0.0,"홍성호":0.333,"박민준":0.0,"박성재":0.0,"김택연":0.0,"장승현":0.0,"천현재":0.0,"홍민규":0.0,"강현구":0.0,"고효준":0.0,"김성재":0.0,"김재호":0.0,"김정우":0.0,"김한중":0.0,"김호준":0.0,"박신지":0.0,"박치국":0.0,"양재훈":0.0,"이영하":0.0,"최원준":0.0},"2026":{"박찬호":0.5,"정수빈":0.5,"김민석":0.333,"양의지":0.333,"조수행":0.25,"박지훈":0.2,"윤준호":1.0,"안재석":0.0,"강승호":0.5,"이유찬":0.0,"박준순":0.0,"오명진":0.2,"카메론":0.5,"손아섭":0.143,"양석환":0.6,"김대한":0.0,"김인태":0.219,"세베리노":0.667,"김기연":0.167,"류승민":0.0,"임종성":0.5,"전다민":0.0,"홍성호":0.0,"류현준":0.0,"박성재":0.0,"이영하":0.0,"김동주":0.0,"김정우":0.0,"박신지":0.0,"박정수":0.0,"양재훈":0.0,"윤태호":0.0,"이병헌":0.0,"이용찬":0.0,"최주형":0.0,"최지강":0.0,"타카다":0.0}}};
+const KBO_PINCH_HIT_BY_YEAR={};
+async function loadOfficialPinchHit(){
+ if(!SB)return;
+ try{const response=await SB.from('kv').select('key,body').like('key','kbo_pinch_hit_%');if(response.error)return;
+  for(const row of response.data||[]){const b=row.body;if(b?.schemaVersion!==1||b.source!=='kbo'||b.teamId!=='OB'||b.scope!=='season'||!b.players||!Number.isInteger(b.season))continue;
+   if(!KBO_PINCH_HIT_BY_YEAR[b.season]||S(b.updatedAt)>=S(KBO_PINCH_HIT_BY_YEAR[b.season].updatedAt))KBO_PINCH_HIT_BY_YEAR[b.season]=b;
+  }
+ }catch{}
+}
 function officialPinchHitAverage(name,year=recYear,league=recLeague,season=recSeason){
   if(league!=='kbo'||season!=='regular')return null;
-  const rows=KBO_PINCH_HIT_SNAPSHOT.years[String(year)];
+  const rows=KBO_PINCH_HIT_BY_YEAR[year]?.players||KBO_PINCH_HIT_SNAPSHOT.years[String(year)];
   if(!rows||!Object.hasOwn(rows,S(name)))return null;
   const value=rows[S(name)];return typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:null;
 }
 function pinchHitAverageText(value){return typeof value==='number'&&Number.isFinite(value)?(value>=1?value.toFixed(3):value.toFixed(3).slice(1)):'—'}
 function pinchHitAverageNote(){
-  return `<details class="phnote"><summary>대타타율 안내</summary><p><a href="${KBO_PINCH_HIT_SNAPSHOT.source}" target="_blank" rel="noopener noreferrer">KBO 공식 시즌 기록</a> · ${KBO_PINCH_HIT_SNAPSHOT.checkedAt} 확인<br>자동 갱신되지 않아요. 이적 전 기록이 포함될 수 있어요.<br>—는 미확인 기록이에요. 공식 대타 타수·안타가 없어 합계는 표시하지 않아요.<br>경기 내역은 저장된 두산 경기의 대타 첫 타석을 문자중계로 확인해요.</p></details>`;
+  return `<details class="phnote"><summary>대타타율 안내</summary><p><a href="${KBO_PINCH_HIT_SNAPSHOT.source}" target="_blank" rel="noopener noreferrer">KBO 공식 시즌 기록</a> · ${S(KBO_PINCH_HIT_BY_YEAR[recYear]?.updatedAt).slice(0,10)||KBO_PINCH_HIT_SNAPSHOT.checkedAt} 확인<br>${KBO_PINCH_HIT_BY_YEAR[recYear]?'KBO에 반영된 수치를 자동 확인해요.':'자동 수신 전에는 마지막 확인값을 표시해요.'} 이적 전 기록이 포함될 수 있어요.<br>—는 미확인 기록이에요. 공식 대타 타수·안타가 없어 합계는 표시하지 않아요.<br>경기 내역은 저장된 두산 경기의 대타 첫 타석을 문자중계로 확인해요.</p></details>`;
 }
 
 function recStats(){return recordRenderMemo('stats:'+recYear+':'+recLeague+':'+recSeason,uncachedRecStats)}
@@ -1425,7 +1441,7 @@ function situationRelayCandidates(name,stat){
 }
 const RELAY_PLAYER_CACHE=new Map();
 const relayPlayerKey=(id,name,role)=>JSON.stringify([id,name,role]);
-function cachedPlayerRelay(id,name,role){return SITUATION_RELAY_CACHE.get(id)||RELAY_PLAYER_CACHE.get(relayPlayerKey(id,name,role));}
+function cachedPlayerRelay(id,name,role){const game=Repo.all().find(e=>e.kboGameId===id);if(isLiveGame(game))return game.kbo?.liveRelay||null;return SITUATION_RELAY_CACHE.get(id)||RELAY_PLAYER_CACHE.get(relayPlayerKey(id,name,role));}
 const RELAY_REQUEST_QUEUE=[];let relayRequestsActive=0,relayBackgroundActive=0;
 function relayRequest(task,priority='interactive',requestKey=''){
  return new Promise((resolve,reject)=>{RELAY_REQUEST_QUEUE.push({task,resolve,reject,priority,requestKey});pumpRelayRequests()});
@@ -1899,8 +1915,8 @@ function h2hView(){
   let body='';
   if(h2h){
     const g=kb.filter(e=>e.opp===h2h).sort((a,b)=>a.date.localeCompare(b.date)),
-          done=g.filter(e=>hasScore(e)),
-          left=g.filter(e=>!hasScore(e)&&!isCancelled(e)&&S(e.date)>=TS),
+          done=g.filter(e=>result(e)!==null),
+          left=g.filter(e=>(!hasScore(e)||isLiveGame(e))&&!isCancelled(e)&&S(e.date)>=TS),
           cancelled=g.filter(e=>isCancelled(e));
     const c={W:0,L:0,D:0};done.forEach(e=>c[result(e)]++);
 
@@ -1922,7 +1938,7 @@ function h2hView(){
         </div>
       </div>`).join('');
 
-    const row=e=>{const r=result(e);return `<div class="ev"><div class="tm">${e.date.slice(5).replace('-','.')}</div><div class="bd"><div class="ti">${hasScore(e)?`${e.score.d}:${e.score.v} <span class="res ${r}" style="margin:0">${RL[r]}</span>`:(e.time||'시간 미정')}</div><div class="sb">${e.venue||'경기장 미정'}${e.stage?' · '+e.stage:''}</div></div></div>`};
+    const row=e=>{const r=result(e);return `<div class="ev"><div class="tm">${e.date.slice(5).replace('-','.')}</div><div class="bd"><div class="ti">${hasScore(e)?`${e.score.d}:${e.score.v} <span class="res ${r}" style="margin:0">${RL[r]||esc(e.statusText||'진행 중')}</span>`:(e.time||'시간 미정')}</div><div class="sb">${e.venue||'경기장 미정'}${e.stage?' · '+e.stage:''}</div></div></div>`};
     const cancelRow=e=>`<div class="ev"><div class="tm">${e.date.slice(5).replace('-','.')}</div><div class="bd"><div class="ti">${e.cancelReason?`${esc(e.cancelReason)}취소`:'경기취소'}</div><div class="sb">${esc(e.venue||'경기장 미정')}</div></div></div>`;
     body=`<div class="card" style="margin-top:14px">
       <div class="top"><span>시즌 상대전적 · 두산 vs ${h2h}</span></div>
@@ -3102,7 +3118,7 @@ function attachBearsOrdinals(rows,role){
  });
 }
 function teamGameValue(e,m){
- if(m.key==='g')return 1;if(m.key==='w')return Number(+e.score.d>+e.score.v);if(m.key==='runs')return Number.isFinite(+e.score.d)?+e.score.d:null;
+ if(m.key==='g')return 1;if(m.key==='w')return isLiveGame(e)?0:Number(+e.score.d>+e.score.v);if(m.key==='runs')return Number.isFinite(+e.score.d)?+e.score.d:null;
  if(m.key==='s'){const d=!e.manualOverride&&e.kbo?.doosanDecisions?e.kbo.doosanDecisions:e;return d.saveP==null?null:Number(names(d.saveP).length>0)}
  const box=e[m.key==='strikeouts'?'pitching':'batting'];if(!Array.isArray(box)||!box.length)return null;
  const values=box.map(p=>{if(m.key==='strikeouts')return recordNumber(p,['strikeouts','strikeOuts','so','k']);if(m.key==='tb')return opsBattingLine(e,p).tb;return opsSourceNumber(e,p,{hr:['homeRuns','hr'],sb:['stolenBases','sb'],rbi:['rbi']}[m.key])});return values.some(v=>v===null)?null:values.reduce((a,b)=>a+b,0);
