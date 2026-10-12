@@ -1,110 +1,77 @@
-"""Fetch the public data used by Doosan's /stats/expect page; no account required."""
-import json
-import os
-import math
-import time
+"""Refresh Doosan's first-team entry from the official KBO register page."""
+import datetime as dt
+import html
 import http.cookiejar
-from datetime import datetime, timezone
+import json
 from pathlib import Path
-from urllib.request import Request, build_opener, HTTPCookieProcessor
-from urllib.error import HTTPError, URLError
+import re
+import urllib.parse
+import urllib.request
 
-BASE = 'https://www.doosanbears.com/doosan/v1'
-OUTPUT = Path(os.environ.get('MILESTONE_OUTPUT', 'data/doosan-milestones.json'))
+URL = 'https://www.koreabaseball.com/Player/Register.aspx'
+PREFIX = 'ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$'
 
-SITE = 'https://www.doosanbears.com'
-PUBLIC_PAGE = SITE + '/stats/expect'
-USER_AGENT = ('Mozilla/5.0 (X11; Linux x86_64) '
-              'AppleWebKit/537.36 (KHTML, like Gecko) '
-              'Chrome/131.0.0.0 Safari/537.36')
-_session = None
 
-def official_open(request):
-    for attempt in range(3):
-        try:
-            return _session.open(request, timeout=25)
-        except HTTPError as error:
-            if error.code == 403:
-                raise RuntimeError(
-                    '두산 공식 서버가 이 실행 환경의 요청을 거절했습니다 (HTTP 403). '
-                    '파일 업로드 오류가 아닙니다. 기존 기록은 그대로 유지됩니다. '
-                    '요청 주소: ' + request.full_url
-                ) from error
-            if error.code not in (500, 502, 503, 504) or attempt == 2:
-                raise
-        except (URLError, TimeoutError):
-            if attempt == 2:
-                raise
-        time.sleep(2 ** attempt)
+def fields(source):
+    values = {}
+    for attrs in re.findall(r'<input\b([^>]*)>', source):
+        name = re.search(r'name="([^"]+)"', attrs)
+        value = re.search(r'value="([^"]*)"', attrs)
+        if name and 'type="hidden"' in attrs:
+            values[html.unescape(name[1])] = html.unescape(value[1]) if value else ''
+    return values
 
-def prepare_session():
-    global _session
-    if _session is not None:
-        return
-    _session = build_opener(HTTPCookieProcessor(http.cookiejar.CookieJar()))
-    # Establish the same public-page cookie session used by the official site.
-    request = Request(PUBLIC_PAGE, headers={
-        'User-Agent': USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
-    })
-    try:
-        with official_open(request) as response:
-            response.read()
-    except Exception:
-        _session = None
-        raise
 
-def fetch(path):
-    prepare_session()
-    request = Request(BASE + path, headers={
-        'Accept': 'application/json',
-        'Content-Type': 'application/json-patch+json',
-        'User-Agent': USER_AGENT,
-        'Referer': PUBLIC_PAGE,
-        'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
-    })
-    with official_open(request) as response:
-        body = json.load(response)
-    if body.get('success') is not True or body.get('code') != 0:
-        raise ValueError('Official source returned an unsuccessful response')
-    return body
+def parse_entry(source, date):
+    values = fields(source)
+    if values.get(PREFIX + 'hfSearchTeam') != 'OB':
+        raise ValueError('Response belongs to another team')
+    if values.get(PREFIX + 'hfSearchDate') != date.strftime('%Y%m%d'):
+        raise ValueError('Response date mismatch')
+    if '두산 베어스 선수등록명단' not in source:
+        raise ValueError('Missing Doosan register heading')
+    players = []
+    found = set()
+    for table in re.findall(r'<table\b[^>]*>(.*?)</table>', source, re.S):
+        headers = re.findall(r'<th\b[^>]*>(.*?)</th>', table, re.S)
+        positions = [p for p in ['투수', '포수', '내야수', '외야수'] if p in headers]
+        if not positions:
+            continue
+        position = positions[0]
+        found.add(position)
+        for pid, name in re.findall(r'<a\b[^>]*playerId=(\d+)[^>]*>(.*?)</a>', table, re.S):
+            players.append({'id': pid, 'n': html.unescape(re.sub('<[^>]*>', '', name)).strip(),
+                            't': 'pitcher' if position == '투수' else 'hitter'})
+    if len(found) != 4 or len({p['id'] for p in players}) != len(players):
+        raise ValueError('Incomplete or duplicated register tables')
+    if len(players) > 45:
+        raise ValueError('Unexpected first-team entry size')
+    return {'schemaVersion': 1, 'team': 'OB', 'asOf': date.isoformat(),
+            'source': URL, 'players': players}
 
-def validate_records(body):
-    records = body.get('data', {}).get('records')
-    if not isinstance(records, dict):
-        raise ValueError('Missing official records')
-    for code, rows in records.items():
-        if not isinstance(code, str) or not isinstance(rows, list):
-            raise ValueError('Invalid record category')
-        for row in rows:
-            if not isinstance(row, dict) or not isinstance(row.get('name'), str) or not row['name'].strip():
-                raise ValueError('Invalid player')
-            for field in ('forecast', 'remnant'):
-                value = row.get(field)
-                if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value) or value < 0:
-                    raise ValueError('Invalid official milestone count')
-            if row['remnant'] > row['forecast']:
-                raise ValueError('Remaining value exceeds target')
-    return records
 
-def main():
-    pitchers = validate_records(fetch('/stats/team/forecasts?position=PITCHER'))
-    hitters = validate_records(fetch('/stats/team/forecasts?position=BATTER'))
-    codes = fetch('/code/subcategory/codes/FOCST').get('list')
-    if not isinstance(codes, list):
-        raise ValueError('Invalid category labels')
-    snapshot = {
-        'schemaVersion': 1, 'source': 'doosan-official',
-        'sourceUrl': 'https://www.doosanbears.com/stats/expect',
-        'fetchedAt': datetime.now(timezone.utc).isoformat(),
-        'labels': {row['codeId']: row['codeName'] for row in codes},
-        'records': {'pitcher': pitchers, 'hitter': hitters},
-    }
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    temporary = OUTPUT.with_suffix('.tmp')
-    temporary.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
-    temporary.replace(OUTPUT)
+def fetch_entry(today=None):
+    today = today or dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).date()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+    source = opener.open(URL, timeout=25).read().decode('utf-8-sig')
+    # KBO can leave today's tables blank until publishing the daily register.
+    # Return the most recent published entry, keeping its actual date.
+    for offset in range(7):
+        date = today - dt.timedelta(days=offset)
+        values = fields(source)
+        values.update({PREFIX + 'hfSearchTeam': 'OB', PREFIX + 'hfSearchDate': date.strftime('%Y%m%d'),
+                       '__EVENTTARGET': PREFIX + 'btnCalendarSelect', '__EVENTARGUMENT': ''})
+        source = opener.open(urllib.request.Request(URL, data=urllib.parse.urlencode(values).encode()),
+                             timeout=25).read().decode('utf-8-sig')
+        entry = parse_entry(source, date)
+        if entry['players']:
+            return entry
+    raise ValueError('No published Doosan entry within the last seven days')
+
 
 if __name__ == '__main__':
-    main()
+    entry = fetch_entry()
+    output = Path('data/bears-entry.json')
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(entry, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    print(f"Doosan entry: {entry['asOf']}, {len(entry['players'])} players")
