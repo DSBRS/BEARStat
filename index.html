@@ -789,11 +789,12 @@ function home(){
   const t=byDate(TS),kbo=t.find(e=>e.type==='kbo');
   const evs=byDate(sel),sd=new Date(sel+'T00:00:00');
   return `<div class="brand"><button class="logo admin-secret" id="admin_secret" type="button">BEARS<b>tat</b></button></div>
-  ${homeTodayScheduleHTML()}${homeNearMilestonesHTML()}
+  ${homeTodayScheduleHTML()}
   ${calendarLegendHTML()}
   ${calendar()}
   <h2>${sd.getMonth()+1}월 ${sd.getDate()}일 (${'일월화수목금토'[sd.getDay()]}) 일정</h2>
   <div class="card">${evs.length?evs.map(evRow).join(''):'<div class="empty">일정이 없습니다.</div>'}</div>
+  ${homeNearMilestonesHTML()}
   <div class="foot">${isOwner?'<a href="#/admin">관리자</a> · <a href="#/players">선수 관리</a>':''}</div>${gameBatterSheetHTML()}`;
 }
 
@@ -3064,10 +3065,10 @@ function rotateHomeMilestones(rows,date=TS){
 }
 function homeNearMilestones(){return seasonSpecialMemo('home-near-milestones',()=>{
  const prior=[milestoneScope,milestoneRole,milestoneMetric],rows=[];
- try{for(const scope of ['career','season','bears'])for(const role of ['hitter','pitcher','team']){milestoneScope=scope;milestoneRole=role;milestoneMetric='all';const data=milestoneRows();for(const r of data.rows){if(r.leading||role!=='team'&&!homeEntryIncludes(r.n,role))continue;const unit=r.metric.key==='ipOuts'?3:1;if(r.remaining>0&&r.remaining<=2*unit)rows.push({...r,scope,role})}}}finally{[milestoneScope,milestoneRole,milestoneMetric]=prior}
- const unique=new Map();for(const r of rows){const key=[r.n,r.role==='team'&&r.scope!=='season'?'team':r.scope==='season'?'season':r.scope,r.metric.key,r.target].join('|');if(!unique.has(key))unique.set(key,r)}return rotateHomeMilestones([...unique.values()]).slice(0,5);
+ try{for(const scope of ['career','season','bears'])for(const role of ['hitter','pitcher','team']){milestoneScope=scope;milestoneRole=role;milestoneMetric='all';const data=milestoneRows();for(const r of data.rows){if(r.leading||role!=='team'&&!homeEntryIncludes(r.n,role))continue;const unit=r.metric.key==='ipOuts'?3:1;if(r.remaining>0&&r.remaining<=(role==='team'?10:2*unit))rows.push({...r,scope,role})}}}finally{[milestoneScope,milestoneRole,milestoneMetric]=prior}
+ const unique=new Map();for(const r of rows){const key=[r.n,r.role==='team'&&r.scope!=='season'?'team':r.scope==='season'?'season':r.scope,r.metric.key,r.target].join('|');if(!unique.has(key))unique.set(key,r)}const all=[...unique.values()];return [...rotateHomeMilestones(all.filter(r=>r.role!=='team')).slice(0,5),...rotateHomeMilestones(all.filter(r=>r.role==='team')).slice(0,2)];
 })}
-function homeNearMilestonesHTML(){const rows=homeNearMilestones();if(!rows.length)return '';return `<h2>곧 달성할 기록</h2><div class="card" style="padding:16px">${rows.map(r=>`<button type="button" class="playerlink" style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;padding:10px 0;border:0;border-bottom:1px solid var(--line);text-align:left" data-home-near="${r.scope}" data-home-near-role="${r.role}" data-home-near-metric="${r.metric.key}"><span><b>${esc(r.n)}</b><span class="sb home-near-caption" style="margin-left:8px;font-size:11px;font-weight:400">${r.role==='team'?'팀 ':''}${r.scope==='career'?'통산':r.scope==='bears'?'베어스':'시즌'}</span><br><b>${milestoneDisplay(r.target,r.metric)} ${milestoneRecordUnit(r.metric)}</b><span class="home-near-caption" style="font-size:11px;font-weight:400">까지</span></span><b style="white-space:nowrap;font-size:13px">${milestoneDisplay(r.remaining,r.metric,true)} ${milestoneRecordUnit(r.metric)} 남음</b></button>`).join('')}</div>`}
+function homeNearMilestonesHTML(){const rows=homeNearMilestones();if(!rows.length)return '';return `<h2>달성 임박</h2><div class="card" style="padding:16px">${rows.map((r,i)=>`${r.role==='team'&&(i===0||rows[i-1].role!=='team')?'<div class="sb" style="padding-top:14px;margin-bottom:4px">팀 기록</div>':''}<button type="button" class="playerlink" style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;padding:10px 0;border:0;border-bottom:1px solid var(--line);text-align:left" data-home-near="${r.scope}" data-home-near-role="${r.role}" data-home-near-metric="${r.metric.key}"><span><b>${esc(r.n)}</b><span class="sb home-near-caption" style="margin-left:8px;font-size:11px;font-weight:400">${r.role==='team'?'팀 ':''}${r.scope==='career'?'통산':r.scope==='bears'?'베어스':'시즌'}</span><br><b>${milestoneDisplay(r.target,r.metric)} ${milestoneRecordUnit(r.metric)}</b><span class="home-near-caption" style="font-size:11px;font-weight:400">까지</span></span><b style="white-space:nowrap;font-size:13px">${milestoneDisplay(r.remaining,r.metric,true)} ${milestoneRecordUnit(r.metric)} 남음</b></button>`).join('')}</div>`}
 if(typeof document!=='undefined')document.addEventListener('click',ev=>{const target=ev.target.closest('[data-home-near]');if(!target)return;milestoneScope=target.dataset.homeNear;milestoneRole=target.dataset.homeNearRole;milestoneMetric=target.dataset.homeNearMetric;milestoneListMode='upcoming';location.hash='#/milestones'});
 
 function milestonesView(){const html=milestoneListMode==='completed'?milestonesCompletedView():milestonesUpcomingView();return html.replace('</div></div>','</div></div>'+milestoneListTabs())}
