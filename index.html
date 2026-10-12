@@ -480,9 +480,10 @@ function isUpcomingKbo(e){
 function rerender(){if(document.body.dataset.r==='admin'&&adminView==='form'&&document.querySelector('[data-admin-step]'))return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;const historyTop=document.querySelector('.historybox')?.scrollTop;const y=scrollY,opponentScroll=document.querySelector('.opp-scroll,.record-scroll')?.scrollLeft;route2();if(opponentScroll!==undefined){const scroller=document.querySelector('.opp-scroll,.record-scroll');if(scroller)scroller.scrollLeft=opponentScroll;}const history=document.querySelector('.historybox');if(history&&historyTop!==undefined)history.scrollTop=historyTop;scrollTo(0,y)}
 let authRevision=0;
 async function setUser(sess){
-  const revision=++authRevision;isOwner=false;
+  const revision=++authRevision;isOwner=false;packingUserId='';
   if(sess){const r=await SB.from('admins').select('user_id').eq('user_id',sess.user.id);if(revision!==authRevision)return;isOwner=!r.error&&r.data.length>0}
   if(revision!==authRevision)return;
+  packingUserId=isOwner?sess.user.id:'';
   if(!isOwner){editing=null;eduDraft=null;adminView='manage'}
   route2();
 }
@@ -2460,6 +2461,68 @@ document.addEventListener('click',ev=>{
   showAdminStep(nextStep);
 });
 
+// Private UI with per-admin, local-browser persistence; never sent to public kv.
+let packingUserId='',packingLoadedFor='',packingData=null,packingOpen=false,packingDate=TS,packingGame='',packingManual='W',packingMessage='';
+const PACKING_DEFAULTS=['티켓·예매 확인','휴대폰','보조배터리','지갑','유니폼','응원봉','물','물티슈·휴지','모자','선크림','겉옷','우비','쓰레기봉투'];
+function freshPackingData(){return {schemaVersion:1,items:PACKING_DEFAULTS.map((name,i)=>({id:'default-'+i,name})),checked:[],visits:[]}}
+function validPackingData(data){return data?.schemaVersion===1&&Array.isArray(data.items)&&data.items.length<=100&&data.items.every(p=>typeof p.id==='string'&&typeof p.name==='string'&&p.name.length<=60)&&new Set(data.items.map(p=>p.id)).size===data.items.length&&Array.isArray(data.checked)&&data.checked.every(id=>typeof id==='string')&&Array.isArray(data.visits)&&data.visits.length<=2000&&data.visits.every(v=>typeof v.id==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v.date)&&typeof v.gameId==='string'&&typeof v.title==='string'&&['auto','W','L','D','C'].includes(v.result)&&Array.isArray(v.items)&&v.items.every(n=>typeof n==='string'&&n.length<=60))}
+function getPackingData(){
+ if(!isOwner||!packingUserId)return null;
+ if(packingLoadedFor!==packingUserId){packingLoadedFor=packingUserId;packingData=freshPackingData();packingOpen=false;packingMessage='';try{const stored=JSON.parse(localStorage.getItem('bearstat-packing-v1-'+packingUserId));if(validPackingData(stored))packingData=stored}catch{}}
+ return packingData;
+}
+function savePackingData(){if(!isOwner||!packingUserId||packingLoadedFor!==packingUserId)return false;try{localStorage.setItem('bearstat-packing-v1-'+packingUserId,JSON.stringify(packingData));return true}catch{packingMessage='브라우저 저장 공간을 사용할 수 없어 이번 변경은 저장하지 못했어요.';return false}}
+function packingGames(date){return Repo.all().filter(e=>e.type==='kbo'&&!e.demo&&S(e.date)===date).sort((a,b)=>S(a.time).localeCompare(S(b.time)))}
+function packingGameId(e){return S(e.kboGameId||e.id)}
+function packingResult(visit){
+ if(visit.result!=='auto')return visit.result;
+ const game=Repo.all().find(e=>e.type==='kbo'&&!e.demo&&S(e.date)===visit.date&&packingGameId(e)===visit.gameId);
+ if(!game)return '?';if(isCancelled(game))return 'C';
+ if(S(game.date)>TS||!hasScore(game)||!Number.isFinite(+game.score.d)||!Number.isFinite(+game.score.v)||(['live','preview','scheduled','inprogress'].includes(S(game.status).toLowerCase())))return '?';
+ if(game.kboGameId&&S(game.status)!=='final'&&!S(game.statusText).includes('종료'))return '?';
+ return +game.score.d>+game.score.v?'W':+game.score.d<+game.score.v?'L':'D';
+}
+function packingStats(visits){const stats={W:0,L:0,D:0,C:0,pending:0};for(const visit of visits){const result=packingResult(visit);if(['W','L','D','C'].includes(result))stats[result]++;else stats.pending++}stats.rate=stats.W+stats.L?stats.W/(stats.W+stats.L)*100:null;return stats}
+function packingRateText(stats){return stats.rate===null?'—':stats.rate.toFixed(1)+'%'}
+function packingCounts(stats){return `${stats.W}승 ${stats.L}패 ${stats.D}무${stats.C?' · 취소 '+stats.C+'경기':''}${stats.pending?' · 결과 대기 '+stats.pending+'경기':''}`}
+function packingRefresh(){const y=scrollY;route2();scrollTo(0,y)}
+function adminPackingHTML(){
+ const data=getPackingData();if(!data)return '';const total=packingStats(data.visits),games=packingGames(packingDate);
+ const itemNames=[...new Set(data.visits.flatMap(v=>v.items))],itemStats=itemNames.map(name=>({name,stats:packingStats(data.visits.filter(v=>v.items.includes(name)))})).sort((a,b)=>(b.stats.rate??-1)-(a.stats.rate??-1)||a.name.localeCompare(b.name,'ko'));
+ return `<details class="card" data-packing-panel${packingOpen?' open':''} style="margin-bottom:16px"><summary style="cursor:pointer;font-weight:800">직관 준비물 · 나의 직관 승률</summary><div style="margin-top:16px"><div class="sb">이 브라우저에 저장돼요. 유니폼 이름도 원하는 대로 추가해보세요.</div>
+ <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0"><b>준비물 ${data.checked.filter(id=>data.items.some(p=>p.id===id)).length}/${data.items.length}</b><button type="button" class="chip" data-packing-reset>체크 초기화</button></div>
+ ${data.items.map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0"><label style="display:flex;align-items:center;gap:10px;flex:1;margin:0;min-width:0;cursor:pointer"><input type="checkbox" data-packing-check="${esc(p.id)}" style="width:18px;height:18px;flex-shrink:0;margin:0"${data.checked.includes(p.id)?' checked':''}><span style="overflow-wrap:anywhere;${data.checked.includes(p.id)?'color:var(--muted);text-decoration:line-through':''}">${esc(p.name)}</span></label><button type="button" class="link" data-packing-remove="${esc(p.id)}" aria-label="${esc(p.name)} 삭제" style="padding:6px">삭제</button></div>`).join('')}
+ <div style="display:flex;gap:8px;margin-top:12px"><input id="packing_item" maxlength="60" placeholder="예: 곽빈 홈 유니폼" aria-label="추가할 준비물" style="min-width:0;flex:1"><button type="button" class="chip" data-packing-add>추가</button></div>
+ <h2 style="margin-top:24px">직관 기록 저장</h2><label for="packing_date">직관 날짜</label><input id="packing_date" type="date" value="${esc(packingDate)}"><label for="packing_game">경기</label><select id="packing_game"><option value="">경기 선택</option>${games.map(g=>`<option value="${esc(packingGameId(g))}"${packingGame===packingGameId(g)?' selected':''}>${esc([g.time,'vs '+S(g.opp),g.place||g.venue].filter(Boolean).join(' · '))}</option>`).join('')}<option value="manual"${packingGame==='manual'?' selected':''}>경기 결과 직접 입력</option></select>
+ ${packingGame==='manual'?`<label for="packing_result">두산 경기 결과</label><select id="packing_result">${[['W','승리'],['L','패배'],['D','무승부'],['C','취소']].map(([value,label])=>`<option value="${value}"${packingManual===value?' selected':''}>${label}</option>`).join('')}</select>`:'<div class="sb" style="margin-top:8px">선택한 경기는 종료 후 결과가 자동으로 반영돼요.</div>'}
+ <button type="button" class="btn" data-packing-save style="margin-top:12px">체크한 준비물로 직관 저장</button>${packingMessage?`<div class="note" role="status">${esc(packingMessage)}</div>`:''}
+ <h2 style="margin-top:24px">나의 직관 승률 <b>${packingRateText(total)}</b></h2><div class="sb">${packingCounts(total)} · 승률은 승 ÷ (승 + 패)</div>
+ ${itemStats.length?`<h2 style="margin-top:20px">준비물별 직관 승률</h2>${itemStats.map(p=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)"><span style="min-width:0;overflow-wrap:anywhere">${esc(p.name)}<br><span class="sb">${packingCounts(p.stats)}</span></span><b style="white-space:nowrap">${packingRateText(p.stats)}</b></div>`).join('')}`:''}
+ ${data.visits.length?`<h2 style="margin-top:20px">저장한 직관</h2>${[...data.visits].sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id)).map(v=>`<div style="padding:12px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(v.date)} · ${esc(v.title)}</b><button type="button" class="link" data-packing-delete-visit="${esc(v.id)}">삭제</button></div><div class="sb">${({W:'승리',L:'패배',D:'무승부',C:'취소','?':'결과 대기'})[packingResult(v)]} · ${v.items.length?v.items.map(esc).join(', '):'체크한 준비물 없음'}</div></div>`).join('')}`:''}
+ </div></details>`;
+}
+if(typeof document!=='undefined'){
+ document.addEventListener('toggle',ev=>{if(ev.target.matches?.('[data-packing-panel]')&&isOwner)packingOpen=ev.target.open},true);
+ document.addEventListener('change',ev=>{const t=ev.target,data=getPackingData();if(!data)return;if(t.dataset.packingCheck!==undefined){const id=t.dataset.packingCheck;if(!data.items.some(p=>p.id===id))return;data.checked=data.checked.filter(v=>v!==id);if(t.checked)data.checked.push(id);savePackingData();packingRefresh()}else if(t.id==='packing_date'){packingDate=t.value;packingGame='';packingRefresh()}else if(t.id==='packing_game'){packingGame=t.value;packingRefresh()}else if(t.id==='packing_result')packingManual=t.value});
+ document.addEventListener('keydown',ev=>{if(ev.target.id==='packing_item'&&ev.key==='Enter'){ev.preventDefault();document.querySelector('[data-packing-add]')?.click()}});
+ document.addEventListener('click',ev=>{
+  const t=ev.target.closest('button');if(!t||!Object.keys(t.dataset).some(k=>k.startsWith('packing')))return;const data=getPackingData();if(!data)return;
+  if(t.dataset.packingAdd!==undefined){const name=S(document.getElementById('packing_item')?.value).slice(0,60);if(!name)return;if(data.items.some(p=>p.name===name)){packingMessage='이미 있는 준비물이에요.'}else if(data.items.length>=100){packingMessage='준비물은 100개까지 추가할 수 있어요.'}else{data.items.push({id:crypto.randomUUID(),name});packingMessage='준비물을 추가했어요.'}}
+  else if(t.dataset.packingRemove!==undefined){data.items=data.items.filter(p=>p.id!==t.dataset.packingRemove);data.checked=data.checked.filter(id=>id!==t.dataset.packingRemove)}
+  else if(t.dataset.packingReset!==undefined){data.checked=[];packingMessage='체크를 초기화했어요. 저장한 직관 기록은 유지돼요.'}
+  else if(t.dataset.packingDeleteVisit!==undefined)data.visits=data.visits.filter(v=>v.id!==t.dataset.packingDeleteVisit);
+  else if(t.dataset.packingSave!==undefined){
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(packingDate)||!packingGame){packingMessage='직관 날짜와 경기를 선택해주세요.';packingRefresh();return}
+   if(data.visits.length>=2000&&!data.visits.some(v=>v.id===packingDate+'|'+packingGame)){packingMessage='직관 기록은 2,000개까지 저장할 수 있어요.';packingRefresh();return}
+   const game=packingGames(packingDate).find(e=>packingGameId(e)===packingGame);if(packingGame!=='manual'&&!game){packingMessage='선택한 경기를 다시 확인해주세요.';packingRefresh();return}
+   if(packingGame==='manual'&&!['W','L','D','C'].includes(packingManual))return;
+   const id=packingDate+'|'+packingGame,visit={id,date:packingDate,gameId:packingGame==='manual'?'':packingGame,title:game?'vs '+S(game.opp)+(game.gameNo?' · '+game.gameNo+'차전':''):'직접 입력',result:game?'auto':packingManual,items:data.items.filter(p=>data.checked.includes(p.id)).map(p=>p.name)};
+   const previous=data.visits.findIndex(v=>v.id===id);if(previous>=0)data.visits[previous]=visit;else data.visits.push(visit);packingMessage=previous>=0?'이 경기의 준비물을 수정했어요.':'직관 기록을 저장했어요.';
+  }
+  savePackingData();packingRefresh();
+ });
+}
+
 function admin(){
   const e=editing||{type:'kbo',date:TS,time:'',title:'',place:'',homeAway:'',program:'',channel:'',players:[],desc:''};
   const allList=Repo.all().slice().sort((a,b)=>b.date.localeCompare(a.date));
@@ -2476,6 +2539,7 @@ function admin(){
   if(!isOwner)return `<div class="brand"><div class="logo">관리자</div></div><div class="card">${SB?`<label>이메일</label><input id="em" type="email" autocomplete="username"><label>비밀번호</label><input id="pw" type="password" autocomplete="current-password"><button class="btn" id="login">로그인</button>${SB&&document.body.dataset.r==='admin'&&isOwner===false?'':''}`:'<div class="empty">Supabase 설정 후 사용할 수 있습니다.</div>'}<div class="note">일정 수정은 관리자로 등록된 계정만 가능하며 서버에서 확인합니다. <a href="#/">← 돌아가기</a></div></div>`;
   if(adminView==='manage')return `<div class="brand"><div class="logo">관리자</div><a href="#/" class="demo" style="text-decoration:none">← 앱</a></div>
   <button class="btn g" id="logout" style="margin:0 0 12px">로그아웃</button>
+  ${adminPackingHTML()}
   <h2>일정 관리</h2>
   <div class="card">
     <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center">
@@ -2828,11 +2892,11 @@ function completedBearsSpecials(role,selected='all'){return seasonSpecialMemo('b
 
 let milestoneListMode='upcoming';
 const completedRecordYears={career:String(TODAY.getFullYear()),season:String(TODAY.getFullYear()),bears:String(TODAY.getFullYear())};
-function milestoneListTabs(){return `<div class="chips" style="margin-bottom:14px">${[['upcoming','달성 예정'],['completed','달성 완료']].map(([key,label])=>`<button type="button" class="chip${milestoneListMode===key?' on':''}" data-milelist="${key}" aria-pressed="${milestoneListMode===key}">${label}</button>`).join('')}</div>`}
+function milestoneListTabs(){return `<div class="chips" style="margin-bottom:14px">${[['upcoming','달성 예정'],['imminent','달성 임박'],['completed','달성 완료']].map(([key,label])=>`<button type="button" class="chip${milestoneListMode===key?' on':''}" data-milelist="${key}" aria-pressed="${milestoneListMode===key}">${label}</button>`).join('')}</div>`}
 if(typeof document!=='undefined')document.addEventListener('click',ev=>{
  const yearTarget=ev.target.closest('[data-completed-year]');
  if(yearTarget){const scope=yearTarget.dataset.completedScope,value=yearTarget.dataset.completedYear,current=String(TODAY.getFullYear());if(!Object.hasOwn(completedRecordYears,scope)||scope==='season'&&value!==current||!['all','unknown'].includes(value)&&(!/^\d{4}$/.test(value)||+value<1982||+value>TODAY.getFullYear()))return;completedRecordYears[scope]=value;playerMilestoneSheet=null;rerender();return}
- const target=ev.target.closest('[data-milelist]');if(!target||!['upcoming','completed'].includes(target.dataset.milelist))return;
+ const target=ev.target.closest('[data-milelist]');if(!target||!['upcoming','imminent','completed'].includes(target.dataset.milelist))return;
  milestoneListMode=target.dataset.milelist;playerMilestoneSheet=null;rerender();
 });
 function completedHistoryStats(stats){const result={...stats};result.fourBalls=Number.isFinite(result.bb)&&Number.isFinite(result.hbp)?result.bb+result.hbp:null;return result}
@@ -2993,10 +3057,15 @@ function bearsSeasonStrikeoutRecords(scope,selected='all'){
  const kwak=season.rows.find(p=>p.n==='곽빈');if(year===2026&&Number.isFinite(kwak?.stats.strikeouts)&&kwak.stats.strikeouts>181){let total=0,date=null;for(const e of orderedStreakGames()){const entries=(e.pitching||[]).filter(p=>p.name==='곽빈'),v=entries.map(p=>recordNumber(p,['strikeouts','strikeOuts','so','k']));if(v.some(n=>n===null)){total=null;break}total+=v.reduce((a,b)=>a+b,0);if(!date&&total>=182)date=e.date}records.push({n:'곽빈',year,date,label:'베어스 국내선수 단일시즌 최다 탈삼진',kind:'조건별 단일시즌 신기록',basis:'bearsSeason',detail:`현재 ${kwak.stats.strikeouts}탈삼진 · 종전 1998년 박명환 181탈삼진`,recordSource:'https://www.koreabaseball.com/MediaNews/News/BreakingNews/View.aspx?bdSe=62298'})}
  return records;
 }
+function rotateHomeMilestones(rows,date=TS){
+ const groups=new Map(),day=Math.floor(Date.parse(date)/86400000)||0;
+ for(const r of rows){const count=r.remaining/(r.metric.key==='ipOuts'?3:1);if(!groups.has(count))groups.set(count,[]);groups.get(count).push(r)}
+ return [...groups.keys()].sort((a,b)=>a-b).flatMap(count=>{const group=groups.get(count).sort((a,b)=>[a.n,a.scope,a.role,a.metric.key,a.target].join('|').localeCompare([b.n,b.scope,b.role,b.metric.key,b.target].join('|'),'ko')),offset=((day%group.length)+group.length)%group.length;return [...group.slice(offset),...group.slice(0,offset)]});
+}
 function homeNearMilestones(){return seasonSpecialMemo('home-near-milestones',()=>{
  const prior=[milestoneScope,milestoneRole,milestoneMetric],rows=[];
  try{for(const scope of ['career','season','bears'])for(const role of ['hitter','pitcher','team']){milestoneScope=scope;milestoneRole=role;milestoneMetric='all';const data=milestoneRows();for(const r of data.rows){if(r.leading||role!=='team'&&!homeEntryIncludes(r.n,role))continue;const unit=r.metric.key==='ipOuts'?3:1;if(r.remaining>0&&r.remaining<=2*unit)rows.push({...r,scope,role})}}}finally{[milestoneScope,milestoneRole,milestoneMetric]=prior}
- const unique=new Map();for(const r of rows){const key=[r.n,r.role==='team'&&r.scope!=='season'?'team':r.scope==='season'?'season':r.scope,r.metric.key,r.target].join('|');if(!unique.has(key))unique.set(key,r)}return [...unique.values()].sort((a,b)=>a.remaining-b.remaining||a.n.localeCompare(b.n,'ko')).slice(0,5);
+ const unique=new Map();for(const r of rows){const key=[r.n,r.role==='team'&&r.scope!=='season'?'team':r.scope==='season'?'season':r.scope,r.metric.key,r.target].join('|');if(!unique.has(key))unique.set(key,r)}return rotateHomeMilestones([...unique.values()]).slice(0,5);
 })}
 function homeNearMilestonesHTML(){const rows=homeNearMilestones();if(!rows.length)return '';return `<h2>곧 달성할 기록</h2><div class="card" style="padding:16px">${rows.map(r=>`<button type="button" class="playerlink" style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;padding:10px 0;border:0;border-bottom:1px solid var(--line);text-align:left" data-home-near="${r.scope}" data-home-near-role="${r.role}" data-home-near-metric="${r.metric.key}"><span><b>${esc(r.n)}</b><span class="sb home-near-caption" style="margin-left:8px;font-size:11px;font-weight:400">${r.role==='team'?'팀 ':''}${r.scope==='career'?'통산':r.scope==='bears'?'베어스':'시즌'}</span><br><b>${milestoneDisplay(r.target,r.metric)} ${milestoneRecordUnit(r.metric)}</b><span class="home-near-caption" style="font-size:11px;font-weight:400">까지</span></span><b style="white-space:nowrap;font-size:13px">${milestoneDisplay(r.remaining,r.metric,true)} ${milestoneRecordUnit(r.metric)} 남음</b></button>`).join('')}</div>`}
 if(typeof document!=='undefined')document.addEventListener('click',ev=>{const target=ev.target.closest('[data-home-near]');if(!target)return;milestoneScope=target.dataset.homeNear;milestoneRole=target.dataset.homeNearRole;milestoneMetric=target.dataset.homeNearMetric;milestoneListMode='upcoming';location.hash='#/milestones'});
@@ -3004,16 +3073,16 @@ if(typeof document!=='undefined')document.addEventListener('click',ev=>{const ta
 function milestonesView(){const html=milestoneListMode==='completed'?milestonesCompletedView():milestonesUpcomingView();return html.replace('</div></div>','</div></div>'+milestoneListTabs())}
 
 function milestonesUpcomingView(){
- const {rows,events,missing}=milestoneRows(),last=events.map(e=>S(e.date)).sort().pop();const special=milestoneScope==='season'&&milestoneRole!=='team'?seasonSpecialMilestonesHTML('',milestoneRole,20,false,milestoneMetric,'upcoming'):'';
+ const data=milestoneRows(),{events,missing}=data,rows=milestoneListMode==='imminent'?data.rows.filter(r=>!r.leading&&r.remaining===(r.metric.key==='ipOuts'?3:1)):data.rows,last=events.map(e=>S(e.date)).sort().pop();const special=milestoneListMode!=='imminent'&&milestoneScope==='season'&&milestoneRole!=='team'?seasonSpecialMilestonesHTML('',milestoneRole,20,false,milestoneMetric,'upcoming'):'';
  return `<div class="brand"><div class="logo">예상 달성 기록</div></div>
  <div class="chips" style="margin-bottom:12px">${[['career','통산'],['season','시즌'],['bears','베어스']].map(([key,label])=>`<button class="chip${milestoneScope===key?' on':''}" data-milescope="${key}">${label}</button>`).join('')}</div>
  <div class="chips" style="margin-bottom:12px">${[['hitter','타자'],['pitcher','투수'],['team','팀']].map(([key,label])=>`<button class="chip${milestoneRole===key?' on':''}" data-milerole="${key}">${label}</button>`).join('')}</div>
- ${milestoneScope==='career'&&milestoneRole!=='team'&&isOwner?careerSetupHTML():''}
+ ${milestoneListMode!=='imminent'&&milestoneScope==='career'&&milestoneRole!=='team'&&isOwner?careerSetupHTML():''}
  <div class="chips" style="margin-bottom:14px">${[{key:'all',label:'전체'},...MILESTONE_METRICS[milestoneRole]].map(m=>`<button class="chip${milestoneMetric===m.key?' on':''}" data-milemetric="${m.key}">${m.label}</button>`).join('')}</div>
  ${milestoneScope==='season'?'':`<div class="note">${milestoneScope==='bears'?(milestoneRole==='team'?'OB·두산 KBO 정규시즌 구단 통산 기록':'OB·두산 KBO 정규시즌 개인 누적 최다 기록<br>항목별로 현재 두산 선수 중 기록이 가장 많은 선수와 다음 2명까지 표시해요.'):'<a href="https://www.doosanbears.com/stats/expect" target="_blank" rel="noopener" style="color:inherit">두산베어스 예상 달성 기록 · 참고 사이트</a>'}</div>`}
  ${CAREER_WARNING&&milestoneScope==='career'?`<div class="note">${esc(CAREER_WARNING)}</div>`:''}
  ${missing?'<div class="note">일부 경기의 선수 기록이 없어 해당 항목은 표시하지 않아요.</div>':''}
- <div class="milestone-list">${rows.length?MILESTONE_METRICS[milestoneRole].filter(m=>rows.some(r=>r.metric.key===m.key)).map(m=>`<h2>${m.label}</h2>${(milestoneRole==='team'?teamMilestoneCards:milestoneScope==='bears'?bearsFranchiseCards:milestoneCards)(rows.filter(r=>r.metric.key===m.key))}`).join(''):special?'':`<div class="card"><div class="empty">${milestoneScope==='bears'?'현재 비교할 수 있는 두산 선수 기록이 없어요.':milestoneScope==='career'?'기준 기록이 입력된 선수 중 목표까지 10 이하 남은 기록이 없어요.':'지금 표시할 예상 달성 기록이 없어요.'}</div></div>`}</div>${special}${milestoneScope==='career'?careerEditorHTML():''}${playerMilestoneSheetHTML()}`;
+ <div class="milestone-list">${rows.length?MILESTONE_METRICS[milestoneRole].filter(m=>rows.some(r=>r.metric.key===m.key)).map(m=>`<h2>${m.label}</h2>${(milestoneRole==='team'?teamMilestoneCards:milestoneScope==='bears'?bearsFranchiseCards:milestoneCards)(rows.filter(r=>r.metric.key===m.key))}`).join(''):special?'':`<div class="card"><div class="empty">${milestoneListMode==='imminent'?'현재 달성까지 1개 남은 기록이 없어요.':milestoneScope==='bears'?'현재 비교할 수 있는 두산 선수 기록이 없어요.':milestoneScope==='career'?'기준 기록이 입력된 선수 중 목표까지 10 이하 남은 기록이 없어요.':'지금 표시할 예상 달성 기록이 없어요.'}</div></div>`}</div>${special}${milestoneScope==='career'?careerEditorHTML():''}${playerMilestoneSheetHTML()}`;
 }
 const CAREER_STEPS={hit:100,d2:10,d3:10,hr:10,rbi:100,runs:100,sb:50,g:100,tb:100,bb:100,fourBalls:100,hbp:10,w:10,s:10,h:10,strikeouts:100,ipOuts:300};
 const careerKey=(role,name)=>'bears_career_'+role+'_'+encodeURIComponent(name);
