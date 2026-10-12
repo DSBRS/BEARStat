@@ -1,3 +1,44 @@
+
+이전 메시지 불러오는 중…
+데스크탑모드안돼
+그럼 데스크탑 모드로도 해결이 안 되는 거네 🥲 계속 드래그하려고 애쓰지 말자~
+
+맥에서 Supabase를 열고 교체하는 게 제일 편하겠어. 내가 준 텍스트 파일도 맥에서 열 수 있으니까, 기존 코드 전체 선택해서 붙여넣으면 돼.
+
+지금 맥 쓸 수 있어? 없으면 폰에서 가능한 다른 방법을 찾아볼게~
+
+나 지금 야구장이라구~
+아 맞다~ 지금 야구장이지 😭 맥 쓰라는 건 상황에 안 맞았네, 미안~
+
+Supabase 수정은 집에 가서 하자. 아직 배포 안 눌렀으면 기존 수집 코드가 계속 돌아가니까, 지금 급하게 바꿀 필요 없어~ 파일은 준비돼 있으니 경기부터 편하게 보고 와 :)
+
+그래.. 어차피 경기 끝낫다.. 파일 잘 저장해둿다가 보내달라고 하면 다시 보내줘
+웅~ 사이트 전체 코드랑 Supabase 코드, SQL, 설치 안내까지 저장해뒀어. 나중에 “실시간 업데이트 파일 다시 줘” 하면 다시 보내줄게 :)
+
+오늘 폰으로 이것저것 하느라 고생했어~ 야구장에서 조심히 돌아가 🧸
+
+상대전적에도 선발평자 불펜평자 구분 ㄱㄱ
+추가했어~ 상대전적 → 투수에 선발 평자·불펜 평자가 나오고, 선수 상세창에서 누르면 해당 등판만 보여줘 :)
+
+저장해둔 실시간 업데이트 전체 버전에 반영했어. 이 추가 기능 때문에 Supabase 코드를 더 바꿀 필요는 없어~
+
+
+그리구 달성기록 잇자나 그거 시즌 끝나면 안뜨게 하자!! 어제자로 시즌 끝나서.. 144경기 다 하면 안뜨는걸루!
+그리고 다 되면 supabase에서 해야하는 파일도 같이 보내줘
+완료~ 정규시즌 144경기가 끝나면 예상·임박 기록은 숨기고, 달성 완료 기록은 남겨뒀어. 상대전적 선발·불펜 평자도 포함했어 :)
+
+Supabase 파일은 앞서 준 것과 같아~ 이미 적용했으면 이번에는 GitHub 파일만 교체하면 돼. 아직이면 설치 안내 순서대로 해줘 :)
+
+
+
+
+
+
+
+접기
+
+
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -2145,10 +2186,10 @@ function opponentPitcherGames(name,opp){
 }
 function opponentPitcherSheetHTML(name,opp){
   const games=opponentPitcherGames(name,opp),total=opponentPitchingRows(opp).find(r=>r.n===name),display=v=>v===null||v===undefined?'—':v;
-  const cards=[['g','등판'],['ip','이닝'],['era','평균자책점'],['hits','피안타'],['strikeouts','탈삼진'],['runs','실점']];
+  const cards=[['g','등판'],['ip','이닝'],['era','평균자책점'],['starterEra','선발 평자'],['reliefEra','불펜 평자'],['hits','피안타'],['strikeouts','탈삼진'],['runs','실점']];
   const selected=oppHistorySheet?.detailStat,label=cards.find(([key])=>key===selected)?.[1];
-  const shown=selected?games:[];
-  const statValue=g=>selected==='ip'?display(g.ip)+'이닝':selected==='era'?'평균자책점 '+display(g.era):label+' '+display(g[selected])+'개';
+  const shown=selected?games.filter(g=>selected==='starterEra'?g.role==='start':selected==='reliefEra'?g.role==='relief':true):[];
+  const statValue=g=>selected==='ip'?display(g.ip)+'이닝':['era','starterEra','reliefEra'].includes(selected)?label+' '+display(g.era):label+' '+display(g[selected])+'개';
   return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div>
     <div class="sheethead"><div><b>${esc(name)}</b><div class="sb">${opponentYear}년 KBO · ${esc(opp)}전 투구 기록</div></div><button class="sheetclose" data-oppclose>×</button></div>
     ${total?`<div class="ordergrid">${cards.map(([key,label])=>`<button type="button" class="orderbox statclick${selected===key?' on':''}" data-opppitchstat="${key}" aria-pressed="${selected===key}" aria-controls="opponent-pitcher-history"><b>${display(total[key])}</b><span>${label}</span></button>`).join('')}</div>`:''}
@@ -2195,31 +2236,39 @@ let opponentPitchSort='era',opponentPitchDirection='asc';
 function opponentKindTabs(){
   return `<div class="chips" style="margin-bottom:12px">${[['pitcher','투수'],['hitter','타자']].map(([key,label])=>`<button class="chip${opponentKind===key?' on':''}" data-oppkind="${key}">${label}</button>`).join('')}</div>`;
 }
+function opponentRoleERA(rows,role){
+ if(!rows.length||rows.some(row=>row._roleUnknown))return null;
+ const buckets=rows.map(row=>row._roleBuckets?.[role]);
+ if(buckets.some(b=>!b||b.outs===null||b.er===null))return null;
+ const games=buckets.reduce((n,b)=>n+b.g,0),outs=buckets.reduce((n,b)=>n+b.outs,0),er=buckets.reduce((n,b)=>n+b.er,0);
+ return games>0&&outs>0?(er*27/outs).toFixed(2):null;
+}
 function opponentPitchingRows(opp){
   const byName=new Map(),year=String(opponentYear);
-  const get=name=>{if(!byName.has(name))byName.set(name,{n:name,g:0,ipOuts:0,w:0,l:0,s:0,h:0,hits:0,homeRuns:0,strikeouts:0,walks:0,hitByPitch:0,runs:0,earnedRuns:0});return byName.get(name);};
+  const get=name=>{if(!byName.has(name))byName.set(name,{n:name,g:0,ipOuts:0,w:0,l:0,s:0,h:0,hits:0,homeRuns:0,strikeouts:0,walks:0,hitByPitch:0,runs:0,earnedRuns:0,_roleUnknown:false,_roleBuckets:{start:{g:0,outs:0,er:0},relief:{g:0,outs:0,er:0}}});return byName.get(name);};
   const aliases={hits:['hits','hitsAllowed','h'],homeRuns:['homeRuns','homeRunsAllowed','hr'],strikeouts:['strikeouts','strikeOuts','so','k'],walks:['walks','basesOnBalls','bb'],hitByPitch:['hitByPitch','hitBatters','hbp'],runs:['runs','runsAllowed','r'],earnedRuns:['earnedRuns','er']};
   for(const e of Repo.all().filter(e=>e.type==='kbo'&&!e.stage&&!isExhibition(e)&&!isCancelled(e)&&hasScore(e)&&S(e.date).slice(0,4)===year&&S(e.opp)===S(opp))){
     for(const p of Array.isArray(e.pitching)?e.pitching:[]){
       const name=S(p.name);if(!name)continue;
       const row=get(name);row.g++;
+      const role=appearanceRole(p,e);if(!role)row._roleUnknown=true;else{const bucket=row._roleBuckets[role],o=appearanceOuts(p),er=recordNumber(p,['earnedRuns','er']);bucket.g++;if(o===null)bucket.outs=null;else if(bucket.outs!==null)bucket.outs+=o;if(er===null)bucket.er=null;else if(bucket.er!==null)bucket.er+=er;}
       const outs=appearanceOuts(p);if(outs===null)row.ipOuts=null;else if(row.ipOuts!==null)row.ipOuts+=outs;
       for(const [key,fields] of Object.entries(aliases)){const value=recordNumber(p,fields);if(value===null)row[key]=null;else if(row[key]!==null)row[key]+=value;}
     }
     const decisions=!e.manualOverride&&e.kbo?.doosanDecisions?e.kbo.doosanDecisions:e;
     for(const [field,key] of [['winP','w'],['loseP','l'],['saveP','s'],['holdP','h']])for(const name of new Set(names(decisions[field])))if(byName.has(name)||rosterForYear(+year).some(p=>p.n===name&&p.t==='pitcher'))get(name)[key]++;
   }
-  return [...byName.values()].map(row=>({...row,ip:row.ipOuts===null?'—':row.ipOuts%3?`${Math.floor(row.ipOuts/3)}.${row.ipOuts%3}`:String(row.ipOuts/3),era:row.ipOuts!==null&&row.ipOuts>0&&row.earnedRuns!==null?(row.earnedRuns*27/row.ipOuts).toFixed(2):null}));
+  return [...byName.values()].map(row=>({...row,starterEra:opponentRoleERA([row],'start'),reliefEra:opponentRoleERA([row],'relief'),ip:row.ipOuts===null?'—':row.ipOuts%3?`${Math.floor(row.ipOuts/3)}.${row.ipOuts%3}`:String(row.ipOuts/3),era:row.ipOuts!==null&&row.ipOuts>0&&row.earnedRuns!==null?(row.earnedRuns*27/row.ipOuts).toFixed(2):null}));
 }
 function opponentPitchingTable(){
   const rows=applyRecordLimit(opponentPitchingRows(h2h),'opponent','pitcher'),key=opponentPitchSort,dir=opponentPitchDirection==='asc'?1:-1;
   const value=row=>key==='ip'?row.ipOuts:row[key];
   rows.sort((a,b)=>{const av=value(a),bv=value(b);if(av===null)return bv===null?a.n.localeCompare(b.n,'ko'):1;if(bv===null)return -1;return (Number(av)-Number(bv))*dir||a.n.localeCompare(b.n,'ko');});
-  const base=[['g','등판'],['ip','이닝'],['era','평균자책점'],['hits','피안타'],['homeRuns','피홈런'],['strikeouts','탈삼진'],['walks','볼넷'],['hitByPitch','사구'],['runs','실점'],['earnedRuns','자책'],['w','승리'],['l','패전'],['s','세이브'],['h','홀드']];
+  const base=[['g','등판'],['ip','이닝'],['era','평균자책점'],['starterEra','선발 평자'],['reliefEra','불펜 평자'],['hits','피안타'],['homeRuns','피홈런'],['strikeouts','탈삼진'],['walks','볼넷'],['hitByPitch','사구'],['runs','실점'],['earnedRuns','자책'],['w','승리'],['l','패전'],['s','세이브'],['h','홀드']];
   const columns=[...base.filter(([k])=>k===key),...base.filter(([k])=>k!==key)];
   const sum=k=>rows.every(r=>r[k]!==null)?rows.reduce((n,r)=>n+Number(r[k]),0):null;
   const outs=sum('ipOuts'),er=sum('earnedRuns');
-  const total={n:'합계',...Object.fromEntries(base.filter(([k])=>!['ip','era'].includes(k)).map(([k])=>[k,sum(k)])),ip:outs===null?'—':outs%3?`${Math.floor(outs/3)}.${outs%3}`:String(outs/3),era:outs!==null&&outs>0&&er!==null?(er*27/outs).toFixed(2):null};
+  const total={n:'합계',starterEra:opponentRoleERA(rows,'start'),reliefEra:opponentRoleERA(rows,'relief'),...Object.fromEntries(base.filter(([k])=>!['ip','era','starterEra','reliefEra'].includes(k)).map(([k])=>[k,sum(k)])),ip:outs===null?'—':outs%3?`${Math.floor(outs/3)}.${outs%3}`:String(outs/3),era:outs!==null&&outs>0&&er!==null?(er*27/outs).toFixed(2):null};
   const nameWidth=Math.max(90,...rows.map(r=>Array.from(r.n).length*14+8));
   return `<div class="card"><div class="top"><span>${opponentYear} 시즌 · 두산 vs ${esc(h2h)} · 투수 기록</span></div>${rows.length?`<div class="recscroll opp-scroll"><table class="opp-record-table" style="width:${34+nameWidth+columns.length*72}px"><colgroup><col style="width:34px"><col style="width:${nameWidth}px">${columns.map(()=>'<col style="width:72px">').join('')}</colgroup><thead><tr><th>순위</th><th>선수</th>${columns.map(([k,label])=>`<th><button class="opp-th${key===k?' active':''}" data-oppsort-pitch="${k}">${label}${key===k?(dir===1?' ↑':' ↓'):''}</button></th>`).join('')}</tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td><button class="playerlink" data-opphist="pitcher" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${esc(r.n)}</button></td>${columns.map(([k])=>`<td>${r[k]===null?'—':r[k]}</td>`).join('')}</tr>`).join('')}<tr class="record-total"><td>—</td><td>합계</td>${columns.map(([k])=>`<td>${total[k]===null?'—':total[k]}</td>`).join('')}</tr></tbody></table></div>`:'<div class="empty">선택한 기준에 해당하는 상대 투수 기록이 없습니다.</div>'}</div>`;
 }
@@ -2979,14 +3028,29 @@ function completedBearsSpecials(role,selected='all'){return seasonSpecialMemo('b
  return result;
 })}
 
+function doosanRegularSeasonComplete(year=TODAY.getFullYear()){
+ return seasonSpecialMemo('doosan-season-complete-'+year,()=>{
+  const remote=AUTO_STANDINGS_BY_YEAR[year];
+  const team=Array.isArray(remote)?remote.find(row=>['두산','두산베어스','OB','DOOSAN'].includes(S(row?.n||row?.team).replace(/\s/g,''))):null;
+  if(team){const g=Number(team.g),w=Number(team.w),l=Number(team.l),d=Number(team.d);if([g,w,l,d].every(n=>Number.isInteger(n)&&n>=0)&&g===w+l+d&&g>=144)return true;}
+  const completed=new Set();
+  for(const event of Repo.all()){
+   if(event.demo||event.type!=='kbo'||isCancelled(event)||isExhibition(event)||isPostseasonRecord(event)||!recordRegularGame(event)||!hasScore(event)||isLiveGame(event)||S(event.date).slice(0,4)!==String(year)||S(event.date)>TS)continue;
+   if(event.kboGameId&&!event.manualOverride&&event.status&&event.status!=='final'&&!S(event.statusText).includes('종료'))continue;
+   const id=S(event.kboGameId||event.id)||[event.date,event.opp,event.homeAway,event.headerNo||0].join('|');completed.add(id);
+  }
+  return completed.size>=144;
+ });
+}
+
 let milestoneListMode='upcoming';
 const completedRecordYears={career:String(TODAY.getFullYear()),season:String(TODAY.getFullYear()),bears:String(TODAY.getFullYear())};
-function milestoneListTabs(){return `<div class="chips" style="margin-bottom:14px">${[['upcoming','달성 예정'],['imminent','달성 임박'],['completed','달성 완료']].map(([key,label])=>`<button type="button" class="chip${milestoneListMode===key?' on':''}" data-milelist="${key}" aria-pressed="${milestoneListMode===key}">${label}</button>`).join('')}</div>`}
+function milestoneListTabs(){return `<div class="chips" style="margin-bottom:14px">${(doosanRegularSeasonComplete()?[['completed','달성 완료']]:[['upcoming','달성 예정'],['imminent','달성 임박'],['completed','달성 완료']]).map(([key,label])=>`<button type="button" class="chip${milestoneListMode===key?' on':''}" data-milelist="${key}" aria-pressed="${milestoneListMode===key}">${label}</button>`).join('')}</div>`}
 if(typeof document!=='undefined')document.addEventListener('click',ev=>{
  const yearTarget=ev.target.closest('[data-completed-year]');
  if(yearTarget){const scope=yearTarget.dataset.completedScope,value=yearTarget.dataset.completedYear,current=String(TODAY.getFullYear());if(!Object.hasOwn(completedRecordYears,scope)||scope==='season'&&value!==current||!['all','unknown'].includes(value)&&(!/^\d{4}$/.test(value)||+value<1982||+value>TODAY.getFullYear()))return;completedRecordYears[scope]=value;playerMilestoneSheet=null;rerender();return}
  const target=ev.target.closest('[data-milelist]');if(!target||!['upcoming','imminent','completed'].includes(target.dataset.milelist))return;
- milestoneListMode=target.dataset.milelist;playerMilestoneSheet=null;rerender();
+ if(doosanRegularSeasonComplete()&&target.dataset.milelist!=='completed')return;milestoneListMode=target.dataset.milelist;playerMilestoneSheet=null;rerender();
 });
 function completedHistoryStats(stats){const result={...stats};result.fourBalls=Number.isFinite(result.bb)&&Number.isFinite(result.hbp)?result.bb+result.hbp:null;return result}
 function completedGameValues(e,name,role,metrics){
@@ -3170,7 +3234,7 @@ function rotateHomeMilestones(rows,date=TS){
  for(const r of rows){const count=r.remaining/(r.metric.key==='ipOuts'?3:1);if(!groups.has(count))groups.set(count,[]);groups.get(count).push(r)}
  return [...groups.keys()].sort((a,b)=>a-b).flatMap(count=>{const group=groups.get(count).sort((a,b)=>[a.n,a.scope,a.role,a.metric.key,a.target].join('|').localeCompare([b.n,b.scope,b.role,b.metric.key,b.target].join('|'),'ko')),offset=((day%group.length)+group.length)%group.length;return [...group.slice(offset),...group.slice(0,offset)]});
 }
-function homeNearMilestones(){return seasonSpecialMemo('home-near-milestones',()=>{
+function homeNearMilestones(){if(doosanRegularSeasonComplete())return [];return seasonSpecialMemo('home-near-milestones',()=>{
  const prior=[milestoneScope,milestoneRole,milestoneMetric],rows=[];
  try{for(const scope of ['career','season','bears'])for(const role of ['hitter','pitcher','team']){milestoneScope=scope;milestoneRole=role;milestoneMetric='all';const data=milestoneRows();for(const r of data.rows){if(r.leading||role!=='team'&&!homeEntryIncludes(r.n,role))continue;const unit=r.metric.key==='ipOuts'?3:1;if(r.remaining>0&&r.remaining<=(role==='team'?10:2*unit))rows.push({...r,scope,role})}}}finally{[milestoneScope,milestoneRole,milestoneMetric]=prior}
  const unique=new Map();for(const r of rows){const key=[r.n,r.role==='team'&&r.scope!=='season'?'team':r.scope==='season'?'season':r.scope,r.metric.key,r.target].join('|');if(!unique.has(key))unique.set(key,r)}const all=[...unique.values()];return [...rotateHomeMilestones(all.filter(r=>r.role!=='team')).slice(0,5),...rotateHomeMilestones(all.filter(r=>r.role==='team')).slice(0,2)];
@@ -3178,9 +3242,10 @@ function homeNearMilestones(){return seasonSpecialMemo('home-near-milestones',()
 function homeNearMilestonesHTML(){const rows=homeNearMilestones();if(!rows.length)return '';return `<h2>달성 임박</h2><div class="card" style="padding:16px">${rows.map((r,i)=>`${r.role==='team'&&(i===0||rows[i-1].role!=='team')?'<div class="sb" style="padding-top:14px;margin-bottom:4px">팀 기록</div>':''}<button type="button" class="playerlink" style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;padding:10px 0;border:0;border-bottom:1px solid var(--line);text-align:left" data-home-near="${r.scope}" data-home-near-role="${r.role}" data-home-near-metric="${r.metric.key}"><span><b>${esc(r.n)}</b><span class="sb home-near-caption" style="margin-left:8px;font-size:11px;font-weight:400">${r.role==='team'?'팀 ':''}${r.scope==='career'?'통산':r.scope==='bears'?'베어스':'시즌'}</span><br><b>${milestoneDisplay(r.target,r.metric)} ${milestoneRecordUnit(r.metric)}</b><span class="home-near-caption" style="font-size:11px;font-weight:400">까지</span></span><b style="white-space:nowrap;font-size:13px">${milestoneDisplay(r.remaining,r.metric,true)} ${milestoneRecordUnit(r.metric)} 남음</b></button>`).join('')}</div>`}
 if(typeof document!=='undefined')document.addEventListener('click',ev=>{const target=ev.target.closest('[data-home-near]');if(!target)return;milestoneScope=target.dataset.homeNear;milestoneRole=target.dataset.homeNearRole;milestoneMetric=target.dataset.homeNearMetric;milestoneListMode='upcoming';location.hash='#/milestones'});
 
-function milestonesView(){const html=milestoneListMode==='completed'?milestonesCompletedView():milestonesUpcomingView();return html.replace('</div></div>','</div></div>'+milestoneListTabs())}
+function milestonesView(){if(doosanRegularSeasonComplete())milestoneListMode='completed';const html=milestoneListMode==='completed'?milestonesCompletedView():milestonesUpcomingView();return html.replace('</div></div>','</div></div>'+milestoneListTabs())}
 
 function milestonesUpcomingView(){
+ if(doosanRegularSeasonComplete())return milestonesCompletedView();
  const data=milestoneRows(),{events,missing}=data,rows=milestoneListMode==='imminent'?data.rows.filter(r=>!r.leading&&r.remaining===(r.metric.key==='ipOuts'?3:1)):data.rows,last=events.map(e=>S(e.date)).sort().pop();const special=milestoneListMode!=='imminent'&&milestoneScope==='season'&&milestoneRole!=='team'?seasonSpecialMilestonesHTML('',milestoneRole,20,false,milestoneMetric,'upcoming'):'';
  return `<div class="brand"><div class="logo">예상 달성 기록</div></div>
  <div class="chips" style="margin-bottom:12px">${[['career','통산'],['season','시즌'],['bears','베어스']].map(([key,label])=>`<button class="chip${milestoneScope===key?' on':''}" data-milescope="${key}">${label}</button>`).join('')}</div>
@@ -3478,6 +3543,7 @@ function playerMilestoneRows(name,role,scope,limit=20){
  }finally{[milestoneScope,milestoneRole,milestoneMetric]=previous}
 }
 function playerMilestonesHTML(name,role,scope=playerMilestoneScope,limit=20){
+ if(doosanRegularSeasonComplete())return '';
  const options=[['career','통산'],['season','시즌'],['bears','베어스']];
  const available=options.map(([key,label])=>{
   const result=playerMilestoneRows(name,role,key,limit),oldRole=milestoneRole;let cards;
@@ -3491,6 +3557,7 @@ function playerMilestonesHTML(name,role,scope=playerMilestoneScope,limit=20){
  return `<section style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line,#e4e5ed)"><b style="font-size:17px">예상 달성 기록</b><div class="sb" style="margin:6px 0 12px">${TODAY.getFullYear()}년 KBO 정규시즌 기준</div><div class="chips" style="margin-bottom:12px">${available.map(({key,label})=>`<button type="button" class="chip${selected.key===key?' on':''}" data-pmilestonescope="${key}" aria-pressed="${selected.key===key}">${label}</button>`).join('')}</div>${selected.result.missing?'<div class="note">일부 경기 기록이 없어 확인할 수 없는 항목은 표시하지 않아요.</div>':''}<div class="milestone-list">${selected.cards}</div></section>`;
 }
 function playerMilestoneSheetHTML(){
+ if(doosanRegularSeasonComplete())return '';
  if(!playerMilestoneSheet)return '';
  const {name,role}=playerMilestoneSheet;
  return `<div class="sheetback" data-pmilestoneback><div class="sheet"><div class="sheetbar"></div><div class="sheethead"><div><b>${esc(name)}</b><div class="sb">${role==='pitcher'?'투수':'타자'} · 예상 달성 기록</div></div><button type="button" class="sheetclose" data-pmilestoneclose aria-label="닫기">×</button></div>${playerMilestonesHTML(name,role)}</div></div>`;
@@ -3673,7 +3740,7 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.opppitchstat!==undefined){
     if(oppHistorySheet?.stat!=='pitcher')return;
     const key=t.dataset.opppitchstat;
-    if(!['g','ip','era','hits','strikeouts','runs'].includes(key))return;
+    if(!['g','ip','era','starterEra','reliefEra','hits','strikeouts','runs'].includes(key))return;
     oppHistorySheet.detailStat=oppHistorySheet.detailStat===key?null:key;
     startOpponentPitcherRelay();keep();
   }
@@ -3769,7 +3836,7 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.oppsortPitch){
     const key=t.dataset.oppsortPitch;
     if(opponentPitchSort===key)opponentPitchDirection=opponentPitchDirection==='asc'?'desc':'asc';
-    else{opponentPitchSort=key;opponentPitchDirection=key==='era'?'asc':'desc';}
+    else{opponentPitchSort=key;opponentPitchDirection=['era','starterEra','reliefEra'].includes(key)?'asc':'desc';}
     keep();const scroller=document.querySelector('.opp-scroll');if(scroller)scroller.scrollLeft=0;
   }
   else if(t.dataset.osort){
