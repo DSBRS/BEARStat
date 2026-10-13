@@ -1115,7 +1115,7 @@ function personalKindTabs(){
 function recordSeasonTabsHTML(){
   const maxYear=TODAY.getFullYear()+1;
   return `${recordYearMenu()}${recLeague==='kbo'?recordCompetitionMenus():''}
-  <div class="chips" style="margin-bottom:12px">${[['kbo','KBO'],['futures','퓨처스리그'],...(hasEducationSchedule()?[['edu','교육리그']]:[])].map(([k,l])=>`<button class="chip${recLeague===k?' on':''}" data-rleague="${k}">${l}</button>`).join('')}</div>
+  <div class="chips" style="margin-bottom:12px">${[['kbo','KBO'],['futures','퓨처스리그']].map(([k,l])=>`<button class="chip${recLeague===k?' on':''}" data-rleague="${k}">${l}</button>`).join('')}</div>
 
   ${recordPeriodMenus()}
   ${recKind==='pitcher'?`<div class="chips" style="margin-bottom:12px">${[['pitching','투구 기록'],['result','투수 기록'],...(recLeague==='kbo'&&recPeriod==='season'?[['situational','상황별 기록']]:[])].map(([k,l])=>`<button class="chip${recPitchTab===k?' on':''}" data-rptab="${k}">${l}</button>`).join('')}</div>`:''}
@@ -1980,7 +1980,7 @@ function records(){
   if(['firsthalf','secondhalf'].includes(recPeriod)&&!recordHalfAvailable())recPeriod='season';
   if(recPeriod!=='season'){if(recBatTab==='situational')recBatTab='main';if(recPitchTab==='situational')recPitchTab='pitching';}
   if(recLeague!=='kbo'){if(recPitchTab==='situational')recPitchTab='pitching';if(recBatTab==='situational')recBatTab='main';}
-  if(recLeague==='edu'&&!hasEducationSchedule()){recLeague='kbo';playerSheet=null;recSort=null;playerHistoryStat=null;pitcherHistoryStat=null;pitcherHistoryRole='all';playerOrderHistory=null;playerDefensePosition=null;}
+  if(recLeague==='edu'){recLeague='kbo';playerSheet=null;recSort=null;playerHistoryStat=null;pitcherHistoryStat=null;pitcherHistoryRole='all';playerOrderHistory=null;playerDefensePosition=null;}
   if((recKind==='pitcher'?recPitchTab:recBatTab)==='situational')return situationRecords();
   const roster=recordRoster();
   if(!roster.length&&recLeague!=='futures')return `<div class="brand"><div class="logo">개인기록</div></div><div class="card"><div class="empty">두산 선수 명단이 아직 없습니다.<br>관리자에서 선수 명단을 저장하면 두산 선수만 집계됩니다.</div></div>`;
@@ -2937,7 +2937,7 @@ function playerManagement(){
     <label>교육리그 타자</label>
     <textarea id="f_edu_hitters" rows="8" placeholder="한 줄에 한 명씩 입력">${esc(eduRosterForYear(adminEduRosterYear).filter(x=>x.t==='hitter').map(x=>x.n).join('\n'))}</textarea>
     <button class="btn" id="saveeduroster">${adminEduRosterYear}년 교육리그 참가자 저장</button>
-    <div class="note">교육리그 개인기록과 교육리그 경기 입력에는 이 명단만 사용합니다. 1군 선수 명단과 중복 등록해도 됩니다.</div>
+    <div class="note">교육리그 경기 입력에는 이 명단만 사용합니다. 1군 선수 명단과 중복 등록해도 됩니다.</div>
   </div>
 `;
 }
@@ -3993,7 +3993,7 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.rbtab){recBatTab=t.dataset.rbtab;recSort=null;playerSheet=null;playerHistoryStat=null;playerOrderHistory=null;keep()}
   else if(t.dataset.sdimension){const d=t.dataset.sdimension;if(SITUATION_OPTIONS[recKind][d]){recSituation[recKind]={dimension:d,value:SITUATION_OPTIONS[recKind][d][0]};recSort=null;playerSheet=null;keep()}}
   else if(t.dataset.svalue){const state=recSituation[recKind];if(SITUATION_OPTIONS[recKind][state.dimension].includes(t.dataset.svalue)){state.value=t.dataset.svalue;recSort=null;keep()}}
-  else if(t.dataset.rleague){if(['kbo','futures'].includes(t.dataset.rleague)||(t.dataset.rleague==='edu'&&hasEducationSchedule())){recLeague=t.dataset.rleague;recSort=null;playerSheet=null;playerHistoryStat=null;playerOrderHistory=null;pitcherHistoryStat=null;pitcherHistoryRole='all';playerDefensePosition=null;}keep()}
+  else if(t.dataset.rleague){if(['kbo','futures'].includes(t.dataset.rleague)){recLeague=t.dataset.rleague;recSort=null;playerSheet=null;playerHistoryStat=null;playerOrderHistory=null;pitcherHistoryStat=null;pitcherHistoryRole='all';playerDefensePosition=null;}keep()}
   else if(t.dataset.sstat){situationHistoryStat=situationHistoryStat===t.dataset.sstat?null:t.dataset.sstat;startSituationRelay();keep()}
   else if(t.dataset.phretry!==undefined){startPinchHitHistory(true);keep()}
   else if(t.dataset.hstat){playerHistoryStat=playerHistoryStat===t.dataset.hstat?null:t.dataset.hstat;if(playerHistoryStat==='phAvg')startPinchHitHistory();keep()}
