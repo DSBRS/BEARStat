@@ -314,6 +314,7 @@ select{border:1px solid var(--line,#dedee8);border-radius:10px;background-color:
 .historyrow>.situ-game-value{display:block;text-align:right;margin-top:10px}
 .historyrow .record-game-header+.sb{display:block;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
 .opponent-kind-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.record-opponent-pitcher{flex:0 1 auto;color:var(--sub);font-size:12px;font-weight:500;text-align:right;overflow-wrap:anywhere}.record-game-header>b .tag{display:inline-block;margin-left:4px;vertical-align:middle}
 </style></head>
 <body>
 <div id="app"></div>
@@ -948,6 +949,38 @@ let recSort={k:'avg',dir:'desc'},recKind='hitter',recPitchTab='pitching',recBatT
 
 // 투수 승/패/홀드/세이브의 단일 기준점:
 // KBO 자동 경기 = kbo.doosanDecisions, 수동/오버라이드 경기 = 입력한 winP/loseP/holdP/saveP.
+let recPeriod='season',recMonth=Number(TS.slice(5,7)),recWeekStart='';
+function recordWeeks(year=recYear){
+ const first=new Date(Date.UTC(year,0,1)),last=new Date(Date.UTC(year,11,31)),day=86400000;
+ const monday=new Date(first.getTime()-((first.getUTCDay()+6)%7)*day),rows=[];
+ for(let d=monday;d<=last;d=new Date(d.getTime()+7*day)){
+  const start=new Date(Math.max(d.getTime(),first.getTime())).toISOString().slice(0,10),end=new Date(Math.min(d.getTime()+6*day,last.getTime())).toISOString().slice(0,10);
+  rows.push({start,end,label:start.slice(5).replace('-','.')+' ~ '+end.slice(5).replace('-','.')});
+ }
+ return rows;
+}
+function recordSelectedWeek(){
+ const weeks=recordWeeks();
+ return weeks.find(w=>w.start===recWeekStart)||weeks.find(w=>w.start<=TS&&w.end>=TS)||(recYear<Number(TS.slice(0,4))?weeks[weeks.length-1]:weeks[0]);
+}
+function recordPeriodMatches(e){
+ if(recPeriod==='season')return true;
+ const date=S(e.date);
+ if(recPeriod==='month')return date.slice(0,7)===String(recYear)+'-'+String(recMonth).padStart(2,'0');
+ const week=recordSelectedWeek();return date>=week.start&&date<=week.end;
+}
+function recordPeriodKey(){return [recPeriod,recMonth,recWeekStart].join(':')}
+function recordPeriodLabel(){return recPeriod==='month'?recMonth+'월':recPeriod==='week'?recordSelectedWeek().label:'시즌 전체'}
+function recordPeriodMenus(){
+ const modes=[['season','시즌 전체'],['month','월간'],['week','주간']];
+ const period=`<div class="chips" style="margin-bottom:12px">${modes.map(([key,label])=>`<button type="button" class="chip${recPeriod===key?' on':''}" data-rperiod="${key}" aria-pressed="${recPeriod===key}">${label}</button>`).join('')}</div>`;
+ const options=recPeriod==='month'?Array.from({length:12},(_,i)=>`<button type="button" class="chip${recMonth===i+1?' on':''}" data-rmonth="${i+1}" aria-pressed="${recMonth===i+1}">${i+1}월</button>`).join(''):recPeriod==='week'?recordWeeks().map(w=>`<button type="button" class="chip${recordSelectedWeek().start===w.start?' on':''}" data-rweek="${w.start}" aria-pressed="${recordSelectedWeek().start===w.start}">${w.label}</button>`).join(''):'';
+ return period+(options?`<div class="chips" style="margin-bottom:12px">${options}</div>`:'');
+}
+function resetRecordPeriodDetails(){
+ recSort=null;playerSheet=null;playerHistoryStat=null;pitcherHistoryStat=null;pitcherHistoryRole='all';playerOrderHistory=null;playerDefensePosition=null;situationHistoryStat=null;
+ if(recPeriod!=='season'){if(recBatTab==='situational')recBatTab='main';if(recPitchTab==='situational')recPitchTab='pitching';}
+}
 function isPostseasonRecord(e){
   if(isExhibition(e))return false;
   const raw=e.kbo?.seriesId??e.seriesId;
@@ -973,6 +1006,7 @@ function hasEducationSchedule(year=recYear){
   return Repo.all().some(e=>e.type==='edu'&&!isCancelled(e)&&S(e.date).slice(0,4)===String(year));
 }
 function recordSeasonMatches(e){
+  if(!recordPeriodMatches(e))return false;
   if(recLeague!=='kbo')return !e.stage;
   if(isExhibition(e))return false;
   const post=isPostseasonRecord(e);
@@ -1008,17 +1042,18 @@ async function loadOfficialPinchHit(){
  }catch{}
 }
 function officialPinchHitAverage(name,year=recYear,league=recLeague,season=recSeason){
-  if(league!=='kbo'||season!=='regular')return null;
+  if(league!=='kbo'||season!=='regular'||recPeriod!=='season')return null;
   const rows=KBO_PINCH_HIT_BY_YEAR[year]?.players||KBO_PINCH_HIT_SNAPSHOT.years[String(year)];
   if(!rows||!Object.hasOwn(rows,S(name)))return null;
   const value=rows[S(name)];return typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:null;
 }
 function pinchHitAverageText(value){return typeof value==='number'&&Number.isFinite(value)?(value>=1?value.toFixed(3):value.toFixed(3).slice(1)):'—'}
 function pinchHitAverageNote(){
+  if(recPeriod!=='season')return '';
   return `<details class="phnote"><summary>대타타율 안내</summary><p><a href="${KBO_PINCH_HIT_SNAPSHOT.source}" target="_blank" rel="noopener noreferrer">KBO 공식 시즌 기록</a> · ${S(KBO_PINCH_HIT_BY_YEAR[recYear]?.updatedAt).slice(0,10)||KBO_PINCH_HIT_SNAPSHOT.checkedAt} 확인<br>${KBO_PINCH_HIT_BY_YEAR[recYear]?'KBO에 반영된 수치를 자동 확인해요.':'자동 수신 전에는 마지막 확인값을 표시해요.'} 이적 전 기록이 포함될 수 있어요.<br>—는 미확인 기록이에요. 공식 대타 타수·안타가 없어 합계는 표시하지 않아요.<br>경기 내역은 저장된 두산 경기의 대타 첫 타석을 문자중계로 확인해요.</p></details>`;
 }
 
-function recStats(){return recordRenderMemo('stats:'+recYear+':'+recLeague+':'+recSeason+':'+recPostStage,uncachedRecStats)}
+function recStats(){return recordRenderMemo('stats:'+recYear+':'+recLeague+':'+recSeason+':'+recPostStage+':'+recordPeriodKey(),uncachedRecStats)}
 function uncachedRecStats(){
   const yr=String(recYear),m={},roster=(recordRoster()),role=new Map(roster.map(x=>[x.n,x.t]));
   const row=(n,want)=>{if(role.get(n)!==want)return null;if(!m[n])m[n]={n,w:0,l:0,s:0,h:0,g:0,hr:0,d2:0,d3:0,hit:0,sb:0,ab:0,bb:0,hbp:0,ibb:0,rbi:0,runs:0,gdp:0,avg:0,o1:0,o2:0,o3:0,o4:0,o5:0,o6:0,o7:0,o8:0,o9:0};return m[n]};
@@ -1035,9 +1070,10 @@ function recordSeasonTabsHTML(){
   return `${recordYearMenu()}${recLeague==='kbo'?recordCompetitionMenus():''}
   <div class="chips" style="margin-bottom:12px">${[['kbo','KBO'],['futures','퓨처스리그'],...(hasEducationSchedule()?[['edu','교육리그']]:[])].map(([k,l])=>`<button class="chip${recLeague===k?' on':''}" data-rleague="${k}">${l}</button>`).join('')}</div>
 
+  ${recordPeriodMenus()}
   <div class="chips" style="margin-bottom:12px">${[['pitcher','투수'],['hitter','타자']].map(([k,l])=>`<button class="chip${recKind===k?' on':''}" data-rkind="${k}">${l}</button>`).join('')}</div>
-  ${recKind==='pitcher'?`<div class="chips" style="margin-bottom:12px">${[['pitching','투구 기록'],['result','투수 기록'],...(recLeague==='kbo'?[['situational','상황별 기록']]:[])].map(([k,l])=>`<button class="chip${recPitchTab===k?' on':''}" data-rptab="${k}">${l}</button>`).join('')}</div>`:''}
-  ${recKind==='hitter'?`<div class="chips" style="margin-bottom:12px">${[['main','타격 기록'],['order','타순'],['defense','수비 포지션'],...(recLeague==='kbo'?[['situational','상황별 기록']]:[])].map(([k,l])=>`<button class="chip${recBatTab===k?' on':''}" data-rbtab="${k}">${l}</button>`).join('')}</div>`:''}`;
+  ${recKind==='pitcher'?`<div class="chips" style="margin-bottom:12px">${[['pitching','투구 기록'],['result','투수 기록'],...(recLeague==='kbo'&&recPeriod==='season'?[['situational','상황별 기록']]:[])].map(([k,l])=>`<button class="chip${recPitchTab===k?' on':''}" data-rptab="${k}">${l}</button>`).join('')}</div>`:''}
+  ${recKind==='hitter'?`<div class="chips" style="margin-bottom:12px">${[['main','타격 기록'],['order','타순'],['defense','수비 포지션'],...(recLeague==='kbo'&&recPeriod==='season'?[['situational','상황별 기록']]:[])].map(([k,l])=>`<button class="chip${recBatTab===k?' on':''}" data-rbtab="${k}">${l}</button>`).join('')}</div>`:''}`;
 }
 
 
@@ -1064,13 +1100,13 @@ function defensePositionHistory(name,key){
   });
   return rows.sort((a,b)=>b.date.localeCompare(a.date));
 }
-function historyCardHeader(row){
+function historyCardHeader(row,right=null){
  const direct=row.event||row,hasEvent=!!row.event||Object.hasOwn(row,'homeAway');
  const matches=hasEvent?[]:Repo.all().filter(e=>S(e.date)===S(row.date)&&S(e.opp)===S(row.opp)&&!isCancelled(e)&&(row.headerNo===undefined||+e.headerNo===+row.headerNo));
  const event=hasEvent?direct:matches.length===1?matches[0]:null;
  const date=S(direct.date||row.date),opp=S(direct.opp||row.opp)||'상대팀';
  const side=event?.homeAway==='home'?'홈':event?.homeAway==='away'?'원정':'홈/원정 미확인';
- return `<div class="record-game-header"><b>${esc(date.slice(5).replace('-','.'))}${+event?.headerNo>0?' · 더블헤더 '+event.headerNo+'차전':''} · vs ${esc(opp)}</b><span class="tag">${side}</span></div>`;
+ return `<div class="record-game-header"><b>${esc(date.slice(5).replace('-','.'))}${+event?.headerNo>0?' · 더블헤더 '+event.headerNo+'차전':''} · vs ${esc(opp)}${right!==null?` <span class="tag">${side}</span>`:''}</b>${right!==null?`<span class="record-opponent-pitcher">${esc(right)}</span>`:`<span class="tag">${side}</span>`}</div>`;
 }
 function defenseHistoryHTML(name,positions){
   const selected=positions.find(p=>p.key===playerDefensePosition);
@@ -1182,7 +1218,7 @@ function statHistory(name,stat){
         const hrs=parseHrEntries(e).filter(x=>S(x.player)===S(name));
         if(hrs.length){
           hrs.forEach(x=>out.push({
-            date:e.date,
+            event:e,date:e.date,
             opp:S(e.opp),
             count:1,
             detail:`${x.inning}회 · ${x.runs}점 홈런`
@@ -1210,7 +1246,7 @@ function statHistory(name,stat){
 
       if(count>0){
         out.push({
-          date:e.date,
+          event:e,date:e.date,
           opp:S(e.opp),
           count,
           detail:''
@@ -1272,12 +1308,55 @@ function pinchHitHistoryHTML(name){
   const confirmed=rows.filter(row=>row.play).length;
   const counts=rows.filter(row=>row.play).reduce((total,{play})=>({ab:total.ab+Number(play.stats.ab||0),hit:total.hit+Number(play.stats.hit||0)}),{ab:0,hit:0});
   const status=recLeague!=='kbo'?'KBO 경기에서만 문자중계를 조회할 수 있어요.':relevant&&job.running?`타석 확인 중 · ${job.done} / ${job.total}경기`:`저장된 대타 출전 ${games.length}경기 · 타석 확인 ${confirmed}경기`;
-  return `<div class="historybox"><div class="phhistory-head"><b>대타 타석 기록</b>${relevant&&!job.running&&confirmed<games.length?'<button type="button" class="phhistory-retry" data-phretry>다시 조회</button>':''}</div><div class="phhistory-status" role="status">${esc(status)}</div>${confirmed?`<div class="phhistory-result" style="margin:8px 0 12px"><b>${confirmed===games.length?'총':'확인된 타석'} ${counts.ab}타수 ${counts.hit}안타</b></div>`:''}${rows.length?rows.map(({event,play})=>`<div class="historyrow">${historyCardHeader(event)}<div class="phhistory-result">${play?`${play.inning}회${play.side==='away'?'초':'말'} · ${esc(play.result)}`:`<span class="phhistory-status">${relevant&&job.running&&!job.errors.has(S(event.kboGameId||event.id))?'타석 결과 확인 중…':'대타 출전 확인 · 타석 결과 확인 불가'}</span>`}</div></div>`).join(''):'<div class="empty">저장된 대타 출전 경기가 없습니다.</div>'}<div class="phhistory-status">대타 첫 타석의 모든 결과를 표시해요. 볼넷·사구는 타율 계산에서 제외돼요.</div></div>`;
+  return `<div class="historybox"><div class="phhistory-head"><b>대타 타석 기록</b>${relevant&&!job.running&&confirmed<games.length?'<button type="button" class="phhistory-retry" data-phretry>다시 조회</button>':''}</div><div class="phhistory-status" role="status">${esc(status)}</div>${confirmed?`<div class="phhistory-result" style="margin:8px 0 12px"><b>${confirmed===games.length?'총':'확인된 타석'} ${counts.ab}타수 ${counts.hit}안타</b></div>`:''}${rows.length?rows.map(({event,play})=>`<div class="historyrow">${historyCardHeader(event,play?S(play.pitcher)||'투수 미확인':'투수 미확인')}<div class="phhistory-result">${play?`${play.inning}회${play.side==='away'?'초':'말'} · ${esc(play.result)}`:`<span class="phhistory-status">${relevant&&job.running&&!job.errors.has(S(event.kboGameId||event.id))?'타석 결과 확인 중…':'대타 출전 확인 · 타석 결과 확인 불가'}</span>`}</div></div>`).join(''):'<div class="empty">저장된 대타 출전 경기가 없습니다.</div>'}<div class="phhistory-status">대타 첫 타석의 모든 결과를 표시해요. 볼넷·사구는 타율 계산에서 제외돼요.</div></div>`;
 }
 
-function historyHTML(name){if(playerHistoryStat==='phAvg')return pinchHitHistoryHTML(name);if(!playerHistoryStat)return'';const label={hit:'안타',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루',bb:'볼넷',hbp:'사구',ibb:'고의4구',rbi:'타점',runs:'득점',gdp:'병살타'}[playerHistoryStat],rows=statHistory(name,playerHistoryStat);return `<div class="historybox"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${pitcherHistoryRole==='start'?'선발 · ':pitcherHistoryRole==='relief'?'구원 · ':''}${label} 경기별 기록</b><span class="sb">총 ${rows.reduce((s,x)=>s+(+x.count||0),0)}개</span></div>${rows.length?rows.map(x=>`<div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div>${historyCardHeader(x)}${x.detail?`<br><span class="sb">${esc(x.detail)}</span>`:''}</div><b style="white-space:nowrap">${x.count}개</b></div>`).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}</div>`}
-let orderPlayOpen=null;
-const ORDER_PLAY_REQUESTS=new Map();
+let hitterRecordRelayJob=null;
+function hitterRecordHistoryRows(name,stat){
+ const grouped=new Map();
+ for(const row of statHistory(name,stat)){
+  const key=S(row.event?.kboGameId||row.event?.id)||JSON.stringify([row.date,row.opp,row.event?.headerNo]);
+  const old=grouped.get(key);if(old){old.count+=row.count;if(row.detail&&!old.details.includes(row.detail))old.details.push(row.detail);}
+  else grouped.set(key,{...row,details:row.detail?[row.detail]:[]});
+ }
+ return [...grouped.values()];
+}
+function hitterRecordPlays(event,name,stat,count=null){
+ const id=S(event?.kboGameId),relay=cachedPlayerRelay(id,name,'hitter');
+ if(!id||!relay||!Array.isArray(relay.plays)||!relayPlayerAvailable(relay,id,name,'hitter'))return null;
+ const verified=verifiedMatchupPlays(event,relay,name,'hitter');if(!verified)return null;
+ const plays=verified.filter(play=>Number(play.stats?.[stat]||0)>0);
+ if(count!==null&&plays.reduce((sum,play)=>sum+Number(play.stats?.[stat]||0),0)!==count)return null;
+ return plays;
+}
+function hitterRecordPitchers(event,name,stat,count=null){
+ const plays=hitterRecordPlays(event,name,stat,count);
+ const field=stat==='sb'?'catcher':'pitcher',unknown=stat==='sb'?'포수 미확인':'투수 미확인';
+ return plays?.length?[...new Set(plays.map(play=>S(play[field])||unknown))].join(' · '):unknown;
+}
+function startHitterRecordRelay(name,stat,rows){
+ if(recLeague!=='kbo'||!SUPABASE_URL)return;
+ const games=rows.map(row=>row.event).filter(e=>/^\d{8}[A-Z]{4}\d$/.test(S(e?.kboGameId)));
+ const signature=JSON.stringify([name,stat,recYear,recSeason,recPostStage,recordPeriodKey(),games.map(e=>e.kboGameId)]);
+ if(hitterRecordRelayJob?.signature===signature)return;
+ const job={signature,running:true,failed:0};hitterRecordRelayJob=job;let next=0;
+ const active=()=>hitterRecordRelayJob===job&&playerSheet===name&&playerHistoryStat===stat;
+ Promise.resolve().then(()=>primePlayerRelay(games.map(e=>e.kboGameId),name,'hitter')).catch(()=>{}).then(()=>Promise.all(Array.from({length:2},async()=>{
+  while(next<games.length&&active()){const event=games[next++];try{await readSituationRelay(event.kboGameId,name,'hitter')}catch{job.failed++}if(active())rerender();}
+ }))).finally(()=>{job.running=false;if(active())rerender()});
+}
+function historyHTML(name){
+ if(playerHistoryStat==='phAvg')return pinchHitHistoryHTML(name);
+ if(!playerHistoryStat)return '';
+ const stat=playerHistoryStat,label={hit:'안타',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루',bb:'볼넷',hbp:'사구',ibb:'고의4구',rbi:'타점',runs:'득점',gdp:'병살타'}[stat],rows=hitterRecordHistoryRows(name,stat);
+ startHitterRecordRelay(name,stat,rows);
+ return `<div class="historybox"><div class="phhistory-head"><b>${label} 경기별 기록</b><span class="sb">총 ${rows.reduce((sum,row)=>sum+row.count,0)}개</span></div>${rows.length?rows.map(row=>{
+  const event=row.event||row,plays=hitterRecordPlays(event,name,stat,row.count),pending=hitterRecordRelayJob?.running&&!cachedPlayerRelay(event.kboGameId,name,'hitter');
+  const pitchers=pending?(stat==='sb'?'포수 확인 중…':'투수 확인 중…'):hitterRecordPitchers(event,name,stat,row.count);
+  return `<section class="historyrow">${historyCardHeader(event,pitchers)}${plays?.length?plays.map(play=>`<div class="matchup-play-row"><span class="matchup-inning">${esc(play.inning+'회'+(play.side==='away'?'초':'말'))}</span><span class="matchup-play-result">${esc(play.result||label)}</span>${plays.length>1?`<span class="record-opponent-pitcher">${esc(stat==='sb'?(play.catcher||'포수 미확인'):(play.pitcher||'투수 미확인'))}</span>`:''}</div>`).join(''):row.details.map(detail=>`<div class="situ-game-detail">${esc(detail)}</div>`).join('')}</section>`;
+ }).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}${rows.some(row=>!row.event?.kboGameId)?'<div class="phhistory-status">중계가 없는 경기는 상대 투수를 확인할 수 없어요.</div>':''}</div>`;
+}
+
 function orderPlayKey(row,name=playerSheet){return JSON.stringify([recLeague,recYear,recSeason,name,row.key]);}
 function orderGamePlaysHTML(row){
   const key=orderPlayKey(row),id=S(row.event.kboGameId);
@@ -1411,7 +1490,7 @@ function situationalRows(){
   const state=recSituation[recKind],roster=recordRoster(),allowed=new Set(roster.filter(x=>x.t===recKind).map(x=>x.n)),out=new Map();
   const matches=x=>x&&x.role===recKind&&x.dimension===state.dimension&&normalizeSituation(state.dimension,x.situation)===state.value;
   // Latest complete season snapshot wins for each player/category, avoiding double counting.
-  const snapshot=recLeague==='kbo'&&recSeason==='regular'?KBO_SITUATIONAL_BY_YEAR[recYear]:null;
+  const snapshot=recLeague==='kbo'&&recSeason==='regular'&&recPeriod==='season'?KBO_SITUATIONAL_BY_YEAR[recYear]:null;
   for(const raw of snapshot?.rows||[]){const n=S(raw.name);if(matches(raw)&&allowed.has(n))out.set(n,normalizedSplit(raw,n))}
   const daily=new Map(),incomplete=new Set();
   for(const e of Repo.all().filter(e=>e.type===recLeague&&!isCancelled(e)&&recordSeasonMatches(e)&&!isExhibition(e)&&hasScore(e)&&S(e.date).slice(0,4)===String(recYear))){
@@ -1749,7 +1828,7 @@ function situationRecords(){
     return (direction==='asc'?a[metric]-b[metric]:b[metric]-a[metric])||compareName(a,b);
   });
   const heads=[['n','선수'],...cols].map(([k,label])=>`<th><button class="sh${metric===k?' on':''}" data-sort="${k}">${label}${metric===k?(direction==='asc'?' ↑':' ↓'):''}</button></th>`).join('');
-  const snapshot=recLeague==='kbo'&&recSeason==='regular'?KBO_SITUATIONAL_BY_YEAR[recYear]:null;
+  const snapshot=recLeague==='kbo'&&recSeason==='regular'&&recPeriod==='season'?KBO_SITUATIONAL_BY_YEAR[recYear]:null;
   let lastValue,lastRank;
   const body=rows.map((r,i)=>{
     const value=r[metric];const rank=metric==='n'||value===null?'—':(i&&value===lastValue?lastRank:i+1);lastValue=value;lastRank=rank;
@@ -1829,6 +1908,7 @@ function records(){
   if(recBatTab==='onbase'){recBatTab='main';recSort=null}
   if(!recSort&&recKind==='hitter'&&recBatTab==='main')recSort={k:'avg',dir:'desc'};
   if(recScope==='career')return careerRecordsView();
+  if(recPeriod!=='season'){if(recBatTab==='situational')recBatTab='main';if(recPitchTab==='situational')recPitchTab='pitching';}
   if(recLeague!=='kbo'){if(recPitchTab==='situational')recPitchTab='pitching';if(recBatTab==='situational')recBatTab='main';}
   if(recLeague==='edu'&&!hasEducationSchedule()){recLeague='kbo';playerSheet=null;recSort=null;playerHistoryStat=null;pitcherHistoryStat=null;pitcherHistoryRole='all';playerOrderHistory=null;playerDefensePosition=null;}
   if((recKind==='pitcher'?recPitchTab:recBatTab)==='situational')return situationRecords();
@@ -2101,10 +2181,10 @@ function opponentDetailHistoryHTML(name,opp,stat){
    let details=stat==='gw'?(g.winningHitDescription?[g.winningHitDescription]:null):opponentPlayDetails(e,name,stat);
    if(details===null&&stat==='hr'){const hrs=parseHrEntries(e).filter(x=>S(x.player)===S(name));if(hrs.length)details=hrs.map(x=>`${x.inning}회 · ${x.runs}점 홈런`);}
    return `<div class="historyrow"><div class="situ-game-body">
-    ${historyCardHeader(e)}
+    ${historyCardHeader(e,hitterRecordPitchers(e,name,stat))}
     ${stat==='avg'?`<div class="situ-game-detail">${g.ab}타수 ${g.hit}안타</div>`:''}
     ${details?.length?details.map(text=>`<div class="situ-game-detail">${esc(text)}</div>`).join(''):OPP_RELAY_STATS.has(stat)?`<div class="situ-game-detail">${job?.running?'타구 내역 확인 중':'타구 내역을 확인하지 못했습니다.'}</div>`:''}
-   </div><b class="situ-game-value">${esc(value)}</b></div>`;
+   </div>${stat==='avg'?`<b class="situ-game-value">${esc(value)}</b>`:''}</div>`;
   }).join(''):'<div class="empty">해당 기록이 있는 경기가 없습니다.</div>'}
  </div>`;
 }
@@ -3387,7 +3467,7 @@ function summedOPS(rows){return battingRates(sumOpsLines(rows.map(r=>r._opsLine)
 
 // Shared qualification filters and compact dropdowns.
 const RECORD_LIMITS={season:{hitter:'all',pitcher:'all'},career:{hitter:'all',pitcher:'all'},opponent:{hitter:'all',pitcher:'all'}};
-function recordFilterGames(context='season'){return recordRenderMemo('filter-games:'+context+':'+recYear+':'+recLeague+':'+recSeason+':'+recPostStage+':'+S(h2h),()=>uncachedRecordFilterGames(context))}
+function recordFilterGames(context='season'){return recordRenderMemo('filter-games:'+context+':'+recYear+':'+recLeague+':'+recSeason+':'+recPostStage+':'+recordPeriodKey()+':'+S(h2h),()=>uncachedRecordFilterGames(context))}
 function uncachedRecordFilterGames(context='season'){
  const year=context==='opponent'?(typeof opponentYear==='number'?opponentYear:TODAY.getFullYear()):recYear,league=['opponent','career'].includes(context)?'kbo':recLeague;
  const seen=new Set();
@@ -3417,7 +3497,7 @@ function recordPlateAppearances(p,e){
  // Older box scores without sacrifice details provide a confirmed lower bound.
  return known?value:null;
 }
-function recordParticipation(context,role){return recordRenderMemo('participation:'+context+':'+role+':'+recYear+':'+recLeague+':'+recSeason+':'+recPostStage+':'+S(h2h),()=>uncachedRecordParticipation(context,role))}
+function recordParticipation(context,role){return recordRenderMemo('participation:'+context+':'+role+':'+recYear+':'+recLeague+':'+recSeason+':'+recPostStage+':'+recordPeriodKey()+':'+S(h2h),()=>uncachedRecordParticipation(context,role))}
 function uncachedRecordParticipation(context,role){
  const map=new Map();
  for(const e of recordFilterGames(context)){
@@ -3629,7 +3709,7 @@ function careerRecordsView(){
   return (+av-+bv)*dir||byName;
  });
  const tabs=recKind==='pitcher'?[['pitching','투구 기록'],['result','투수 기록']]:[['main','타격 기록']];
- return `<div class="brand"><div class="logo">개인기록</div></div>${recordScopeTabs()}${recordCompetitionMenus()}<div class="chips" style="margin-bottom:12px">${[['pitcher','투수'],['hitter','타자']].map(([key,label])=>`<button class="chip${recKind===key?' on':''}" data-rkind="${key}">${label}</button>`).join('')}</div><div class="chips" style="margin-bottom:12px">${tabs.map(([key,label])=>`<button class="chip${(recKind==='pitcher'?recPitchTab:recBatTab)===key?' on':''}" ${recKind==='pitcher'?'data-rptab':'data-rbtab'}="${key}">${label}</button>`).join('')}</div>${recordLimitMenu('career',recKind)}${recordLimitNote('career',recKind)}<div class="card"><div class="recscroll record-scroll">${recordTableStart(cols,false,rows.map(r=>r.n))}<tr>${cols.map(([key,label])=>`<th><button class="sh${recSort?.k===key?' on':''}" data-sort="${key}">${label}${recSort?.k===key?(recSort.dir==='desc'?' ↓':' ↑'):''}</button></th>`).join('')}</tr>${rows.map(row=>`<tr>${cols.map(([key])=>`<td>${key==='n'?`<button class="playerlink" data-player="${esc(row.n)}">${esc(row.n)}</button>${row.missingBaseline?'<div class="sb" style="font-size:10px">기준 미등록</div>':''}`:personalCareerDisplay(row,key)}</td>`).join('')}</tr>`).join('')}</table></div></div><div class="foot">${careerCoverageNote()}</div>${playerSheetHTML()}`;
+ return `<div class="brand"><div class="logo">개인기록</div></div>${recordScopeTabs()}${recordCompetitionMenus()}<div class="chips" style="margin-bottom:12px">${[['pitcher','투수'],['hitter','타자']].map(([key,label])=>`<button class="chip${recKind===key?' on':''}" data-rkind="${key}">${label}</button>`).join('')}</div><div class="chips" style="margin-bottom:12px">${tabs.map(([key,label])=>`<button class="chip${(recKind==='pitcher'?recPitchTab:recBatTab)===key?' on':''}" ${recKind==='pitcher'?'data-rptab':'data-rbtab'}="${key}">${label}</button>`).join('')}</div>${recordLimitMenu('career',recKind)}${recordLimitNote('career',recKind)}<div class="card"><div class="recscroll record-scroll">${recordTableStart(cols,false,rows.map(r=>r.n))}<tr>${cols.map(([key,label])=>`<th><button class="sh${recSort?.k===key?' on':''}" data-sort="${key}">${label}${recSort?.k===key?(recSort.dir==='desc'?' ↓':' ↑'):''}</button></th>`).join('')}</tr>${rows.map(row=>`<tr>${cols.map(([key])=>`<td${key!=='n'&&recSort?.k===key?' class="selected-stat"':''}>${key==='n'?`<button class="playerlink" data-player="${esc(row.n)}">${esc(row.n)}</button>${row.missingBaseline?'<div class="sb" style="font-size:10px">기준 미등록</div>':''}`:personalCareerDisplay(row,key)}</td>`).join('')}</tr>`).join('')}</table></div></div><div class="foot">${careerCoverageNote()}</div>${playerSheetHTML()}`;
 }
 function recordScopeTabs(){return `<div class="chips" style="margin-bottom:14px">${[['season','시즌'],['career','통산']].map(([key,label])=>`<button class="chip${recScope===key?' on':''}" data-recordscope="${key}">${label}</button>`).join('')}</div>`}
 function personalCareerSheetHTML(){
@@ -3698,7 +3778,7 @@ function renderWithRecordCache(render){
 const recordUncachedEvents=Repo.all.bind(Repo);
 Repo.all=function(){return recordRenderMemo('events',recordUncachedEvents)};
 
-function recordTabs(){return recordScopeTabs()+recordSeasonTabsHTML()+recordLimitMenu('season',recKind)+recordLimitNote('season',recKind)}
+function recordTabs(){return recordScopeTabs()+recordSeasonTabsHTML()+recordLimitMenu('season',recKind)+recordLimitNote('season',recKind)+(recPeriod==='season'?'':`<div class="record-limit-note">${esc(recordPeriodLabel())} · 저장된 ${recordFilterGames('season').length}경기 기준${recPeriod==='week'?' · 월요일~일요일':''}</div>`)}
 function route(){
   const r=location.hash.replace('#/','')||'home';
   if(document.body.dataset.r!==r){
@@ -3711,7 +3791,7 @@ function route(){
 }
 document.addEventListener('input',ev=>{if(ev.target.matches('[data-careerinput]'))updateCareerRates()});
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-recordscope],[data-pmilestone],[data-pmilestonescope],[data-pmilestoneclose],[data-pmilestoneback],[data-mileopen],[data-mileclose],#mile_save,#mile_import,#mile_copycareer,[data-milescope],[data-milerole],[data-milemetric],[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-oppkind],[data-oppsort-pitch],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppdetail-stat],[data-opppitchstat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-sdimension],[data-svalue],[data-rleague],[data-hstat],[data-phretry],[data-sstat],[data-pstat],[data-prole],[data-rseason],[data-rpoststage],[data-orderhist],[data-ordergame],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],[data-hide-auto],[data-restore-auto],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
+  const t=ev.target.closest('[data-recordscope],[data-pmilestone],[data-pmilestonescope],[data-pmilestoneclose],[data-pmilestoneback],[data-mileopen],[data-mileclose],#mile_save,#mile_import,#mile_copycareer,[data-milescope],[data-milerole],[data-milemetric],[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-oppkind],[data-oppsort-pitch],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppdetail-stat],[data-opppitchstat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-sdimension],[data-svalue],[data-rleague],[data-hstat],[data-phretry],[data-sstat],[data-pstat],[data-prole],[data-rseason],[data-rpoststage],[data-rperiod],[data-rmonth],[data-rweek],[data-orderhist],[data-ordergame],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],[data-hide-auto],[data-restore-auto],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
   if(!isOwner&&(t.dataset.edit||t.dataset.del||['save','saveroster','saveeduroster','admin_new','addhr'].includes(t.id)))return;
   const keep=()=>{const historyTop=document.querySelector('.historybox')?.scrollTop;const y=scrollY,left=document.querySelector('.opp-scroll,.record-scroll')?.scrollLeft;route2();const scroller=document.querySelector('.opp-scroll,.record-scroll');if(scroller&&left!==undefined)scroller.scrollLeft=left;const history=document.querySelector('.historybox');if(history&&historyTop!==undefined)history.scrollTop=historyTop;scrollTo(0,y)};
   if(t.dataset.recordscope!==undefined){if(['season','career'].includes(t.dataset.recordscope)){recScope=t.dataset.recordscope;recSort=null;playerSheet=null;playerHistoryStat=null;pitcherHistoryStat=null;keep()}}
@@ -3777,6 +3857,9 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.sstat){situationHistoryStat=situationHistoryStat===t.dataset.sstat?null:t.dataset.sstat;startSituationRelay();keep()}
   else if(t.dataset.phretry!==undefined){startPinchHitHistory(true);keep()}
   else if(t.dataset.hstat){playerHistoryStat=playerHistoryStat===t.dataset.hstat?null:t.dataset.hstat;if(playerHistoryStat==='phAvg')startPinchHitHistory();keep()}
+  else if(t.dataset.rperiod){if(['season','month','week'].includes(t.dataset.rperiod)){recPeriod=t.dataset.rperiod;if(recPeriod==='week')recWeekStart=recordSelectedWeek().start;resetRecordPeriodDetails();}keep()}
+  else if(t.dataset.rmonth){const month=Number(t.dataset.rmonth);if(month>=1&&month<=12){recMonth=month;resetRecordPeriodDetails();}keep()}
+  else if(t.dataset.rweek){if(recordWeeks().some(w=>w.start===t.dataset.rweek)){recWeekStart=t.dataset.rweek;resetRecordPeriodDetails();}keep()}
   else if(t.dataset.rseason){if(['regular','postseason','all'].includes(t.dataset.rseason)){recSeason=t.dataset.rseason;recSort=null;playerSheet=null;pitcherHistoryStat=null;pitcherHistoryRole='all';playerHistoryStat=null;playerOrderHistory=null;playerDefensePosition=null;}keep()}
   else if(t.dataset.rpoststage){if(RECORD_POST_STAGES.some(([key])=>key===t.dataset.rpoststage)){recPostStage=t.dataset.rpoststage;recSort=null;playerSheet=null;situationHistoryStat=null;playerHistoryStat=null;pitcherHistoryStat=null;playerOrderHistory=null;playerDefensePosition=null;}keep()}
   else if(t.dataset.prole){if(['all','start','relief'].includes(t.dataset.prole))pitcherHistoryRole=t.dataset.prole;keep()}
@@ -3797,7 +3880,7 @@ document.addEventListener('click',ev=>{
     playerOrderHistory=playerOrderHistory===n?null:n;
     keep()
   }
-  else if(t.dataset.ryear!==undefined){const y=recYear+(+t.dataset.ryear||0);recYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));recSort=null;playerSheet=null;keep()}
+  else if(t.dataset.ryear!==undefined){const y=recYear+(+t.dataset.ryear||0);recYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));recWeekStart='';resetRecordPeriodDetails();keep()}
   else if(t.dataset.syear!==undefined){const y=stYear+(+t.dataset.syear||0);stYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));keep()}
   else if(t.dataset.aroster!==undefined){const y=adminRosterYear+(+t.dataset.aroster||0);adminRosterYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));keep()}
   else if(t.dataset.aeduroster!==undefined){const y=adminEduRosterYear+(+t.dataset.aeduroster||0);adminEduRosterYear=Math.max(2000,Math.min(TODAY.getFullYear()+1,y));keep()}
