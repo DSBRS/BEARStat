@@ -3374,7 +3374,7 @@ function rotateHomeMilestones(rows,date=TS){
  for(const r of rows){const count=r.remaining/(r.metric.key==='ipOuts'?3:1);if(!groups.has(count))groups.set(count,[]);groups.get(count).push(r)}
  return [...groups.keys()].sort((a,b)=>a-b).flatMap(count=>{const group=groups.get(count).sort((a,b)=>[a.n,a.scope,a.role,a.metric.key,a.target].join('|').localeCompare([b.n,b.scope,b.role,b.metric.key,b.target].join('|'),'ko')),offset=((day%group.length)+group.length)%group.length;return [...group.slice(offset),...group.slice(0,offset)]});
 }
-function homeNearMilestones(){return seasonSpecialMemo('home-near-milestones',()=>{
+function homeNearMilestones(){if(doosanRegularSeasonComplete())return [];return seasonSpecialMemo('home-near-milestones',()=>{
  const prior=[milestoneScope,milestoneRole,milestoneMetric],rows=[];
  try{for(const scope of ['career','season','bears'].filter(scope=>scope!=='season'||!doosanRegularSeasonComplete()))for(const role of ['hitter','pitcher','team']){milestoneScope=scope;milestoneRole=role;milestoneMetric='all';const data=milestoneRows();for(const r of data.rows){if(r.leading||role!=='team'&&!homeEntryIncludes(r.n,role))continue;const unit=r.metric.key==='ipOuts'?3:1;if(r.remaining>0&&r.remaining<=(role==='team'?10:2*unit))rows.push({...r,scope,role})}}}finally{[milestoneScope,milestoneRole,milestoneMetric]=prior}
  const unique=new Map();for(const r of rows){const key=[r.n,r.role==='team'&&r.scope!=='season'?'team':r.scope==='season'?'season':r.scope,r.metric.key,r.target].join('|');if(!unique.has(key))unique.set(key,r)}const all=[...unique.values()];return [...rotateHomeMilestones(all.filter(r=>r.role!=='team')).slice(0,5),...rotateHomeMilestones(all.filter(r=>r.role==='team')).slice(0,2)];
