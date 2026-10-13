@@ -3269,15 +3269,14 @@ function completedRecordYearMenu(rows,scope){
  return `<div class="record-menu-slot">${choiceDropdown(label(chosen),buttons,'달성 기록 연도 선택')}</div>`;
 }
 function sortedCompletedRecords(records){
- const groups=new Map();
- records.forEach((record,index)=>{
-  const key=JSON.stringify([record.n,record.playerId||'',record.metric?.key||record.label||record.kind||'']);
-  if(!groups.has(key))groups.set(key,{records:[],first:index,name:record.n,date:''});
-  const group=groups.get(key);group.records.push(record);
-  if(S(record.date)>group.date)group.date=S(record.date);
- });
- return [...groups.values()].sort((a,b)=>b.date.localeCompare(a.date)||a.name.localeCompare(b.name,'ko')||a.first-b.first).flatMap(group=>group.records.sort((a,b)=>(Number.isFinite(a.target)&&Number.isFinite(b.target)?b.target-a.target:0)||S(b.date).localeCompare(S(a.date))));
+ return records.map((record,index)=>({record,index})).sort((a,b)=>{
+  const newer=S(b.record.date).localeCompare(S(a.record.date));if(newer)return newer;
+  const same=a.record.n===b.record.n&&(a.record.metric?.key||a.record.label||a.record.kind)===(b.record.metric?.key||b.record.label||b.record.kind);
+  if(same&&Number.isFinite(a.record.target)&&Number.isFinite(b.record.target)&&a.record.target!==b.record.target)return b.record.target-a.record.target;
+  return a.index-b.index;
+ }).map(item=>item.record);
 }
+
 function milestonesCompletedView(){
  const numbers=completedNumberMilestones(milestoneScope,milestoneRole,milestoneMetric),special=completedSeasonSpecials(milestoneScope,milestoneRole,milestoneMetric),allRows=milestoneScope==='bears'&&milestoneRole!=='team'?attachBearsOrdinals([...numbers,...special,...(milestoneRole==='pitcher'?bearsSeasonStrikeoutRecords('bears',milestoneMetric):[])],milestoneRole):[...numbers,...special,...(milestoneRole==='pitcher'&&milestoneScope==='season'?bearsSeasonStrikeoutRecords('season',milestoneMetric):[])],chosen=milestoneScope==='season'?String(TODAY.getFullYear()):completedRecordYears[milestoneScope];
  const rows=allRows.filter(r=>chosen==='all'||chosen==='unknown'&&!r.year||String(r.year)===chosen),years=[...new Set(rows.map(r=>r.year))].sort((a,b)=>(b??0)-(a??0));
