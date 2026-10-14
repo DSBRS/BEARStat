@@ -1155,7 +1155,7 @@ function uncachedRecStats(){
     if(e.kboGameId&&!e.manualOverride&&e.kbo?.doosanDecisions){const d=e.kbo.doosanDecisions;addNames(d.winP,'w','pitcher');addNames(d.loseP,'l','pitcher');addNames(d.saveP,'s','pitcher');addNames(d.holdP,'h','pitcher');addNames(d.gwRbi,'g','hitter')}else{addNames(e.winP,'w','pitcher');addNames(e.loseP,'l','pitcher');addNames(e.saveP,'s','pitcher');addNames(e.holdP,'h','pitcher');addNames(e.gwRbi,'g','hitter')}
     if(Array.isArray(e.batting)){e.batting.forEach(p=>{const r=row(S(p.name),'hitter');if(!r)return;r.ab+=+p.atBats||0;r.hit+=+p.hits||0;r.d2+=+p.doubles||0;r.d3+=+p.triples||0;r.hr+=+p.homeRuns||0;if(recLeague==='futures'&&p.stolenBases==null)r.sb=null;else if(r.sb!==null)r.sb+=+p.stolenBases||0;r.bb+=(+p.walks||0)+(+p.intentionalWalks||0);r.hbp+=+p.hitByPitch||0;r.ibb+=+p.intentionalWalks||0;r.rbi+=+p.rbi||0;r.runs+=+p.runs||0;const gdp=battingDoublePlays(p,e);if(gdp===null)r.gdp=null;else if(r.gdp!==null)r.gdp+=gdp;const o=+p.order;if(o>=1&&o<=9)r['o'+o]++})}
     else{const hrs=parseHrEntries(e);if(hrs.length)hrs.forEach(x=>addNames(x.player,'hr','hitter'));else{const hitters=roster.filter(x=>x.t==='hitter').map(x=>x.n).sort((a,b)=>b.length-a.length);S(e.homeRuns).split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(line=>{const n=hitters.find(name=>line===name||line.startsWith(name+' '));if(n)addNames(n,'hr','hitter')})}const rep=(v,k)=>S(v).split(/[,，、\n]+/).map(x=>x.trim()).filter(Boolean).forEach(n=>{const r=row(n,'hitter');if(r)r[k]++});rep(e.doubles,'d2');rep(e.triples,'d3');rep(e.hits,'hit');rep(e.steals,'sb');for(const r of Object.values(m))if(role.get(r.n)==='hitter')r.gdp=null}
-  });Object.values(m).forEach(r=>{r.avg=r.ab?r.hit/r.ab:0;r.phAvg=officialPinchHitAverage(r.n)});return addOPSFields(Object.values(m),recordFilterGames('season'));
+  });Object.values(m).forEach(r=>{r.avg=r.ab?r.hit/r.ab:0;r.phAvg=officialPinchHitAverage(r.n)});return addOPSFields(Object.values(m),recordFilterGames('season'),{officialSeason:true});
 }
 
 function personalKindTabs(){
@@ -2260,11 +2260,12 @@ function opponentBattingSplits(name){
   return [...byTeam.values()].map(r=>({...r,ops:formatOPS(battingRates(r._opsLine).ops),avg:opponentAverage(r.ab,r.hit),homeAvg:opponentAverage(r.homeAb,r.homeHit),awayAvg:opponentAverage(r.awayAb,r.awayHit)}));
 }
 function opponentBattingSheetHTML(name){
+  scheduleSacrificeFlies({games:opponentPlayerGames(name).map(g=>g.event),includePH:false});
   const rows=opponentBattingSplits(name);
   return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div>
     <div class="sheethead"><div><b>${esc(name)}</b><div class="sb">${opponentYear} 시즌 · 상대 구단별 타율</div></div><button class="sheetclose" data-oppclose>×</button></div>
     <div class="ordergrid">${rows.map(r=>`<button type="button" class="orderbox statclick${r.opp===h2h?' on':''}" data-opphist="avgdetail" data-oppplayer="${esc(name)}" data-oppteam="${esc(r.opp)}" aria-label="${esc(r.opp)}전 타율 ${r.avg}, 타격 기록 보기"><b>${r.avg}</b><span>${esc(r.opp)}</span><span style="display:block;margin-top:6px;font-size:11px">OPS ${r.ops}<br>홈 타율 ${r.homeAvg}<br>원정 타율 ${r.awayAvg}</span></button>`).join('')}</div>
-    <div class="note" style="margin-top:14px">정규시즌 종료 경기 기준 · 타율 = 안타 ÷ 타수<br>타수가 없는 상대 구단이나 홈·원정 기록은 —로 표시됩니다.</div>
+    <div class="note" style="margin-top:14px">정규시즌 종료 경기 기준 · 타율 = 안타 ÷ 타수<br>타수가 없는 상대 구단이나 홈·원정 기록은 —로 표시됩니다.<br>OPS도 해당 구단 상대 경기만 합산해요. 필요한 기록은 자동 확인하고, 미확인 항목이 있으면 —로 표시해요.</div>
   </div></div>`;
 }
 
@@ -2312,6 +2313,7 @@ function opponentDetailHistoryHTML(name,opp,stat){
 }
 
 function opponentBattingDetailSheetHTML(name,opp){
+  scheduleSacrificeFlies({games:opponentPlayerGames(name,opp).map(g=>g.event),includePH:false});
   const row=opponentBattingSplits(name).find(r=>r.opp===opp)||{ab:0,hit:0,rbi:0,runs:0,d2:0,d3:0,hr:0,sb:0,avg:'—'};
   row.gw=opponentWinningHitGames(name,opp).length;
   const selected=oppHistorySheet?.detailStat||null;
@@ -2581,6 +2583,7 @@ if(typeof document!=='undefined')document.addEventListener('click',ev=>{
 function opponentStatsView(){
   if(isOpponentPlayerMatchup())return `<div class="brand"><div class="logo">상대전적</div></div>${opponentKindTabs()}${opponentYearMenu()}<div class="chips">${rankedOpponentTeams(opponentYear).map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${t}</button>`).join('')}</div>${recordLimitMenu('opponent',opponentKind)}${opponentPlayerMenu()}${opponentMatchupTable()}${opponentHistorySheetHTML()}`;
   if(opponentKind==='pitcher')return `<div class="brand"><div class="logo">상대전적</div></div>${opponentKindTabs()}${opponentYearMenu()}<div class="chips">${rankedOpponentTeams(opponentYear).map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${t}</button>`).join('')}</div>${recordLimitMenu('opponent',opponentKind)}${opponentPlayerMenu()}${h2h?recordLimitNote('opponent',opponentKind):''}${h2h?opponentPitchingTable():'<div class="empty">상대팀을 선택하세요.</div>'}${opponentHistorySheetHTML()}`;
+  scheduleSacrificeFlies({games:recordFilterGames('opponent'),includePH:false});
   const yr=opponentYear;
   let body='';
   if(h2h){
@@ -3563,10 +3566,10 @@ function verifiedSacrificeFlies(e,name){
  const plays=verifiedMatchupPlays(e,relay,S(name),'hitter');if(!plays)return null;
  return plays.filter(p=>/희생.*플라이/.test(S(p.result))).length;
 }
-function scheduleSacrificeFlies(){
- if(recKind!=='hitter'||recLeague!=='kbo')return;
- const games=recordFilterGames(recScope==='career'?'career':'season').filter(e=>e.type==='kbo'&&!isLiveGame(e)&&/^\d{8}[A-Z]{4}\d$/.test(S(e.kboGameId))&&((e.batting||[]).some(p=>opsSourceNumber(e,p,['sacrificeFlies','sf'])===null&&verifiedSacrificeFlies(e,p.name)===null)||(e.batting||[]).some(p=>/^타/.test(S(p.position).trim())&&!pinchHitFirstPlay(e,p.name,cachedPlayerRelay(e.kboGameId,p.name,'hitter')))));
- const ids=[...new Set(games.map(e=>e.kboGameId))].sort(),key=ids.join(',');if(!ids.length||SACRIFICE_FLY_JOBS.has(key))return;SACRIFICE_FLY_JOBS.add(key);
+function scheduleSacrificeFlies({games:requestedGames=null,includePH=true}={}){
+ if(!requestedGames&&(recKind!=='hitter'||recLeague!=='kbo'))return;
+ const games=(requestedGames||recordFilterGames(recScope==='career'?'career':'season')).filter(e=>e.type==='kbo'&&!isLiveGame(e)&&/^\d{8}[A-Z]{4}\d$/.test(S(e.kboGameId))&&((e.batting||[]).some(p=>opsSourceNumber(e,p,['sacrificeFlies','sf'])===null&&verifiedSacrificeFlies(e,p.name)===null)||includePH&&(e.batting||[]).some(p=>/^타/.test(S(p.position).trim())&&!pinchHitFirstPlay(e,p.name,cachedPlayerRelay(e.kboGameId,p.name,'hitter')))));
+ const ids=[...new Set(games.map(e=>e.kboGameId))].sort(),key=(includePH?'ph+sf:':'sf:')+ids.join(',');if(!ids.length||SACRIFICE_FLY_JOBS.has(key))return;SACRIFICE_FLY_JOBS.add(key);
  Promise.resolve().then(async()=>{
   // Read saved full-game relays in batches before requesting any missing game.
   for(let i=0;i<ids.length;i+=40){const chunk=ids.slice(i,i+40);try{
@@ -3575,7 +3578,7 @@ function scheduleSacrificeFlies(){
    for(const row of rows){const b=row.body;if(b?.schemaVersion===1&&chunk.includes(b.gameId)&&Array.isArray(b.plays))SITUATION_RELAY_CACHE.set(b.gameId,b);}
   }catch{} }
   rerender();
-  const missing=games.filter(e=>(e.batting||[]).some(p=>opsSourceNumber(e,p,['sacrificeFlies','sf'])===null&&verifiedSacrificeFlies(e,p.name)===null)||(e.batting||[]).some(p=>/^타/.test(S(p.position).trim())&&!pinchHitFirstPlay(e,p.name,cachedPlayerRelay(e.kboGameId,p.name,'hitter'))));let next=0;
+  const missing=games.filter(e=>(e.batting||[]).some(p=>opsSourceNumber(e,p,['sacrificeFlies','sf'])===null&&verifiedSacrificeFlies(e,p.name)===null)||includePH&&(e.batting||[]).some(p=>/^타/.test(S(p.position).trim())&&!pinchHitFirstPlay(e,p.name,cachedPlayerRelay(e.kboGameId,p.name,'hitter'))));let next=0;
   await Promise.all(Array.from({length:2},async()=>{while(next<missing.length){const e=missing[next++];try{await readSituationRelay(e.kboGameId,'','hitter','background')}catch{}rerender();}}));
  }).catch(()=>{});
 }
@@ -3604,10 +3607,10 @@ function battingRates(line){
  return {slg,obp,ops:slg!==null&&obp!==null?slg+obp:null};
 }
 function formatOPS(value){return Number.isFinite(value)?value.toFixed(3):'—'}
-function addOPSFields(rows,games){
+function addOPSFields(rows,games,{officialSeason=false}={}){
  const byName=new Map();let missingBox=false;
  for(const e of games){if(!Array.isArray(e.batting)){missingBox=true;continue}for(const p of e.batting){const name=S(p.name);if(!name)continue;if(!byName.has(name))byName.set(name,[]);byName.get(name).push(opsBattingLine(e,p))}}
- return rows.map(row=>{const line=missingBox?sumOpsLines([]):sumOpsLines(byName.get(row.n)||[]),rates=battingRates(line);const officialOPS=naverAdvancedValue(row.n,'hitter','ops');return {...row,_opsLine:line,sf:line.sf,ops:officialOPS??rates.ops,opsOfficial:officialOPS!==null,obp:rates.obp,slg:rates.slg,wrcPlus:naverAdvancedValue(row.n,'hitter','wrcPlus'),war:naverAdvancedValue(row.n,'hitter','war')}});
+ return rows.map(row=>{const line=missingBox?sumOpsLines([]):sumOpsLines(byName.get(row.n)||[]),rates=battingRates(line);const officialOPS=officialSeason?naverAdvancedValue(row.n,'hitter','ops'):null;return {...row,_opsLine:line,sf:line.sf,ops:officialOPS??rates.ops,opsOfficial:officialOPS!==null,obp:rates.obp,slg:rates.slg,wrcPlus:officialSeason?naverAdvancedValue(row.n,'hitter','wrcPlus'):null,war:officialSeason?naverAdvancedValue(row.n,'hitter','war'):null}});
 }
 function summedOPS(rows){return battingRates(sumOpsLines(rows.map(r=>r._opsLine))).ops}
 
