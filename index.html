@@ -1126,7 +1126,8 @@ function recordSeasonLabel(){return recLeague==='kbo'?(recSeason==='all'?'통합
 function battingDoublePlays(p,e){
   const explicit=recordNumber(p,['groundedIntoDoublePlay','groundedIntoDoublePlays','gdp','GDP']);
   if(explicit!==null)return explicit;
-  if(e.manualOverride||!e.kbo?.etc||e.source==='futures')return null;
+  const relayValue=verifiedRelayBattingStat(e,p.name,'gdp');if(relayValue!==null)return relayValue;
+ if(e.manualOverride||!e.kbo?.etc||e.source==='futures')return null;
   const text=S(e.kbo.etc['병살타']);
   const escaped=S(p?.name).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   const pattern=new RegExp('(?:^|[\\s,])'+escaped+'(\\d+)?[（(]([^）)]*)[）)]','g');
@@ -1181,6 +1182,7 @@ function officialPinchHitAverage(name,year=recYear,league=recLeague,season=recSe
 }
 function pinchHitAverageText(value){return typeof value==='number'&&Number.isFinite(value)?(value>=1?value.toFixed(3):value.toFixed(3).slice(1)):'—'}
 function pinchHitAverageNote(){
+  if(recSeason!=='regular'||recPeriod!=='season')return '<details class="phnote"><summary>대타타율 안내</summary><p>선택한 경기의 대타 첫 타석을 합산해 계산해요. 대타 안타 ÷ 대타 타수이며, 볼넷·사구·희생플라이는 타수에서 제외해요. 경기 내역을 확인하는 동안에는 —로 표시해요.</p></details>';
   if(recPeriod!=='season')return '';
   return `<details class="phnote"><summary>대타타율 안내</summary><p><a href="${KBO_PINCH_HIT_SNAPSHOT.source}" target="_blank" rel="noopener noreferrer">KBO 공식 시즌 기록</a> · ${S(KBO_PINCH_HIT_BY_YEAR[recYear]?.updatedAt).slice(0,10)||KBO_PINCH_HIT_SNAPSHOT.checkedAt} 확인<br>${KBO_PINCH_HIT_BY_YEAR[recYear]?'KBO에 반영된 수치를 자동 확인해요.':'자동 수신 전에는 마지막 확인값을 표시해요.'} 이적 전 기록이 포함될 수 있어요.<br>—는 미확인 기록이에요. 공식 대타 타수·안타가 없어 합계는 표시하지 않아요.<br>경기 내역은 저장된 두산 경기의 대타 첫 타석을 문자중계로 확인해요.</p></details>`;
 }
@@ -1484,7 +1486,7 @@ function pinchHitHistoryCandidates(name){
 }
 function pinchHitFirstPlay(event,name,relay){
   const id=S(event.kboGameId);
-  if(!relay||!relayPlayerAvailable(relay,id,name,'hitter'))return null;
+  if(!relay||!verifiedBattingPlays(event,name,relay))return null;
   const entry=(event.batting||[]).find(p=>S(p.name)===S(name)&&/^타/.test(S(p.position).trim()));
   if(!entry)return null;
   const side=id.slice(8,10)==='OB'?'away':'home';
@@ -3849,28 +3851,35 @@ function fillCareerFromTable(){
  }catch(e){msg.textContent=e.message}
 }
 
-const SACRIFICE_FLY_JOBS=new Set();
-function verifiedSacrificeFlies(e,name){
- const relay=cachedPlayerRelay(S(e.kboGameId),S(name),'hitter');
- if(!relay||!Array.isArray(relay.plays))return null;
- const plays=verifiedMatchupPlays(e,relay,S(name),'hitter');if(!plays)return null;
- return plays.filter(p=>/희생.*플라이/.test(S(p.result))).length;
+const SACRIFICE_FLY_JOBS=new Map();
+function verifiedBattingPlays(e,name,providedRelay=null){
+ const relay=providedRelay||cachedPlayerRelay(S(e.kboGameId),S(name),'hitter');if(!relay||!Array.isArray(relay.plays))return null;
+ const entries=(e.batting||[]).filter(p=>S(p.name)===S(name));if(!entries.length)return null;
+ const side=S(e.kboGameId).slice(8,10)==='OB'?'away':'home',plays=relay.plays.filter(p=>p.side===side&&S(p.batter)===S(name));
+ for(const [key,fields] of [['ab',['atBats','ab']],['hit',['hits','hit']],['hr',['homeRuns','hr']],['hbp',['hitByPitch','hbp']]]){
+  const expected=entries.map(p=>recordNumber(p,fields));if(expected.some(v=>v===null)){if(key==='ab'||key==='hit')return null;continue;}
+  if(plays.some(p=>!Number.isFinite(p.stats?.[key]))||plays.reduce((n,p)=>n+p.stats[key],0)!==expected.reduce((a,b)=>a+b,0))return null;
+ }
+ const pa=entries.map(p=>recordNumber(p,['plateAppearances','pa']));if(pa.every(v=>v!==null)&&plays.length!==pa.reduce((a,b)=>a+b,0))return null;
+ const bb=entries.map(p=>recordNumber(p,['walks','bb']));if(bb.every(v=>v!==null)&&plays.reduce((n,p)=>n+(p.stats?.bb||0),0)!==entries.reduce((n,p)=>n+recordNumber(p,['walks','bb'])+(recordNumber(p,['intentionalWalks','ibb'])||0),0))return null;
+ return plays;
 }
+function verifiedRelayBattingStat(e,name,key){const plays=verifiedBattingPlays(e,name);if(!plays)return null;const parts=plays.map(p=>recordNumber(p.stats,[key])??(key==='sf'&&S(p.result)?Number(/희생.*플라이|희비/.test(S(p.result))):null));return parts.every(Number.isFinite)?parts.reduce((a,b)=>a+b,0):null;}
+
+function verifiedSacrificeFlies(e,name){return verifiedRelayBattingStat(e,name,'sf');}
+
 function scheduleSacrificeFlies({games:requestedGames=null,includePH=true}={}){
  if(!requestedGames&&(recKind!=='hitter'||recLeague!=='kbo'))return;
- const games=(requestedGames||recordFilterGames(recScope==='career'?'career':'season')).filter(e=>e.type==='kbo'&&!isLiveGame(e)&&/^\d{8}[A-Z]{4}\d$/.test(S(e.kboGameId))&&((e.batting||[]).some(p=>opsSourceNumber(e,p,['sacrificeFlies','sf'])===null&&verifiedSacrificeFlies(e,p.name)===null)||includePH&&(e.batting||[]).some(p=>/^타/.test(S(p.position).trim())&&!pinchHitFirstPlay(e,p.name,cachedPlayerRelay(e.kboGameId,p.name,'hitter')))));
- const ids=[...new Set(games.map(e=>e.kboGameId))].sort(),key=(includePH?'ph+sf:':'sf:')+ids.join(',');if(!ids.length||SACRIFICE_FLY_JOBS.has(key))return;SACRIFICE_FLY_JOBS.add(key);
+ const source=requestedGames||recordFilterGames(recScope==='career'?'career':'season'),eligible=source.filter(e=>e.type==='kbo'&&!isLiveGame(e)&&/^\d{8}[A-Z]{4}\d$/.test(S(e.kboGameId)));
+ const needs=e=>(e.batting||[]).some(p=>OPS_FIELDS.some(key=>opsBattingLine(e,p)[key]===null)||battingDoublePlays(p,e)===null)||includePH&&(e.batting||[]).some(p=>/^타/.test(S(p.position).trim())&&!pinchHitFirstPlay(e,p.name,cachedPlayerRelay(e.kboGameId,p.name,'hitter')));
+ const ids=[...new Set(eligible.map(e=>e.kboGameId))].sort(),key=(includePH?'ph+sf:':'sf:')+ids.join(',');if(!ids.length||!eligible.some(needs))return;
+ const prior=SACRIFICE_FLY_JOBS.get(key);if(prior?.running||prior&&Date.now()-prior.at<60000)return;
+ const job={running:true,at:Date.now(),done:0,total:0};SACRIFICE_FLY_JOBS.set(key,job);
  Promise.resolve().then(async()=>{
-  // Read saved full-game relays in batches before requesting any missing game.
-  for(let i=0;i<ids.length;i+=40){const chunk=ids.slice(i,i+40);try{
-   const query=new URLSearchParams({select:'key,body',key:'in.('+chunk.map(id=>'kbo_relay_'+id).join(',')+')'});
-   const rows=await relayJSON(SUPABASE_URL+'/rest/v1/kv?'+query,20000,'background','sf-cache:'+chunk.join(','));
-   for(const row of rows){const b=row.body;if(b?.schemaVersion===1&&chunk.includes(b.gameId)&&Array.isArray(b.plays))SITUATION_RELAY_CACHE.set(b.gameId,b);}
-  }catch{} }
-  rerender();
-  const missing=games.filter(e=>(e.batting||[]).some(p=>opsSourceNumber(e,p,['sacrificeFlies','sf'])===null&&verifiedSacrificeFlies(e,p.name)===null)||includePH&&(e.batting||[]).some(p=>/^타/.test(S(p.position).trim())&&!pinchHitFirstPlay(e,p.name,cachedPlayerRelay(e.kboGameId,p.name,'hitter'))));let next=0;
-  await Promise.all(Array.from({length:2},async()=>{while(next<missing.length){const e=missing[next++];try{await readSituationRelay(e.kboGameId,'','hitter','background')}catch{}rerender();}}));
- }).catch(()=>{});
+  for(let i=0;i<ids.length;i+=40){const chunk=ids.slice(i,i+40);try{const query=new URLSearchParams({select:'key,body',key:'in.('+chunk.map(id=>'kbo_relay_'+id).join(',')+')'}),rows=await relayJSON(SUPABASE_URL+'/rest/v1/kv?'+query,20000,'background','sf-cache:'+chunk.join(','));for(const row of rows){const b=row.body;if(b?.schemaVersion===1&&chunk.includes(b.gameId)&&Array.isArray(b.plays))SITUATION_RELAY_CACHE.set(b.gameId,b);}}catch{} }
+  const missing=eligible.filter(needs);job.total=missing.length;rerender();let next=0;
+  await Promise.all(Array.from({length:2},async()=>{while(next<missing.length){const e=missing[next++];try{await readSituationRelay(e.kboGameId,'','hitter','background',true);}catch{}job.done++;rerender();}}));
+ }).catch(()=>{}).finally(()=>{job.running=false;job.at=Date.now();rerender();});
 }
 
 const OPS_FIELDS=['ab','hit','d2','d3','hr','bb','hbp','sf','tb'];
@@ -3885,6 +3894,7 @@ function opsBattingLine(e,p){
  const bb=opsSourceNumber(e,p,['walks','bb']),ibb=opsSourceNumber(e,p,['intentionalWalks','ibb']);line.bb=bb===null?null:bb+(ibb??0);
  if(line.sf===null&&e.type==='kbo'&&e.kbo?.parserVersion&&e.kbo.etc&&Object.hasOwn(e.kbo.etc,'희생플라이')&&typeof e.kbo.etc==='object'&&(!e.manualOverride||(e.kbo.hitters||[]).flat().some(q=>q&&S(q.name)===S(p.name)&&S(q.teamId)==='OB')))line.sf=recordEtcCount(e.kbo.etc['희생플라이'],p.name);
  if(line.sf===null)line.sf=verifiedSacrificeFlies(e,p.name);
+ for(const key of ['ab','hit','d2','d3','hr','bb','hbp'])if(line[key]===null)line[key]=verifiedRelayBattingStat(e,p.name,key);
  if(line.tb===null&&[line.hit,line.d2,line.d3,line.hr].every(Number.isFinite))line.tb=line.hit+line.d2+2*line.d3+3*line.hr;
  return line;
 }
