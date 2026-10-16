@@ -223,6 +223,7 @@ nav a:last-child{flex:1.35}
   input,select,textarea{font-size:14px}
   .btn{max-width:420px}
 }
+.record-guide{margin:20px 0;text-align:left}.record-guide-content{margin-top:8px}.record-guide-content p{margin:8px 0}.record-guide summary{padding:6px 0}
 </style>
 
 <style>
@@ -541,7 +542,7 @@ let mergedEventCache=null;
 Repo.all=function(){
  const refs=[CUSTOM,KBO_AUTO,FUTURES_AUTO,HIDDEN_AUTO_IDS];
  if(mergedEventCache&&refs.every((ref,i)=>ref===mergedEventCache.refs[i])){KBO_MERGE_WARNINGS=mergedEventCache.warnings;return mergedEventCache.rows;}
- const rows=(()=>{const automatic=new Map();for(const e of [...KBO_AUTO,...FUTURES_AUTO])automatic.set(e.type+':'+(e.kboGameId||e.id),e);const x=mergeEvents(_manualAll(),[...automatic.values()]);KBO_MERGE_WARNINGS=x.warnings;const hidden=new Set(HIDDEN_AUTO_IDS.map(S));return x.rows.filter(e=>!(e.kboGameId&&hidden.has(S(e.kboGameId))));})();
+ const rows=(()=>{const automatic=new Map(),previousGames=new Map(KBO_AUTO.map(e=>[e.kboGameId,e]));for(const e of [...KBO_AUTO,...FUTURES_AUTO])automatic.set(e.type+':'+(e.kboGameId||e.id),e);const x=mergeEvents(_manualAll(),[...automatic.values()]);KBO_MERGE_WARNINGS=x.warnings;const hidden=new Set(HIDDEN_AUTO_IDS.map(S));return x.rows.filter(e=>!(e.kboGameId&&hidden.has(S(e.kboGameId))));})();
  mergedEventCache={refs,rows,warnings:KBO_MERGE_WARNINGS};return rows;
 };
 Repo.load=async function(){
@@ -553,19 +554,17 @@ Repo.load=async function(){
       const b=row.body;if(!b||typeof b!=='object')continue;
       const future=b.type==='futures'||S(b.kbo?.leagueId)==='2'||S(row.raw?.game?.LE_ID)==='2';
       const event=future?futuresEvent(row):{...b,type:'kbo',source:b.source||'kbo',status:b.status||((b.score&&S(b.score.d)!==''&&S(b.score.v)!=='')?'final':'scheduled')};
-      if(event){const before=KBO_AUTO.find(e=>e.kboGameId===event.kboGameId);if(before&&isLiveGame(before)){SITUATION_RELAY_CACHE.delete(event.kboGameId);for(const key of RELAY_PLAYER_CACHE.keys())if(key.includes(event.kboGameId))RELAY_PLAYER_CACHE.delete(key);}automatic.set(event.type+':'+(event.kboGameId||event.id),event);}
+      if(event){const before=previousGames.get(event.kboGameId);if(before&&isLiveGame(before)){SITUATION_RELAY_CACHE.delete(event.kboGameId);for(const key of RELAY_PLAYER_CACHE.keys())if(key.includes(event.kboGameId))RELAY_PLAYER_CACHE.delete(key);}automatic.set(event.type+':'+(event.kboGameId||event.id),event);}
     }
     KBO_AUTO=[...automatic.values()];
     KBO_WARNING=''
   }catch(e){KBO_WARNING='KBO 자동 기록을 갱신하지 못했습니다. 저장된 수동 일정은 계속 사용할 수 있습니다.'}}
-  await loadFuturesGames();
-  await _manualLoad();
-  await loadCareerBaselines();
-  await loadKboSituational();
-  await loadOfficialPinchHit();
-  await loadNaverAdvanced();
-  await loadFuturesProgress();
-  await loadHistoricalProgress();
+  // Render available game records before independent auxiliary requests finish.
+  rerender();
+  await Promise.allSettled([
+    loadFuturesGames, _manualLoad, loadCareerBaselines, loadKboSituational,
+    loadOfficialPinchHit, loadNaverAdvanced, loadFuturesProgress, loadHistoricalProgress
+  ].map(async load=>{try{await load()}finally{rerender()}}));
   rerender();
 };
 Repo.upsert=async function(ev){
@@ -581,7 +580,7 @@ function isUpcomingKbo(e){
 
 let queuedRerender=null;
 function rerender(){if(queuedRerender!==null)return;queuedRerender=setTimeout(()=>{queuedRerender=null;rerenderNow()},150);}
-function rerenderNow(){if(document.body.dataset.r==='admin'&&adminView==='form'&&document.querySelector('[data-admin-step]'))return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;const historyTop=document.querySelector('.historybox')?.scrollTop;const y=scrollY,opponentScroll=document.querySelector('.opp-scroll,.record-scroll')?.scrollLeft;route2();if(opponentScroll!==undefined){const scroller=document.querySelector('.opp-scroll,.record-scroll');if(scroller)scroller.scrollLeft=opponentScroll;}const history=document.querySelector('.historybox');if(history&&historyTop!==undefined)history.scrollTop=historyTop;scrollTo(0,y)}
+function rerenderNow(){if(document.body.dataset.r==='admin'&&adminView==='form'&&document.querySelector('[data-admin-step]'))return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;const guideOpen=document.querySelector('.record-guide')?.open;const historyTop=document.querySelector('.historybox')?.scrollTop;const y=scrollY,opponentScroll=document.querySelector('.opp-scroll,.record-scroll')?.scrollLeft;route2();if(guideOpen){const guide=document.querySelector('.record-guide');if(guide)guide.open=true;}if(opponentScroll!==undefined){const scroller=document.querySelector('.opp-scroll,.record-scroll');if(scroller)scroller.scrollLeft=opponentScroll;}const history=document.querySelector('.historybox');if(history&&historyTop!==undefined)history.scrollTop=historyTop;scrollTo(0,y)}
 let authRevision=0;
 async function setUser(sess){
   const revision=++authRevision;isOwner=false;packingUserId='';
@@ -1165,7 +1164,7 @@ function advancedDisplay(value,key){return typeof value==='number'&&Number.isFin
 function advancedCards(name,role){if(!advancedRecordContext()||(role==='pitcher'&&pitcherHistoryRole!=='all'))return '';const keys=role==='hitter'?[['wrcPlus','wRC+'],['war','WAR']]:[['war','WAR']];return keys.map(([k,l])=>`<div class="orderbox"><b>${advancedDisplay(naverAdvancedValue(name,role,k),k)}</b><span>${l}</span></div>`).join('');}
 function battingCalculationHTML(r){
  const line=r?._opsLine,rates=battingRates(line),n=v=>Number.isFinite(v)?v:'—';
- return `<details class="phnote"><summary>계산 방법 · OPS / wRC+ / WAR</summary><p>OPS = 출루율 + 장타율<br>출루율 = (안타 + 볼넷 + 사구) ÷ (타수 + 볼넷 + 사구 + 희생플라이)<br>장타율 = 총루타 ÷ 타수<br>총루타 = 안타 + 2루타 + 2 × 3루타 + 3 × 홈런${line?`<br><br>선택한 기록: ${n(line.ab)}타수 ${n(line.hit)}안타 · 볼넷 ${n(line.bb)} · 사구 ${n(line.hbp)} · 희플 ${n(line.sf)} · 총루타 ${n(line.tb)}<br>출루율 ${formatOPS(rates.obp)} + 장타율 ${formatOPS(rates.slg)} = OPS ${formatOPS(rates.ops)}`:''}<br><br>wRC+는 가중 출루율을 바탕으로 리그 평균과 구장 환경을 보정한 득점 생산 지표예요. 리그 평균은 100이에요.<br>WAR은 대체 선수와 비교한 승리 기여도예요. 타자는 타격·주루·수비·포지션, 투수는 투구 성과 등의 평가를 반영해요.<br>wRC+·WAR은 <a href="https://m.sports.naver.com/kbaseball/record/kbo" target="_blank" rel="noopener noreferrer">네이버 스포츠</a>의 시즌 정규시즌 수치를 그대로 불러와요. 상세 계산 계수는 이 앱에서 계산하거나 추정하지 않아요.${r?.opsOfficial?'<br>표의 OPS는 네이버 시즌 전체 수치예요. 위 계산은 저장된 경기 기준이라 수집 중에는 다를 수 있어요.':''}${advancedRecordContext()?`<br>자료 확인: ${esc(S(NAVER_ADVANCED_BY_YEAR[recYear]?.updatedAt).slice(0,10)||'미확인')}`:'<br>기간별·포스트시즌·통산 wRC+와 WAR은 별도 자료가 없어 표시하지 않아요.'}</p></details>`;
+ return `<details class="phnote"><summary>계산 방법 · OPS / wRC+ / WAR</summary><p>OPS = 출루율 + 장타율<br>출루율 = (안타 + 볼넷 + 사구) ÷ (타수 + 볼넷 + 사구 + 희생플라이)<br>장타율 = 총루타 ÷ 타수<br>총루타 = 안타 + 2루타 + 2 × 3루타 + 3 × 홈런${line?`<br><br>선택한 기록: ${n(line.ab)}타수 ${n(line.hit)}안타 · 볼넷 ${n(line.bb)} · 사구 ${n(line.hbp)} · 희플 ${n(line.sf)} · 총루타 ${n(line.tb)}<br>출루율 ${formatOPS(rates.obp)} + 장타율 ${formatOPS(rates.slg)} = OPS ${formatOPS(rates.ops)}`:''}<br><br>wRC+는 가중 출루율을 바탕으로 리그 평균과 구장 환경을 보정한 득점 생산 지표예요. 리그 평균은 100이에요.<br>WAR은 대체 선수와 비교한 승리 기여도예요. 타자는 타격·주루·수비·포지션, 투수는 투구 성과 등의 평가를 반영해요.<br>시즌 OPS·wRC+·WAR은 <a href="https://m.sports.naver.com/kbaseball/record/kbo" target="_blank" rel="noopener noreferrer">네이버 스포츠</a>의 시즌 정규시즌 수치를 그대로 불러와요. 상세 계산 계수는 이 앱에서 계산하거나 추정하지 않아요.${r?.opsOfficial?'<br>표의 OPS는 네이버 시즌 전체 수치예요. 위 계산은 저장된 경기 기준이라 수집 중에는 다를 수 있어요.':''}${advancedRecordContext()?'':'<br>기간별·포스트시즌·통산 wRC+와 WAR은 별도 자료가 없어 표시하지 않아요.'}</p></details>`;
 }
 function pitcherCalculationHTML(){return `<details class="phnote"><summary>계산 방법 · 평균자책점 / WAR</summary><p>평균자책점 = 자책점 × 9 ÷ 투구 이닝<br>1아웃은 ⅓이닝으로 계산해요. 1.2이닝은 1⅔이닝이에요.<br>WAR은 <a href="https://m.sports.naver.com/kbaseball/record/kbo" target="_blank" rel="noopener noreferrer">네이버 스포츠</a>의 정규시즌 수치예요. 이 앱에서 직접 계산하지 않아요. 선발·구원 또는 기간별 수치로 나누지 않아요.</p></details>`;}
 
@@ -1183,9 +1182,11 @@ function officialPinchHitAverage(name,year=recYear,league=recLeague,season=recSe
 }
 function pinchHitAverageText(value){return typeof value==='number'&&Number.isFinite(value)?(value>=1?value.toFixed(3):value.toFixed(3).slice(1)):'—'}
 function pinchHitAverageNote(){
-  if(recSeason!=='regular'||recPeriod!=='season')return '<details class="phnote"><summary>대타타율 안내</summary><p>선택한 경기의 대타 첫 타석을 합산해 계산해요. 대타 안타 ÷ 대타 타수이며, 볼넷·사구·희생플라이는 타수에서 제외해요. 경기 내역을 확인하는 동안에는 —로 표시해요.</p></details>';
-  if(recPeriod!=='season')return '';
-  return `<details class="phnote"><summary>대타타율 안내</summary><p><a href="${KBO_PINCH_HIT_SNAPSHOT.source}" target="_blank" rel="noopener noreferrer">KBO 공식 시즌 기록</a> · ${S(KBO_PINCH_HIT_BY_YEAR[recYear]?.updatedAt).slice(0,10)||KBO_PINCH_HIT_SNAPSHOT.checkedAt} 확인<br>${KBO_PINCH_HIT_BY_YEAR[recYear]?'KBO에 반영된 수치를 자동 확인해요.':'자동 수신 전에는 마지막 확인값을 표시해요.'} 이적 전 기록이 포함될 수 있어요.<br>—는 미확인 기록이에요. 공식 대타 타수·안타가 없어 합계는 표시하지 않아요.<br>경기 내역은 저장된 두산 경기의 대타 첫 타석을 문자중계로 확인해요.</p></details>`;
+ if(recSeason!=='regular'||recPeriod!=='season')return '<p>대타타율은 선택한 경기의 대타 첫 타석을 합산해 계산해요. 대타 안타 ÷ 대타 타수이며, 볼넷·사구·희생플라이는 타수에서 제외해요. 경기 내역을 확인하는 동안에는 —로 표시해요.</p>';
+ return `<p>대타타율은 <a href="${KBO_PINCH_HIT_SNAPSHOT.source}" target="_blank" rel="noopener noreferrer">KBO 공식 시즌 기록</a> 기준이에요. 이적 전 기록이 포함될 수 있어요.<br>—는 미확인 기록이에요. 공식 대타 타수·안타가 없어 합계는 표시하지 않아요.<br>경기 내역은 저장된 두산 경기의 대타 첫 타석을 문자중계로 확인해요.</p>`;
+}
+function recordGuideHTML(sortLabel){
+ return `<details class="phnote record-guide"><summary>안내</summary><div class="record-guide-content">${recKind==='hitter'&&recBatTab==='main'?pinchHitAverageNote():''}<p>OPS 계산에 필요한 기록이 누락되면 —로 표시해요.<br>${recYear}년 ${recordLeagueLabel()}${recordSeasonLabel()?' · '+recordSeasonLabel():''} · 두산 선수 명단 기준</p><p>시즌 OPS·시즌 OPS·wRC+·WAR은 <a href="https://m.sports.naver.com/kbaseball/record/kbo" target="_blank" rel="noopener noreferrer">네이버 스포츠</a> 기준이에요. 네이버 값이 있는 경우 정규시즌 전체 기록을 표시해요. 그 외 기간의 OPS와 다른 항목은 저장된 경기 기준이에요.</p><p>${sortLabel}${recLeague==='futures'?'<br>'+futuresRecordNote():''}</p></div></details>`;
 }
 
 function recStats(){return recordRenderMemo('stats:'+recYear+':'+recLeague+':'+recSeason+':'+recPostStage+':'+recordPeriodKey(),uncachedRecStats)}
@@ -2236,7 +2237,7 @@ function records(){
   ${recordTabs()}
   ${historyCollectionNote()}
   ${rows.length?`<div class="card"><div class="recscroll record-scroll">${recordTableStart(cols,false,rows.map(r=>r.n))}<tr>${head}</tr>${rows.map(r=>`<tr>${cols.map(([k])=>`<td${k!=='n'&&recSort?.k===k?' class="selected-stat"':''}>${k==='n'?`<button class="playerlink" data-player="${esc(r.n)}">${esc(r.n)}</button>`:recKind==='hitter'&&recBatTab==='main'&&k==='ab'?`<button type="button" class="playerlink" data-player="${esc(r.n)}" data-abhistory aria-label="${esc(r.n)} 타수 내역">${r.ab}</button>`:k==='phAvg'?`<button type="button" class="playerlink" data-player="${esc(r.n)}" data-phhistory aria-label="${esc(r.n)} 대타 타석 기록">${pinchHitAverageText(r.phAvg)}</button>`:['wrcPlus','war'].includes(k)?advancedDisplay(r[k],k):k==='ops'?formatOPS(r.ops):k==='avg'?(r.avg>=1?'1.000':r.avg.toFixed(3).slice(1)):r[k]===null?'—':r[k]}</td>`).join('')}</tr>`).join('')}${recKind==='pitcher'?pitcherTotalsRow(rows,cols):hitterTotalsRow(rows,cols)}</table></div></div>`:`<div class="card"><div class="empty">선택한 기준에 해당하는 ${recKind==='pitcher'?'투수':'타자'} 기록이 없습니다.</div></div>`}
-  <div class="foot">${recKind==='hitter'&&recBatTab==='main'?pinchHitAverageNote()+'<br>':''}OPS 계산에 필요한 기록이 누락되면 —로 표시해요.<br>${recYear}년 ${recordLeagueLabel()}${recordSeasonLabel()?' · '+recordSeasonLabel():''} · 두산 선수 명단 기준${advancedRecordContext()?'<br>네이버 값이 있는 시즌 OPS·wRC+·WAR은 시즌 전체 기록이에요. 다른 항목은 저장된 경기 기준이에요.':''}<br>${st}${recLeague==='futures'?'<br>'+futuresRecordNote():''}</div>${playerSheetHTML()}`;
+  ${recordGuideHTML(st)}${playerSheetHTML()}`;
 }
 
 
@@ -3893,8 +3894,10 @@ function scheduleSacrificeFlies({games:requestedGames=null,includePH=true}={}){
  if(!requestedGames&&(recKind!=='hitter'||recLeague!=='kbo'))return;
  const source=requestedGames||recordFilterGames(recScope==='career'?'career':'season'),eligible=source.filter(e=>e.type==='kbo'&&!isLiveGame(e)&&/^\d{8}[A-Z]{4}\d$/.test(S(e.kboGameId)));
  const needs=e=>(e.batting||[]).some(p=>OPS_FIELDS.some(key=>opsBattingLine(e,p)[key]===null)||battingDoublePlays(p,e)===null)||includePH&&(e.batting||[]).some(p=>/^타/.test(S(p.position).trim())&&!pinchHitFirstPlay(e,p.name,cachedPlayerRelay(e.kboGameId,p.name,'hitter')));
- const ids=[...new Set(eligible.map(e=>e.kboGameId))].sort(),key=(includePH?'ph+sf:':'sf:')+ids.join(',');if(!ids.length||!eligible.some(needs))return;
+ const scopeIds=[...new Set(eligible.map(e=>e.kboGameId))].sort(),key=(includePH?'ph+sf:':'sf:')+scopeIds.join(',');if(!scopeIds.length)return;
  const prior=SACRIFICE_FLY_JOBS.get(key);if(prior?.running||prior&&Date.now()-prior.at<60000)return;
+ const needed=eligible.filter(needs);if(!needed.length)return;
+ const ids=[...new Set(needed.map(e=>e.kboGameId))].sort();
  const job={running:true,at:Date.now(),done:0,total:0};SACRIFICE_FLY_JOBS.set(key,job);
  Promise.resolve().then(async()=>{
   for(let i=0;i<ids.length;i+=40){const chunk=ids.slice(i,i+40);try{const query=new URLSearchParams({select:'key,body',key:'in.('+chunk.map(id=>'kbo_relay_'+id).join(',')+')'}),rows=await relayJSON(SUPABASE_URL+'/rest/v1/kv?'+query,20000,'background','sf-cache:'+chunk.join(','));for(const row of rows){const b=row.body;if(b?.schemaVersion===1&&chunk.includes(b.gameId)&&Array.isArray(b.plays))SITUATION_RELAY_CACHE.set(b.gameId,b);}}catch{} }
