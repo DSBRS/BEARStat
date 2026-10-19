@@ -400,6 +400,19 @@ let adminRosterYear=TODAY.getFullYear(),adminEduRosterYear=TODAY.getFullYear();
 let adminCalDate=TS,adminCalView=new Date(TODAY.getFullYear(),TODAY.getMonth(),1),adminSearch='',adminView='manage';
 let adminFormStep=1;
 function requireAdmin(){if(!isOwner)throw new Error('관리자 로그인 후 사용할 수 있습니다');}
+let manualMutationRevision=0;
+async function readPaged(table,columns,configure=q=>q){
+  const rows=[];
+  for(let start=0;;start+=500){
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
+    let result;
+    try{result=await configure(SB.from(table).select(columns)).range(start,start+499).abortSignal(controller.signal)}finally{clearTimeout(timer)}
+    if(result.error)throw result.error;
+    rows.push(...(result.data||[]));
+    if((result.data||[]).length<500)return rows;
+    await new Promise(resolve=>setTimeout(resolve,0));
+  }
+}
 const live=()=>CUSTOM.some(e=>e.source==='kbo');
 const Repo={
   all(){const a=DEMO.concat(CUSTOM),k=e=>e.date+e.type,isG=e=>e.type==='kbo',lv=CUSTOM.some(e=>e.source==='kbo'),real=new Set(a.filter(e=>!e.demo&&isG(e)).map(k));
@@ -409,15 +422,25 @@ const Repo={
   async saveEduRoster(rows,year=adminEduRosterYear){requireAdmin();if(!SB)throw new Error('Supabase 설정이 필요합니다');rows=normRoster(rows);const y=+year||TODAY.getFullYear(),key='edu_roster_'+y;const r=await SB.from('kv').upsert({key,body:rows});if(r.error)throw r.error;EDU_ROSTERS_BY_YEAR[y]=rows;rerender()},
   async hideAuto(id){requireAdmin();if(!SB)throw new Error('Supabase 설정이 필요합니다');const next=[...new Set([...HIDDEN_AUTO_IDS,S(id)].filter(Boolean))];const r=await SB.from('kv').upsert({key:'hidden_auto_events',body:next});if(r.error)throw r.error;HIDDEN_AUTO_IDS=next;rerender()},
   async restoreAuto(id){requireAdmin();if(!SB)throw new Error('Supabase 설정이 필요합니다');const next=HIDDEN_AUTO_IDS.filter(x=>S(x)!==S(id));const r=await SB.from('kv').upsert({key:'hidden_auto_events',body:next});if(r.error)throw r.error;HIDDEN_AUTO_IDS=next;rerender()},
-  async load(){const r=await SB.from('events').select('body');if(!r.error)CUSTOM=r.data.map(x=>x.body);
-    const ks=await SB.from('kv').select('key,body').like('key','standings_others%');if(!ks.error){let legacy=null;for(const x of ks.data||[]){if(x.key==='standings_others')legacy=x.body;else{const m=String(x.key).match(/^standings_others_(\d{4})$/);if(m)OTHERS_BY_YEAR[+m[1]]=x.body}}if(!OTHERS_BY_YEAR[TODAY.getFullYear()]&&legacy)OTHERS=legacy;else OTHERS=OTHERS_BY_YEAR[TODAY.getFullYear()]||[]}
-    const br=await SB.from('kv').select('key,body').like('key','bears_roster%');if(!br.error){let legacy=null;for(const x of br.data||[]){if(x.key==='bears_roster')legacy=normRoster(x.body);else{const m=String(x.key).match(/^bears_roster_(\d{4})$/);if(m)ROSTERS_BY_YEAR[+m[1]]=normRoster(x.body)}}BEARS_ROSTER=ROSTERS_BY_YEAR[TODAY.getFullYear()]||legacy||[]}
-    const er=await SB.from('kv').select('key,body').like('key','edu_roster_%');if(!er.error){for(const x of er.data||[]){const m=String(x.key).match(/^edu_roster_(\d{4})$/);if(m)EDU_ROSTERS_BY_YEAR[+m[1]]=normRoster(x.body)}}
-    const asr=await SB.from('kv').select('key,body').like('key','standings_auto_%');if(!asr.error){for(const x of asr.data||[]){const m=String(x.key).match(/^standings_auto_(\d{4})$/);if(m&&Array.isArray(x.body))AUTO_STANDINGS_BY_YEAR[+m[1]]=x.body}}
-    const hidden=await SB.from('kv').select('body').eq('key','hidden_auto_events').maybeSingle();if(!hidden.error)HIDDEN_AUTO_IDS=Array.isArray(hidden.data?.body)?hidden.data.body.map(S).filter(Boolean):[];
-    rerender()},
-  async upsert(ev){requireAdmin();if(!SB)throw new Error('Supabase 설정이 필요합니다');const r=await SB.from('events').upsert({id:ev.id,date:ev.date,body:ev});if(r.error)throw r.error;await this.load()},
-  async remove(id){requireAdmin();if(!SB)throw new Error('Supabase 설정이 필요합니다');const r=await SB.from('events').delete().eq('id',id);if(r.error)throw r.error;await this.load()}
+  async load(){
+    const revision=manualMutationRevision;
+    const kv=pattern=>readPaged('kv','key,body',q=>q.like('key',pattern).order('key'))
+      .then(data=>({data})).catch(error=>({error}));
+    const [r,ks,br,er,asr,hidden]=await Promise.all([
+      readPaged('events','id,body',q=>q.order('id')).then(data=>({data})).catch(error=>({error})),
+      kv('standings_others%'),kv('bears_roster%'),kv('edu_roster_%'),kv('standings_auto_%'),
+      SB.from('kv').select('body').eq('key','hidden_auto_events').maybeSingle()
+    ]);
+    if(!r.error&&revision===manualMutationRevision)CUSTOM=r.data.map(x=>x.body);
+    if(r.error)throw r.error;
+    if(!ks.error){let legacy=null;for(const x of ks.data||[]){if(x.key==='standings_others')legacy=x.body;else{const m=String(x.key).match(/^standings_others_(\d{4})$/);if(m)OTHERS_BY_YEAR[+m[1]]=x.body}}if(!OTHERS_BY_YEAR[TODAY.getFullYear()]&&legacy)OTHERS=legacy;else OTHERS=OTHERS_BY_YEAR[TODAY.getFullYear()]||[]}
+    if(!br.error){let legacy=null;for(const x of br.data||[]){if(x.key==='bears_roster')legacy=normRoster(x.body);else{const m=String(x.key).match(/^bears_roster_(\d{4})$/);if(m)ROSTERS_BY_YEAR[+m[1]]=normRoster(x.body)}}BEARS_ROSTER=ROSTERS_BY_YEAR[TODAY.getFullYear()]||legacy||[]}
+    if(!er.error){for(const x of er.data||[]){const m=String(x.key).match(/^edu_roster_(\d{4})$/);if(m)EDU_ROSTERS_BY_YEAR[+m[1]]=normRoster(x.body)}}
+    if(!asr.error){for(const x of asr.data||[]){const m=String(x.key).match(/^standings_auto_(\d{4})$/);if(m&&Array.isArray(x.body))AUTO_STANDINGS_BY_YEAR[+m[1]]=x.body}}
+    if(!hidden.error)HIDDEN_AUTO_IDS=Array.isArray(hidden.data?.body)?hidden.data.body.map(S).filter(Boolean):[];
+    rerender();const failed=[ks,br,er,asr,hidden].find(result=>result.error);if(failed)throw failed.error},
+  async upsert(ev){requireAdmin();if(!SB)throw new Error('Supabase 설정이 필요합니다');const r=await SB.from('events').upsert({id:ev.id,date:ev.date,body:ev});if(r.error)throw r.error;manualMutationRevision++;CUSTOM=[...CUSTOM.filter(x=>x.id!==ev.id),ev];rerender()},
+  async remove(id){requireAdmin();if(!SB)throw new Error('Supabase 설정이 필요합니다');const r=await SB.from('events').delete().eq('id',id);if(r.error)throw r.error;manualMutationRevision++;CUSTOM=CUSTOM.filter(x=>x.id!==id);rerender()}
 };
 /* ============ KBO 자동 연동 ============ */
 /* 미래 경기 자동 표시:
@@ -487,11 +510,10 @@ async function loadFuturesGames(){
   if(!SB)return;
   try{
     const next=new Map();
-    for(let start=0;;start+=500){
-      const r=await SB.from('futures_game_records').select('game_id,date,body').order('game_id').range(start,start+499);
-      if(r.error)throw r.error;
+    const rows=await readPaged('futures_game_records','game_id,date,body',q=>q.order('game_id'));
+    {
+      const r={data:rows};
       for(const row of r.data||[]){const b=row.body;if(b?.type!=='futures'||b.source!=='futures'||S(b.kbo?.leagueId)!=='2'||S(b.kbo?.seriesId)!=='0'||b.kboGameId!==row.game_id||b.date!==row.date)continue;const event=futuresEvent(row);if(event)next.set(event.kboGameId,event);}
-      if((r.data||[]).length<500)break;
     }
     FUTURES_AUTO=[...next.values()];FUTURES_WARNING='';
   }catch{FUTURES_WARNING='퓨처스 자동 기록을 갱신하지 못했습니다.';}
@@ -542,30 +564,59 @@ let mergedEventCache=null;
 Repo.all=function(){
  const refs=[CUSTOM,KBO_AUTO,FUTURES_AUTO,HIDDEN_AUTO_IDS];
  if(mergedEventCache&&refs.every((ref,i)=>ref===mergedEventCache.refs[i])){KBO_MERGE_WARNINGS=mergedEventCache.warnings;return mergedEventCache.rows;}
- const rows=(()=>{const automatic=new Map(),previousGames=new Map(KBO_AUTO.map(e=>[e.kboGameId,e]));for(const e of [...KBO_AUTO,...FUTURES_AUTO])automatic.set(e.type+':'+(e.kboGameId||e.id),e);const x=mergeEvents(_manualAll(),[...automatic.values()]);KBO_MERGE_WARNINGS=x.warnings;const hidden=new Set(HIDDEN_AUTO_IDS.map(S));return x.rows.filter(e=>!(e.kboGameId&&hidden.has(S(e.kboGameId))));})();
+ const rows=(()=>{const automatic=new Map();for(const e of [...KBO_AUTO,...FUTURES_AUTO])automatic.set(e.type+':'+(e.kboGameId||e.id),e);const x=mergeEvents(_manualAll(),[...automatic.values()]);KBO_MERGE_WARNINGS=x.warnings;const hidden=new Set(HIDDEN_AUTO_IDS.map(S));return x.rows.filter(e=>!(e.kboGameId&&hidden.has(S(e.kboGameId))));})();
  mergedEventCache={refs,rows,warnings:KBO_MERGE_WARNINGS};return rows;
 };
-Repo.load=async function(){
-  if(SB){try{const rows=[];for(let start=0;;start+=500){const r=await SB.from('kbo_game_records').select('game_id,date,body').order('game_id').range(start,start+499);if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<500)break}
-    const automatic=new Map();
-    // New prefixed rows take priority over legacy unprefixed Futures rows.
-    rows.sort((a,b)=>Number(!!a.body?.type)-Number(!!b.body?.type));
-    for(const row of rows){
-      const b=row.body;if(!b||typeof b!=='object')continue;
-      const future=b.type==='futures'||S(b.kbo?.leagueId)==='2'||S(row.raw?.game?.LE_ID)==='2';
-      const event=future?futuresEvent(row):{...b,type:'kbo',source:b.source||'kbo',status:b.status||((b.score&&S(b.score.d)!==''&&S(b.score.v)!=='')?'final':'scheduled')};
-      if(event){const before=previousGames.get(event.kboGameId);if(before&&isLiveGame(before)){SITUATION_RELAY_CACHE.delete(event.kboGameId);for(const key of RELAY_PLAYER_CACHE.keys())if(key.includes(event.kboGameId))RELAY_PLAYER_CACHE.delete(key);}automatic.set(event.type+':'+(event.kboGameId||event.id),event);}
-    }
-    KBO_AUTO=[...automatic.values()];
-    KBO_WARNING=''
-  }catch(e){KBO_WARNING='KBO 자동 기록을 갱신하지 못했습니다. 저장된 수동 일정은 계속 사용할 수 있습니다.'}}
-  // Render available game records before independent auxiliary requests finish.
-  rerender();
-  await Promise.allSettled([
-    loadFuturesGames, _manualLoad, loadCareerBaselines, loadKboSituational,
-    loadOfficialPinchHit, loadNaverAdvanced, loadFuturesProgress, loadHistoricalProgress
-  ].map(async load=>{try{await load()}finally{rerender()}}));
-  rerender();
+let repoLoadPending=null,initialRecordsReady=false,recordsLoading=false,recordsLoadError='';
+function dataLoadNotice(){
+ if(!SB)return '';
+ if(recordsLoadError)return `<div class="note" role="status">${esc(recordsLoadError)} <button type="button" data-retry-records>다시 불러오기</button></div>`;
+ return !initialRecordsReady?'<div class="note" role="status">전체 경기 기록을 불러오는 중이에요. 먼저 표시된 일정은 사용할 수 있고, 과거·통산 기록은 로딩 완료 후 확인해주세요.</div>':'';
+}
+Repo.load=function(){
+ if(repoLoadPending)return repoLoadPending;
+ recordsLoading=true;recordsLoadError='';
+ repoLoadPending=(async()=>{
+   // Independent metadata/manual events must not wait for all historical games.
+   const auxiliary=Promise.allSettled([
+     loadFuturesGames,_manualLoad,loadCareerBaselines,loadKboSituational,
+     loadOfficialPinchHit,loadNaverAdvanced,loadFuturesProgress,loadHistoricalProgress
+   ].map(async load=>{try{await load()}finally{rerender()}}));
+   let kboOK=false;
+   try{
+     if(SB){
+       const previousGames=new Map(KBO_AUTO.map(e=>[e.kboGameId,e]));
+       const normalize=rows=>{
+         const automatic=new Map();
+         rows.sort((a,b)=>Number(!!a.body?.type)-Number(!!b.body?.type));
+         for(const row of rows){
+           const b=row.body;if(!b||typeof b!=='object')continue;
+           const future=b.type==='futures'||S(b.kbo?.leagueId)==='2'||S(row.raw?.game?.LE_ID)==='2';
+           const event=future?futuresEvent(row):{...b,type:'kbo',source:b.source||'kbo',status:b.status||((b.score&&S(b.score.d)!==''&&S(b.score.v)!=='')?'final':'scheduled')};
+           if(!event)continue;
+           const before=previousGames.get(event.kboGameId);
+           if(before&&isLiveGame(before)){
+             SITUATION_RELAY_CACHE.delete(event.kboGameId);
+             for(const key of RELAY_PLAYER_CACHE.keys())if(key.includes(event.kboGameId))RELAY_PLAYER_CACHE.delete(key);
+           }
+           automatic.set(event.type+':'+(event.kboGameId||event.id),event);
+         }
+         return [...automatic.values()];
+       };
+       const boundary=TODAY.getFullYear()+'-01-01';
+       const current=await readPaged('kbo_game_records','game_id,date,body',q=>q.gte('date',boundary).order('game_id'));
+       // Retain the previous historical snapshot until its replacement is complete.
+       KBO_AUTO=[...KBO_AUTO.filter(e=>S(e.date)<boundary),...normalize(current)];
+       rerender();await new Promise(resolve=>setTimeout(resolve,0));
+       const history=await readPaged('kbo_game_records','game_id,date,body',q=>q.lt('date',boundary).order('game_id'));
+       KBO_AUTO=normalize([...current,...history]);KBO_WARNING='';kboOK=true;rerender();
+     }
+   }catch(e){KBO_WARNING='KBO 자동 기록을 갱신하지 못했습니다. 이전에 불러온 기록은 유지합니다.';console.warn('BEARStat record load:',e.message||e)}
+   const results=await auxiliary;
+   if(kboOK&&!FUTURES_WARNING&&results.every(r=>r.status==='fulfilled'))initialRecordsReady=true;
+   else recordsLoadError='일부 기록을 불러오지 못했어요. 표시된 합계가 전체 기록과 다를 수 있어요.';
+ })().finally(()=>{recordsLoading=false;repoLoadPending=null;rerender()});
+ return repoLoadPending;
 };
 Repo.upsert=async function(ev){
   requireAdmin();
@@ -590,13 +641,18 @@ async function setUser(sess){
   if(!isOwner){editing=null;eduDraft=null;adminView='manage'}
   route2();
 }
-(async()=>{try{
-  if(!window.supabase||!SUPABASE_URL)return;
-  SB=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-  await Repo.load();
-  SB.auth.onAuthStateChange((_e,sess)=>{setUser(sess)});
-  const {data}=await SB.auth.getSession();await setUser(data.session);
-}catch(e){}})();
+setTimeout(()=>{
+ if(!window.supabase||!SUPABASE_URL)return;
+ SB=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+ // Query admin membership outside the synchronous auth callback.
+ SB.auth.onAuthStateChange((_e,sess)=>{setTimeout(()=>{void setUser(sess).catch(console.warn)},0)});
+ void SB.auth.getSession().then(({data})=>setUser(data.session)).catch(console.warn);
+ void refreshLatestData(true);
+ SB.channel('bearstat-live-records')
+   .on('postgres_changes',{event:'*',schema:'public',table:'kbo_game_records'},queueLiveRefresh)
+   .on('postgres_changes',{event:'*',schema:'public',table:'events'},queueLiveRefresh)
+   .on('postgres_changes',{event:'*',schema:'public',table:'kv'},queueLiveRefresh).subscribe();
+},0);
 
 /* 최신 자동연동 데이터 갱신:
  * - 페이지를 다시 볼 때 즉시 새로 읽기
@@ -607,18 +663,27 @@ let latestDataPending=null,latestDataAgain=false;
 async function refreshLatestData(force=false){
   if(!SB)return;
   const now=Date.now();if(!force&&now-_lastAutoReload<15000)return;
-  if(latestDataPending){latestDataAgain=true;return latestDataPending;}
+  if(latestDataPending)return latestDataPending;
+  if(now-_lastAutoReload<1500)return;
   _lastAutoReload=now;
   latestDataPending=(async()=>{try{await Repo.load()}catch{}finally{latestDataPending=null;if(latestDataAgain){latestDataAgain=false;queueMicrotask(()=>refreshLatestData(true));}}})();
   return latestDataPending;
 }
 let liveRefreshTimer=null;
 function queueLiveRefresh(){if(document.hidden)return;clearTimeout(liveRefreshTimer);liveRefreshTimer=setTimeout(()=>refreshLatestData(true),800);}
-if(SB){SB.channel('bearstat-live-records').on('postgres_changes',{event:'*',schema:'public',table:'kbo_game_records'},queueLiveRefresh).on('postgres_changes',{event:'*',schema:'public',table:'events'},queueLiveRefresh).on('postgres_changes',{event:'*',schema:'public',table:'kv'},payload=>{if(/^(kbo_pinch_hit_|kbo_situational_|standings_auto_|career_|bears_roster)/.test(S(payload.new?.key||payload.old?.key)))queueLiveRefresh()}).subscribe();}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){refreshLatestData(true)}});
-window.addEventListener('focus',()=>{refreshLatestData(true)});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)queueLiveRefresh()});
+window.addEventListener('focus',queueLiveRefresh);
 setInterval(()=>{if(!document.hidden)refreshLatestData(false)},60000);
-const byDate=ds=>Repo.all().filter(e=>e.date===ds).sort((a,b)=>(a.time||'99').localeCompare(b.time||'99'));
+let dateIndexSource=null,dateIndex=new Map();
+function eventsOnDate(ds){
+ const events=Repo.all();
+ if(events!==dateIndexSource){
+   dateIndexSource=events;dateIndex=new Map();
+   for(const event of events){const key=S(event.date);if(!dateIndex.has(key))dateIndex.set(key,[]);dateIndex.get(key).push(event)}
+ }
+ return dateIndex.get(ds)||[];
+}
+const byDate=ds=>eventsOnDate(ds).slice().sort((a,b)=>(a.time||'99').localeCompare(b.time||'99'));
 const S=v=>{if(v===undefined||v===null)return'';const x=String(v).trim();return(x==='undefined'||x==='null'||x==='NaN')?'':x};
 const esc=v=>S(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const names=v=>[...new Set(S(v).split(/[,，、\n]+/).map(x=>x.trim()).filter(Boolean))];
@@ -859,7 +924,7 @@ function calendar(){
   let cells='';
   for(let i=0;i<42;i++){
     const d=addDays(start,i),ds=ymd(d);
-    const dot=calendarMarks(all.filter(e=>S(e.date)===ds));
+    const dot=calendarMarks(eventsOnDate(ds));
     cells+=`<button class="d${d.getMonth()!==m?' o':''}${d.getDay()===0?' sun':''}${ds===TS?' today':''}${ds===sel?' sel':''}" data-d="${ds}">${d.getDate()}${dot}</button>`;
   }
   return `<div class="card"><div class="calhead"><button class="ib" data-m="-1">‹</button><b>${y}년 ${m+1}월</b><span><button class="ib" data-m="0">오늘</button> <button class="ib" data-m="1">›</button></span></div>
@@ -2814,7 +2879,7 @@ function adminCalendar(){
         all=Repo.all();
   let cells='';
   for(let i=0;i<42;i++){
-    const d=addDays(start,i),ds=ymd(d),marks=calendarMarks(all.filter(e=>S(e.date)===ds),true);
+    const d=addDays(start,i),ds=ymd(d),marks=calendarMarks(eventsOnDate(ds),true);
     cells+=`<button class="d${d.getMonth()!==m?' o':''}${d.getDay()===0?' sun':''}${ds===TS?' today':''}${ds===adminCalDate?' sel':''}" data-ad="${ds}">${d.getDate()}${marks}</button>`;
   }
   return `<div class="card" style="margin-top:10px">
@@ -3037,9 +3102,17 @@ if(typeof document!=='undefined'){
  });
 }
 
+let adminListSource=null,adminSortedList=[],adminListLimit=80,adminListKey='';
 function admin(){
   const e=editing||{type:'kbo',date:TS,time:'',title:'',place:'',homeAway:'',program:'',channel:'',players:[],desc:''};
-  const allList=Repo.all().slice().sort((a,b)=>b.date.localeCompare(a.date));
+  let allList=[];
+  if(isOwner&&adminView==='manage'){
+    const source=Repo.all();
+    if(source!==adminListSource){adminListSource=source;adminSortedList=source.slice().sort((a,b)=>b.date.localeCompare(a.date))}
+    allList=adminSortedList;
+  }
+  const listKey=JSON.stringify([adminSearch,adminCalDate]);
+  if(listKey!==adminListKey){adminListKey=listKey;adminListLimit=80}
   const q=S(adminSearch).toLowerCase();
   const list=q
     ? allList.filter(x=>[x.date,x.title,x.opp,x.venue,x.place,TYPES[x.type]].some(v=>S(v).toLowerCase().includes(q)))
@@ -3071,7 +3144,7 @@ function admin(){
 
   <h2>${adminSearch?`검색 결과 · ${esc(adminSearch)}`:(adminCalDate?`${adminCalDate.slice(5).replace('-','월 ')}일 일정`:'전체 일정')}</h2>
   <div class="card">
-    ${list.length?list.map(x=>`<div class="ev">
+    ${list.length?list.slice(0,adminListLimit).map(x=>`<div class="ev">
       <div class="tm">${x.date.slice(5)}</div>
       <div class="bd">
         <div class="ti">${esc(x.title)}</div>
@@ -3079,6 +3152,7 @@ function admin(){
         ${adminEditActions(x)}<div style="display:flex;justify-content:flex-start;margin-top:20px;padding-top:12px;border-top:1px solid var(--line)">${x.kboGameId?`<button type="button" class="link" style="margin:0;padding:8px 12px" data-hide-auto="${esc(x.kboGameId)}">일정 숨기기</button>`:`<button type="button" class="link" style="margin:0;padding:8px 12px" data-del="${x.id}">삭제</button>`}</div>
       </div>
     </div>`).join(''):'<div class="empty">해당 일정이 없습니다.</div>'}
+    ${list.length>adminListLimit?`<button type="button" class="btn g" data-admin-more>일정 더 보기 (${adminListLimit} / ${list.length})</button>`:''}
   </div>`;
   const kboWarn=[KBO_WARNING,...KBO_MERGE_WARNINGS].filter(Boolean).join(' / ');
   const kboPanel=editing?.kboGameId?`<div class="note"><label><input id="kbo_manual" type="checkbox" style="width:auto" ${editing.manualOverride?'checked':''}> 이 경기의 수동 기록을 우선 사용</label>기록을 수정하면 자동으로 켜집니다. 해제 후 저장하면 KBO 자동 기록으로 돌아갑니다.</div>${editing.batting?.length?batterTable(editing.batting,true):''}`:'';
@@ -4289,7 +4363,7 @@ function recordRenderMemo(key,calculate){
 }
 function renderWithRecordCache(render){
  const previous=recordRenderCache;recordRenderCache=new Map();
- try{return render()}finally{recordRenderCache=previous}
+ try{return dataLoadNotice()+render()}finally{recordRenderCache=previous}
 }
 const recordUncachedEvents=Repo.all.bind(Repo);
 Repo.all=function(){return recordRenderMemo('events',recordUncachedEvents)};
@@ -4520,7 +4594,8 @@ if(!v('date')){
     const old=editing||{},f=k=>$('#f_'+k)?v(k):S(old[k]);
     const cancellationOverride=!!old.cancellationOverride||cancelled!==isCancelled(old)||cancelReason!==S(old.cancelReason);
     const status=cancelled?'cancelled':(old.status==='cancelled'||!old.status?((sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?'final':'scheduled'):old.status);
-    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:editing?.kboGameId?(old.players||[]):v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp,cancelReason,cancelled,status,cancellationOverride,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다')));
+    if(t.disabled)return;t.disabled=true;t.textContent='저장 중…';
+    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:editing?.kboGameId?(old.players||[]):v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp,cancelReason,cancelled,status,cancellationOverride,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>{t.disabled=false;t.textContent=editing?'일정 수정':'일정 추가';alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다'))});
   }
   else if(t.id==='cancel'){editing=null;adminView='manage';keep()}
   else if(t.dataset.hideAuto){if(confirm('이 자동연동 일정을 숨길까요?\n숨긴 뒤에도 자동연동으로 다시 나타나지 않습니다.'))Repo.hideAuto(t.dataset.hideAuto).then(()=>keep()).catch(e=>alert('숨기지 못했습니다: '+(e.message||'')))}
@@ -4554,6 +4629,10 @@ document.addEventListener('change',ev=>{
 document.addEventListener('input',ev=>{if(ev.target.matches('[data-edu-stat]'))captureEduInputs();const box=document.querySelector('#kbo_manual'),el=ev.target;if(box&&(el.matches('[data-batter],.hr-player,.hr-inning,.hr-runs')||/^f_(sd|so|starter|oppStarter|winP|loseP|saveP|holdP|gwRbi|doubles|triples|hits|steals|duration)$/.test(el.id)))box.checked=true});
 
 function route2(){const r=document.body.dataset.r;$('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='players'?playerManagement():home(),r));}
+document.addEventListener('click',ev=>{
+ if(ev.target.closest('[data-admin-more]')){adminListLimit+=80;const y=scrollY;route2();scrollTo(0,y)}
+ if(ev.target.closest('[data-retry-records]')){void refreshLatestData(true)}
+});
 addEventListener('hashchange',route);route();
 
 /* ============ 3. PWA (아이콘/manifest 런타임 생성) ============ */
