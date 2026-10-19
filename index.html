@@ -571,7 +571,7 @@ let repoLoadPending=null,initialRecordsReady=false,recordsLoading=false,recordsL
 function dataLoadNotice(){
  if(!SB)return '';
  if(recordsLoadError)return `<div class="note" role="status">${esc(recordsLoadError)} <button type="button" data-retry-records>다시 불러오기</button></div>`;
- return !initialRecordsReady?'<div class="note" role="status">전체 경기 기록을 불러오는 중이에요. 먼저 표시된 일정은 사용할 수 있고, 과거·통산 기록은 로딩 완료 후 확인해주세요.</div>':'';
+ return '';
 }
 Repo.load=function(){
  if(repoLoadPending)return repoLoadPending;
