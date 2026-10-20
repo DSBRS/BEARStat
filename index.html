@@ -1671,8 +1671,8 @@ function historyHTML(name){
  return `<div class="historybox"><div class="phhistory-head"><b>${label} 경기별 기록</b><span class="sb">총 ${rows.reduce((sum,row)=>sum+row.count,0)}${stat==='ab'?'타수':'개'}</span></div>${rows.length?rows.map(row=>{
   const event=row.event||row,plays=hitterRecordPlays(event,name,stat,row.count),pending=hitterRecordRelayJob?.running&&!cachedPlayerRelay(event.kboGameId,name,'hitter');
   const pitchers=stat==='sb'?'투수 미확인':pending?'투수 확인 중…':hitterRecordPitchers(event,name,stat,row.count);
-  return `<section class="historyrow">${historyCardHeader(event,row.count+(stat==='ab'?'타수':'개'))}${plays?.length?plays.map(play=>stat==='sb'?`<div class="matchup-play-row"><span class="matchup-inning">${esc(play.inning+'회'+(play.side==='away'?'초':play.side==='home'?'말':''))}</span><span class="matchup-play-result">도루</span><span class="record-opponent-pitcher">${esc(stolenBasePitcher(event,name,play.inning)||'투수 미확인')}${stolenBasePitcher(event,name,play.inning)?' <span class="sb">(해당 회 투수)</span>':''}</span></div>`:`<div class="matchup-play-row"><span class="matchup-inning">${esc(play.inning+'회'+(play.side==='away'?'초':'말'))}</span><span class="matchup-play-result">${esc(play.result||label)}${stat==='rbi'?' · '+play.stats.rbi+'타점':''}</span><span class="record-opponent-pitcher">${esc(play.pitcher||(play.source==='kbo-final-box'?'KBO 최종 기록':'투수 미확인'))}</span></div>`).join(''):(row.details.length?row.details.map(detail=>`<div class="matchup-play-row"><span class="matchup-play-result">${esc(detail)}</span><span class="record-opponent-pitcher">${esc(pitchers)}</span></div>`).join(''):`<div class="matchup-play-row"><span class="matchup-play-result">${stat==='sb'?'이닝 미확인':pending?'이닝·결과 확인 중…':'이닝·결과 미확인'}</span><span class="record-opponent-pitcher">${esc(pitchers)}</span></div>`)}</section>`;
- }).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}${stat==='sb'?'<div class="phhistory-status">도루 당시 투수는 별도 확인이 필요해요. 해당 회에 확인된 투수가 한 명일 때만 이름을 표시하며, 투수 교체가 있거나 중계가 없으면 미확인으로 표시해요.</div>':''}${stat!=='sb'&&rows.some(row=>!row.event?.kboGameId)?'<div class="phhistory-status">중계가 없는 경기는 상대 투수를 확인할 수 없어요.</div>':''}</div>`;
+  return `<section class="historyrow">${historyCardHeader(event,row.count+(stat==='ab'?'타수':'개'))}${plays?.length?plays.map(play=>stat==='sb'?`<div class="matchup-play-row"><span class="matchup-inning">${esc(play.inning+'회'+(play.side==='away'?'초':play.side==='home'?'말':''))}</span><span class="matchup-play-result">도루</span></div>`:`<div class="matchup-play-row"><span class="matchup-inning">${esc(play.inning+'회'+(play.side==='away'?'초':'말'))}</span><span class="matchup-play-result">${esc(play.result||label)}${stat==='rbi'?' · '+play.stats.rbi+'타점':''}</span><span class="record-opponent-pitcher">${esc(play.pitcher||(play.source==='kbo-final-box'?'KBO 최종 기록':'투수 미확인'))}</span></div>`).join(''):(row.details.length?row.details.map(detail=>`<div class="matchup-play-row"><span class="matchup-play-result">${esc(detail)}</span>${stat==='sb'?'':`<span class="record-opponent-pitcher">${esc(pitchers)}</span>`}</div>`).join(''):`<div class="matchup-play-row"><span class="matchup-play-result">${stat==='sb'?'이닝 미확인':pending?'이닝·결과 확인 중…':'이닝·결과 미확인'}</span>${stat==='sb'?'':`<span class="record-opponent-pitcher">${esc(pitchers)}</span>`}</div>`)}</section>`;
+ }).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}${stat!=='sb'&&rows.some(row=>!row.event?.kboGameId)?'<div class="phhistory-status">중계가 없는 경기는 상대 투수를 확인할 수 없어요.</div>':''}</div>`;
 }
 
 function orderPlayKey(row,name=playerSheet){return JSON.stringify([recLeague,recYear,recSeason,recPostStage,recordPeriodKey(),name,row.key]);}
@@ -4643,6 +4643,85 @@ document.addEventListener('click',ev=>{
  if(ev.target.closest('[data-admin-more]')){adminListLimit+=80;const y=scrollY;route2();scrollTo(0,y)}
  if(ev.target.closest('[data-retry-records]')){void refreshLatestData(true)}
 });
+/* BEARStat: 화면 내 타석 결과 + 기록 달성/갱신 알림 */
+const bearNoticeQueue=[];
+let bearNoticeActive=false,bearNoticeFocus=null,bearPolling=false;
+const bearMemoryStore=new Map();
+function bearRead(key){try{const v=localStorage.getItem(key);return v?JSON.parse(v):bearMemoryStore.get(key)||null}catch{return bearMemoryStore.get(key)||null}}
+function bearWrite(key,value){bearMemoryStore.set(key,value);try{localStorage.setItem(key,JSON.stringify(value))}catch{}}
+function bearEnqueue(title,message){bearNoticeQueue.push({title,message});bearShowNotice()}
+function bearShowNotice(){
+ if(bearNoticeActive||!bearNoticeQueue.length||document.hidden)return;
+ const item=bearNoticeQueue.shift();bearNoticeActive=true;bearNoticeFocus=document.activeElement;
+ const dialog=document.createElement('dialog');dialog.id='bear-result-notice';dialog.setAttribute('aria-labelledby','bear-notice-title');dialog.setAttribute('aria-describedby','bear-notice-message');
+ dialog.innerHTML=`<h2 id="bear-notice-title">${esc(item.title)}</h2><p id="bear-notice-message" style="white-space:pre-line;line-height:1.7">${esc(item.message)}</p><button class="btn" type="button" autofocus>확인${bearNoticeQueue.length?' · 다음 '+bearNoticeQueue.length+'건':''}</button>`;
+ const close=()=>{if(!bearNoticeActive)return;bearNoticeActive=false;dialog.remove();if(bearNoticeFocus?.isConnected)bearNoticeFocus.focus();setTimeout(bearShowNotice,0)};
+ dialog.querySelector('button').addEventListener('click',()=>dialog.close());dialog.addEventListener('close',close);document.body.appendChild(dialog);dialog.showModal();
+}
+const bearNoticeStyle=document.createElement('style');
+bearNoticeStyle.textContent='#bear-result-notice{box-sizing:border-box;width:calc(100% - 40px);max-width:420px;max-height:80vh;overflow:auto;border:1px solid var(--line,#ddd);border-radius:20px;padding:24px;background:var(--card,#fff);color:var(--text,#131230);box-shadow:0 20px 70px #0004}#bear-result-notice::backdrop{background:#13123088}#bear-result-notice h2{margin:0 0 12px;font-size:21px}#bear-result-notice .btn{width:100%;margin-top:16px}';document.head.appendChild(bearNoticeStyle);
+function bearMilestoneCandidates(){
+ const out=new Map(),year=TODAY.getFullYear(),previous=[milestoneScope,milestoneRole,milestoneMetric];
+ try{
+  for(const scope of ['season','career','bears'])for(const role of ['hitter','pitcher','team']){
+   milestoneScope=scope;milestoneRole=role;milestoneMetric='all';
+   const rows=[...completedNumberMilestones(scope,role),...completedSeasonSpecials(scope,role),...(role==='pitcher'&&scope!=='career'?bearsSeasonStrikeoutRecords(scope,'all'):[])];
+   for(const r of rows){
+    if(r.year!==year)continue;
+    const key=JSON.stringify([scope,role,r.n,r.playerId||'',r.year,r.basis,r.metric?.key||r.kind,r.target??r.label]);
+    const label=r.metric?milestoneDisplay(r.target,r.metric)+' '+milestoneRecordUnit(r.metric):r.label;
+    out.set(key,{title:'기록 달성!',message:r.n+' · '+completedRecordBasis(r)+'\n'+label+' 달성'+(r.date?'\n'+r.date:'')});
+   }
+  }
+  for(const role of ['hitter','pitcher']){
+   milestoneRole=role;milestoneMetric='all';
+   for(const r of bearsFranchiseRows().rows.filter(r=>r.leading)){
+    const key=JSON.stringify(['franchise',role,r.n,r.metric.key,r.current]);
+    out.set(key,{title:'구단 기록 갱신!',message:r.n+'\n베어스 통산 최다 '+r.metric.label+' · '+milestoneDisplay(r.current,r.metric)+' '+milestoneRecordUnit(r.metric)+(r.holders.length>1?' (공동 기록)':'')});
+   }
+  }
+ }finally{[milestoneScope,milestoneRole,milestoneMetric]=previous}
+ return out;
+}
+function bearCheckMilestones(){
+ if(!initialRecordsReady||recordsLoading||recordsLoadError)return;
+ try{
+  const key='bearstat-notified-milestones-v1-'+TODAY.getFullYear(),saved=bearRead(key),rows=bearMilestoneCandidates(),seen=new Set(Array.isArray(saved)?saved:[]);
+  for(const [id,item] of rows){if(saved&&!seen.has(id))bearEnqueue(item.title,item.message);seen.add(id)}
+  bearWrite(key,[...seen]);
+ }catch(error){console.warn('BEARStat 기록 알림:',error.message||error)}
+}
+function bearAcceptPlays(event,plays){
+ const id=S(event.kboGameId),side=id.slice(8,10)==='OB'?'away':'home',key='bearstat-notified-plays-v1-'+id,saved=bearRead(key),seen=new Set(Array.isArray(saved)?saved:[]),occurrences=new Map();
+ for(const p of plays){
+  if(p.side!==side||!S(p.batter)||!S(p.result))continue;
+  const signature=JSON.stringify([p.inning,p.side,p.batter,p.result]),occurrence=(occurrences.get(signature)||0)+1;occurrences.set(signature,occurrence);
+  const playKey=signature+':'+occurrence;
+  if(saved&&!seen.has(playKey))bearEnqueue('두산 타자 결과',p.inning+'회'+(side==='away'?'초':'말')+' · '+p.batter+'\n'+p.result+(event.opp?'\nvs '+event.opp:''));
+  seen.add(playKey);
+ }
+ bearWrite(key,[...seen]);
+}
+async function bearPollPlays(){
+ if(bearPolling||document.hidden||!SUPABASE_URL||!initialRecordsReady||recordsLoading)return;
+ bearPolling=true;
+ try{
+  const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(new Date());
+  const games=Repo.all().filter(e=>e.type==='kbo'&&e.date===today&&!isCancelled(e)&&/^\d{8}[A-Z]{4}\d$/.test(S(e.kboGameId)));
+  for(const event of games){
+   // Today's scheduled games are included so an empty pregame snapshot can establish the baseline.
+   try{const relay=await readSituationRelay(event.kboGameId,'','hitter','background',true);bearAcceptPlays(event,relay.plays)}catch(error){console.warn('BEARStat 타석 알림:',error.message||error)}
+  }
+ }finally{bearPolling=false}
+}
+const bearLoadRecords=Repo.load.bind(Repo);
+Repo.load=async function(...args){const result=await bearLoadRecords(...args);bearCheckMilestones();void bearPollPlays();return result};
+const bearSaveEvent=Repo.upsert.bind(Repo);
+Repo.upsert=async function(...args){const result=await bearSaveEvent(...args);bearCheckMilestones();void bearPollPlays();return result};
+setInterval(()=>{bearShowNotice();void bearPollPlays()},60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){bearShowNotice();void bearPollPlays()}});
+window.addEventListener('focus',()=>{bearShowNotice();void bearPollPlays()});
+
 addEventListener('hashchange',route);route();
 
 /* ============ 3. PWA (아이콘/manifest 런타임 생성) ============ */
