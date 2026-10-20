@@ -1634,6 +1634,17 @@ function recordStolenInnings(event,name,count){
  return innings.map(inning=>({inning,side:event.homeAway==='away'?'away':event.homeAway==='home'?'home':null,result:'',stats:{sb:1}}));
 }
 
+// 도루는 타석 결과가 아니므로, 저장된 회별 도루 정보와 중계 투수 목록을 따로 대조합니다.
+function stolenBasePitcher(event,name,inning){
+ const id=S(event?.kboGameId),relay=cachedPlayerRelay(id,name,'hitter');
+ if(!relay||!Array.isArray(relay.plays))return null;
+ const side=id.slice(8,10)==='OB'?'away':'home';
+ const atInning=relay.plays.filter(p=>p.side===side&&Number(p.inning)===Number(inning));
+ if(!atInning.length||atInning.some(p=>!S(p.pitcher)))return null;
+ const pitchers=[...new Set(atInning.map(p=>S(p.pitcher)))];
+ // 한 회에 여러 투수가 등판했으면 도루 순간의 투수를 단정할 수 없습니다.
+ return pitchers.length===1?pitchers[0]:null;
+}
 function hitterRecordPitchers(event,name,stat,count=null){
  if(stat==='sb')return '';
  const plays=hitterRecordPlays(event,name,stat,count);
@@ -1641,8 +1652,8 @@ function hitterRecordPitchers(event,name,stat,count=null){
  return plays?.length?[...new Set(plays.map(play=>S(play[field])||unknown))].join(' · '):unknown;
 }
 function startHitterRecordRelay(name,stat,rows){
- if(stat==='sb'||recLeague!=='kbo'||!SUPABASE_URL)return;
- const games=rows.map(row=>row.event).filter(e=>/^\d{8}[A-Z]{4}\d$/.test(S(e?.kboGameId))&&finalBoxBattingPlays(e,name,stat)===null);
+ if(recLeague!=='kbo'||!SUPABASE_URL)return;
+ const games=rows.map(row=>row.event).filter(e=>/^\d{8}[A-Z]{4}\d$/.test(S(e?.kboGameId))&&(stat==='sb'||finalBoxBattingPlays(e,name,stat)===null));
  const signature=JSON.stringify([name,stat,recYear,recSeason,recPostStage,recordPeriodKey(),games.map(e=>e.kboGameId)]);
  if(hitterRecordRelayJob?.signature===signature)return;
  const job={signature,running:true,failed:0};hitterRecordRelayJob=job;let next=0;
@@ -1659,9 +1670,9 @@ function historyHTML(name){
  startHitterRecordRelay(name,stat,rows);
  return `<div class="historybox"><div class="phhistory-head"><b>${label} 경기별 기록</b><span class="sb">총 ${rows.reduce((sum,row)=>sum+row.count,0)}${stat==='ab'?'타수':'개'}</span></div>${rows.length?rows.map(row=>{
   const event=row.event||row,plays=hitterRecordPlays(event,name,stat,row.count),pending=hitterRecordRelayJob?.running&&!cachedPlayerRelay(event.kboGameId,name,'hitter');
-  const pitchers=stat==='sb'?'':pending?'투수 확인 중…':hitterRecordPitchers(event,name,stat,row.count);
-  return `<section class="historyrow">${historyCardHeader(event,row.count+(stat==='ab'?'타수':'개'))}${plays?.length?plays.map(play=>stat==='sb'?`<div class="matchup-play-row"><span class="matchup-inning">${esc(play.inning+'회')}</span></div>`:`<div class="matchup-play-row"><span class="matchup-inning">${esc(play.inning+'회'+(play.side==='away'?'초':'말'))}</span><span class="matchup-play-result">${esc(play.result||label)}${stat==='rbi'?' · '+play.stats.rbi+'타점':''}</span><span class="record-opponent-pitcher">${esc(play.pitcher||(play.source==='kbo-final-box'?'KBO 최종 기록':'투수 미확인'))}</span></div>`).join(''):(row.details.length?row.details.map(detail=>`<div class="matchup-play-row"><span class="matchup-play-result">${esc(detail)}</span><span class="record-opponent-pitcher">${esc(pitchers)}</span></div>`).join(''):`<div class="matchup-play-row"><span class="matchup-play-result">${stat==='sb'?'이닝 미확인':pending?'이닝·결과 확인 중…':'이닝·결과 미확인'}</span><span class="record-opponent-pitcher">${esc(pitchers)}</span></div>`)}</section>`;
- }).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}${stat!=='sb'&&rows.some(row=>!row.event?.kboGameId)?'<div class="phhistory-status">중계가 없는 경기는 상대 투수를 확인할 수 없어요.</div>':''}</div>`;
+  const pitchers=stat==='sb'?'투수 미확인':pending?'투수 확인 중…':hitterRecordPitchers(event,name,stat,row.count);
+  return `<section class="historyrow">${historyCardHeader(event,row.count+(stat==='ab'?'타수':'개'))}${plays?.length?plays.map(play=>stat==='sb'?`<div class="matchup-play-row"><span class="matchup-inning">${esc(play.inning+'회'+(play.side==='away'?'초':play.side==='home'?'말':''))}</span><span class="matchup-play-result">도루</span><span class="record-opponent-pitcher">${esc(stolenBasePitcher(event,name,play.inning)||'투수 미확인')}${stolenBasePitcher(event,name,play.inning)?' <span class="sb">(해당 회 투수)</span>':''}</span></div>`:`<div class="matchup-play-row"><span class="matchup-inning">${esc(play.inning+'회'+(play.side==='away'?'초':'말'))}</span><span class="matchup-play-result">${esc(play.result||label)}${stat==='rbi'?' · '+play.stats.rbi+'타점':''}</span><span class="record-opponent-pitcher">${esc(play.pitcher||(play.source==='kbo-final-box'?'KBO 최종 기록':'투수 미확인'))}</span></div>`).join(''):(row.details.length?row.details.map(detail=>`<div class="matchup-play-row"><span class="matchup-play-result">${esc(detail)}</span><span class="record-opponent-pitcher">${esc(pitchers)}</span></div>`).join(''):`<div class="matchup-play-row"><span class="matchup-play-result">${stat==='sb'?'이닝 미확인':pending?'이닝·결과 확인 중…':'이닝·결과 미확인'}</span><span class="record-opponent-pitcher">${esc(pitchers)}</span></div>`)}</section>`;
+ }).join(''):'<div class="empty">저장된 기록이 없습니다.</div>'}${stat==='sb'?'<div class="phhistory-status">도루 당시 투수는 별도 확인이 필요해요. 해당 회에 확인된 투수가 한 명일 때만 이름을 표시하며, 투수 교체가 있거나 중계가 없으면 미확인으로 표시해요.</div>':''}${stat!=='sb'&&rows.some(row=>!row.event?.kboGameId)?'<div class="phhistory-status">중계가 없는 경기는 상대 투수를 확인할 수 없어요.</div>':''}</div>`;
 }
 
 function orderPlayKey(row,name=playerSheet){return JSON.stringify([recLeague,recYear,recSeason,recPostStage,recordPeriodKey(),name,row.key]);}
@@ -1772,7 +1783,6 @@ function playerSheetBaseHTML(){
         <button type="button" class="orderbox statclick${playerHistoryStat==='runs'?' on':''}" data-hstat="runs" aria-pressed="${playerHistoryStat==='runs'}"><b>${r.runs}</b><span>득점</span></button>
       <button type="button" class="orderbox statclick${playerHistoryStat==='sf'?' on':''}" data-hstat="sf" aria-pressed="${playerHistoryStat==='sf'}"><b>${r.sf??'—'}</b><span>희생플라이</span></button>
     </div>
-    ${pinchHitAverageNote()}
     ${historyHTML(playerSheet)}
     ${battingCalculationHTML(r)}
   </div></div>`;
