@@ -1476,11 +1476,11 @@ function homeTodayScheduleHTML(){
 
 function rememberPushEnabled(enabled){try{if(enabled)localStorage.setItem('bearstat-push-enabled-v1','1');else localStorage.removeItem('bearstat-push-enabled-v1')}catch{}}
 function knownPushEnabled(){try{return 'Notification' in window&&Notification.permission==='granted'&&localStorage.getItem('bearstat-push-enabled-v1')==='1'}catch{return false}}
-const pushState={suppressed:knownPushEnabled(),supported:!!(window.isSecureContext&&'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window),ready:false,enabled:false,hasSubscription:false,migrate:false,busy:false,config:null,registration:null,message:'',open:false};
+const pushState={suppressed:knownPushEnabled(),supported:!!(window.isSecureContext&&'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window),ready:false,enabled:false,hasSubscription:false,migrate:false,busy:false,config:null,registration:null,message:'',open:false,recordUpdates:true};
 function pushSettingsHTML(){
  const s=pushState;
- if(!s.open&&(s.enabled||s.suppressed))return '<div id="push_settings_slot"></div>';
- return `<div id="push_settings_slot"><div class="card push-settings"><details id="push_settings"${s.open?' open':''}><summary><span class="push-bell" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><span>일정 5분 전 알림</span><span class="push-state">${s.enabled?'켜짐':'꺼짐'}</span></summary><div class="note">알림을 켜면 사이트를 닫아도 시작 전 알림을 받아요. 시간이 정해진 일정만 알려주며, 지난 일정과 진행·종료·취소된 경기는 제외해요.</div>${!s.supported?'<div class="note">이 브라우저에서는 푸시 알림을 사용할 수 없어요. 아이폰은 Safari에서 홈 화면에 추가한 뒤 앱을 열어주세요.</div>':`<button type="button" class="btn${s.enabled?' g':''}" data-push-toggle${s.busy||(!s.ready&&!s.enabled&&!s.hasSubscription)?' disabled':''}>${s.busy?'처리 중…':s.migrate?'새 서버로 이 기기 알림 연결':(s.enabled||s.hasSubscription)?'이 기기 알림 끄기':'이 기기 알림 켜기'}</button>`}${s.enabled?'<button type="button" class="btn g" data-push-test>이 기기로 테스트 알림 보내기</button>':''}${s.enabled&&s.legacySubscription?'<div class="note">테스트 알림이 도착했다면 이전 알림 연결을 정리해주세요.</div><button type="button" class="btn g" data-push-stop-legacy>이전 서버 알림 정리</button>':''}<div class="note">아이폰은 홈 화면에 추가한 웹앱에서 알림을 허용해주세요. 기기와 네트워크 상태에 따라 도착이 늦어질 수 있어요.</div>${isOwner?`<details class="push-admin"><summary>관리자 · 알림 서버 연결</summary><div class="note">서버 설정 파일을 적용한 뒤 한 번만 연결해주세요.</div><button type="button" class="btn g" data-push-setup${s.busy?' disabled':''}>알림 서버 연결하기</button></details>`:''}<div class="note" role="status" aria-live="polite">${esc(s.message||(!s.ready?'알림 서버 연결을 확인하고 있어요.':''))}</div></details></div></div>`;
+ if(document.body.dataset.r!=='notifications'&&!s.open)return '<div id="push_settings_slot"></div>';
+ return `<div id="push_settings_slot"><div class="card push-settings"><details id="push_settings"${s.open?' open':''}><summary><span class="push-bell" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><span>알림 설정</span><span class="push-state">${s.enabled?'켜짐':'꺼짐'}</span></summary><div class="note">알림을 켜면 사이트를 닫아도 시작 전 알림을 받아요. 시간이 정해진 일정만 알려주며, 지난 일정과 진행·종료·취소된 경기는 제외해요.</div>${!s.supported?'<div class="note">이 브라우저에서는 푸시 알림을 사용할 수 없어요. 아이폰은 Safari에서 홈 화면에 추가한 뒤 앱을 열어주세요.</div>':`<button type="button" class="btn${s.enabled?' g':''}" data-push-toggle${s.busy||(!s.ready&&!s.enabled&&!s.hasSubscription)?' disabled':''}>${s.busy?'처리 중…':s.migrate?'새 서버로 이 기기 알림 연결':(s.enabled||s.hasSubscription)?'이 기기 알림 끄기':'이 기기 알림 켜기'}</button>`}${s.enabled?'<button type="button" class="btn g" data-push-test>이 기기로 테스트 알림 보내기</button>':''}${s.enabled&&s.legacySubscription?'<div class="note">테스트 알림이 도착했다면 이전 알림 연결을 정리해주세요.</div><button type="button" class="btn g" data-push-stop-legacy>이전 서버 알림 정리</button>':''}<label class="note" style="display:flex;align-items:center;gap:10px"><input type="checkbox" data-push-record-updates${s.recordUpdates?' checked':''}${s.busy?' disabled':''}>기록 업데이트 알림 받기</label><div class="note">새 경기 기록이나 수정된 기록이 공개되면 알려드려요. 같은 내용의 단순 새로고침은 알리지 않아요.</div><div class="note">아이폰은 홈 화면에 추가한 웹앱에서 알림을 허용해주세요. 기기와 네트워크 상태에 따라 도착이 늦어질 수 있어요.</div>${isOwner?`<details class="push-admin"><summary>관리자 · 알림 서버 연결</summary><div class="note">서버 설정 파일을 적용한 뒤 한 번만 연결해주세요.</div><button type="button" class="btn g" data-push-setup${s.busy?' disabled':''}>알림 서버 연결하기</button></details>`:''}<div class="note" role="status" aria-live="polite">${esc(s.message||(!s.ready?'알림 서버 연결을 확인하고 있어요.':''))}</div></details></div></div>`;
 }
 function refreshPushSettings(){const slot=document.getElementById('push_settings_slot');if(slot)slot.outerHTML=pushSettingsHTML();}
 async function pushAPI(body=null,accessToken=''){
@@ -1515,7 +1515,7 @@ async function preparePush(){
   const subscription=await s.registration.pushManager.getSubscription(),token=pushToken();s.hasSubscription=!!subscription;
   if(navigator.serviceWorker.getRegistration){const legacy=await navigator.serviceWorker.getRegistration(new URL('./',location.href).href);s.legacyRegistration=legacy?.scope===new URL('./',location.href).href?legacy:null;s.legacySubscription=s.legacyRegistration?await s.legacyRegistration.pushManager.getSubscription():null;}
   s.config=await pushAPI();s.ready=!!(s.config.ready&&s.config.publicKey);s.migrate=!!(subscription&&s.config.publicKey&&subscription.options?.applicationServerKey&&btoa(String.fromCharCode(...new Uint8Array(subscription.options.applicationServerKey))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')!==s.config.publicKey);
-  if(s.ready&&subscription&&token&&Notification.permission==='granted'){const status=await pushAPI({action:'status',token,subscription:subscription.toJSON()});s.enabled=status.enabled===true;}
+  if(s.ready&&subscription&&token&&Notification.permission==='granted'){const status=await pushAPI({action:'status',token,subscription:subscription.toJSON()});s.enabled=status.enabled===true;s.recordUpdates=status.recordUpdates!==false;}
   else s.enabled=false;
   s.suppressed=s.enabled;rememberPushEnabled(s.enabled);
   s.message=!s.ready?'알림 서버 설정이 아직 완료되지 않았어요.':s.migrate?'새 알림 서버가 준비됐어요. 아래 버튼으로 이 기기 알림을 다시 연결해주세요.':s.enabled?'이 기기에서 시작 5분 전 알림을 받아요.':Notification.permission==='denied'?'브라우저 설정에서 이 사이트의 알림을 허용해주세요.':'알림 켜기를 누르면 기기의 알림 허용 창이 열려요.';
@@ -1538,7 +1538,7 @@ async function togglePush(){
   const token=pushToken(true);let sub=await s.registration.pushManager.getSubscription();
   if(s.migrate&&sub){if(!await sub.unsubscribe())throw Error('기존 알림 연결을 바꾸지 못했어요. 다시 시도해주세요.');sub=null;s.hasSubscription=false;}
   if(!sub){sub=await s.registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:pushApplicationKey(s.config.publicKey)});fresh=sub;}
-  await pushAPI({action:'subscribe',subscription:sub.toJSON(),token});s.enabled=true;s.migrate=false;s.hasSubscription=true;s.suppressed=true;s.open=false;rememberPushEnabled(true);s.message='알림을 켰어요. 사이트를 닫아도 시작 5분 전 알림을 받아요.';
+  await pushAPI({action:'subscribe',subscription:sub.toJSON(),token,recordUpdates:s.recordUpdates});s.enabled=true;s.migrate=false;s.hasSubscription=true;s.suppressed=true;s.open=document.body.dataset.r==='notifications';rememberPushEnabled(true);s.message='알림을 켰어요. 사이트를 닫아도 시작 5분 전 알림을 받아요.';
  }catch(e){if(fresh)try{await fresh.unsubscribe();s.hasSubscription=false}catch{}s.message=e.message||'알림 설정을 저장하지 못했어요.';}
  finally{s.busy=false;refreshPushSettings()}
 }
@@ -1557,8 +1557,22 @@ async function setupPushServer(){
  finally{pushState.busy=false;refreshPushSettings()}
 }
 document.addEventListener('toggle',ev=>{if(ev.target.id==='push_settings')pushState.open=ev.target.open;},true);
-document.addEventListener('click',ev=>{if(ev.target.closest('[data-open-push]')){pushState.open=true;refreshPushSettings();const panel=document.getElementById('push_settings');if(panel){panel.open=true;panel.scrollIntoView({behavior:'smooth',block:'center'});}}if(ev.target.closest('[data-push-stop-legacy]'))void stopLegacyPush();if(ev.target.closest('[data-push-test]'))void testPushNotification();if(ev.target.closest('[data-push-toggle]'))void togglePush();if(ev.target.closest('[data-push-setup]'))void setupPushServer();});
+document.addEventListener('click',ev=>{if(ev.target.closest('[data-open-push]')){location.hash='#/notifications';}if(ev.target.closest('[data-push-stop-legacy]'))void stopLegacyPush();if(ev.target.closest('[data-push-test]'))void testPushNotification();if(ev.target.closest('[data-push-toggle]'))void togglePush();if(ev.target.closest('[data-push-setup]'))void setupPushServer();});
 setTimeout(()=>void preparePush(),0);
+
+function notificationSettingsPage(){
+ pushState.open=true;
+ return `<div class="brand"><h1 style="margin:0">알림 설정</h1><a class="btn g" href="#/">홈으로</a></div>${pushSettingsHTML()}`;
+}
+document.addEventListener('change',async ev=>{
+ if(!ev.target.matches('[data-push-record-updates]'))return;
+ const s=pushState,previous=s.recordUpdates;s.recordUpdates=ev.target.checked;
+ if(!s.enabled)return;
+ s.busy=true;refreshPushSettings();
+ try{const sub=await s.registration.pushManager.getSubscription();if(!sub)throw Error('이 기기 알림을 다시 연결해주세요.');await pushAPI({action:'preferences',subscription:sub.toJSON(),token:pushToken(),recordUpdates:s.recordUpdates});s.message=s.recordUpdates?'기록 업데이트 알림을 켰어요.':'기록 업데이트 알림을 껐어요. 일정 알림은 계속 받아요.';}
+ catch(e){s.recordUpdates=previous;s.message=e.message||'설정을 저장하지 못했어요.';}
+ finally{s.busy=false;refreshPushSettings();}
+});
 
 function home(){
   const t=byDate(TS),kbo=t.find(e=>e.type==='kbo');
@@ -1570,7 +1584,6 @@ function home(){
   <h2>${sd.getMonth()+1}월 ${sd.getDate()}일 (${'일월화수목금토'[sd.getDay()]}) 일정</h2>
   <div class="card">${evs.length?evs.map(evRow).join(''):'<div class="empty">일정이 없습니다.</div>'}</div>
   ${homeNearMilestonesHTML()}
-  ${pushSettingsHTML()}
   ${recordRefreshControlsHTML()}
   <div class="foot">${isOwner?'<a href="#/admin">관리자</a> · <a href="#/players">선수 관리</a>':''}</div>${gameBatterSheetHTML()}`;
 }
@@ -5089,7 +5102,7 @@ function route(){
     if(r==='records'){recKind='hitter';recBatTab='main';recSort={k:'avg',dir:'desc'};playerSheet=null;}
     if(r==='opponent'){opponentPlayerTarget=null;opponentMatchupJob=null;opponentMatchupSort=null;opponentKind='hitter';oppSort='avg';oppSortDir='desc';oppHistorySheet=null;}
   }
-  $('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():home(),r));
+  $('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));
   updateNavigation(r);
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
