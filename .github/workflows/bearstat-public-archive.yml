@@ -1,0 +1,62 @@
+name: BEARStat public archive
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 15 * * *'
+  push:
+    branches: [main]
+    paths: ['index.html', 'scripts/export-public-records.py', '.github/workflows/bearstat-public-archive.yml']
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: bearstat-public-archive
+  cancel-in-progress: false
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Read public rows and preserve the last good archive on failure
+        id: export
+        continue-on-error: true
+        run: python scripts/export-public-records.py
+      - name: Commit changed public snapshot
+        if: steps.export.outcome == 'success'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update BEARStat public record archive'
+            git push
+          fi
+      - name: Require an existing valid snapshot before deployment
+        run: python -c "import json; m=json.load(open('data/manifest.json')); assert m['schemaVersion']==1"
+      - uses: actions/configure-pages@v5
+      - name: Prepare public site only
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          cp -r data _site/
+          for file in sw.js sw-cloudflare.js manifest.webmanifest favicon.png apple-touch-icon.png; do
+            if [ -f "$file" ]; then cp "$file" _site/; fi
+          done
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy saved public records even when Supabase is restricted
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Report refresh failure without deleting the last good archive
+        if: steps.export.outcome != 'success'
+        run: |
+          echo '::warning::Supabase refresh failed; the last saved public archive was deployed.'
