@@ -369,6 +369,8 @@ table th button,table td button{ text-align:center }
 .team-selection-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .playerlink[data-abhistory]{font-weight:inherit}
 </style><style>nav #nav{overflow-x:auto;overscroll-behavior-x:contain}#nav[data-owner="true"] a,#nav[data-owner="true"] a:last-child{flex:1 1 0;min-width:0;white-space:normal;font-size:11px;padding-inline:2px}</style>
+<style>.career-editor-tools{position:sticky;top:0;z-index:5;background:var(--card);padding:8px 0 10px;margin-bottom:12px;border-bottom:1px solid var(--line)}.career-editor-tools .sheethead>div:first-child{min-width:0}.career-editor-tools .sheethead b{overflow-wrap:anywhere}.career-editor-tools #mile_error_top:empty{display:none}</style>
+<style>.inline-career-toolbar{position:sticky;top:0;z-index:6;background:var(--card);padding:10px 0;border-bottom:1px solid var(--line)}.inline-career-toolbar .btn{margin:0}.inline-career-toolbar [role="status"]:not(:empty){padding-top:8px}.inline-career-card{border:1px solid var(--line);border-radius:14px;margin:10px 0;overflow:hidden}.inline-career-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px}.inline-career-editor{padding:0 12px 12px}.inline-career-rates{display:flex;flex-wrap:wrap;gap:10px;background:var(--chip);padding:12px;border-radius:10px;margin:12px 0}.inline-career-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px}.inline-career-fields label{min-width:0}.inline-career-fields input{margin-top:6px}@media(max-width:380px){.inline-career-fields{grid-template-columns:1fr}}</style>
 </head>
 <body>
 <div id="app"></div>
@@ -483,14 +485,90 @@ document.addEventListener('click',async ev=>{
  if(ev.target.closest('[data-visibility-retry]')){try{await loadPlayerVisibility()}catch{}refreshRecordVisibilityPanel();}
 });
 
-let adminCareerPlayer='';
-function adminCareerInputHTML(){
- const players=recordVisibilityChoices();
- return `<div class="card"><h2 style="margin-top:0">통산 정보 입력</h2><div class="note">기준 연도까지의 KBO 정규시즌 누적 기록을 입력해요. 이후 연도의 두산 경기 기록은 자동으로 더해요.<br>통산 OPS에는 타수·안타·루타·볼넷·사구·희생플라이가 필요해요.</div>${CAREER_WARNING?`<div class="note" role="status">${esc(CAREER_WARNING)}</div>`:''}<label for="admin_career_player">선수 선택</label><select id="admin_career_player">${players.map(p=>{const value=JSON.stringify([p.role,p.name]);return `<option value="${esc(value)}"${value===adminCareerPlayer?' selected':''}>${esc(p.name)} · ${p.role==='hitter'?'타자':'투수'}${CAREER_BASELINES[careerKey(p.role,p.name)]?' · 입력 완료':''}</option>`}).join('')}</select><button type="button" class="btn" data-admin-career-open style="margin-top:12px"${players.length?'':' disabled'}>통산 정보 입력 / 수정</button></div>`;
+const INLINE_CAREER_DRAFTS=new Map();
+let inlineCareerSearch='',inlineCareerLimit=80,inlineCareerSaving=false,inlineCareerStatus='';
+const inlineCareerKey=(role,name)=>encodeURIComponent(JSON.stringify([role,name]));
+function inlineCareerDraft(role,name){
+ const key=inlineCareerKey(role,name);
+ if(!INLINE_CAREER_DRAFTS.has(key)){
+   const entry=CAREER_BASELINES[careerKey(role,name)];
+   INLINE_CAREER_DRAFTS.set(key,{role,name,selected:false,year:String(entry?.baselineYear??TODAY.getFullYear()-1),raw:'',values:Object.fromEntries(CAREER_INPUT_FIELDS[role].map(m=>[m.key,entry?.baseline[m.key]===undefined?'':milestoneDisplay(entry.baseline[m.key],m)])),message:''});
+ }
+ return INLINE_CAREER_DRAFTS.get(key);
 }
+function inlineCareerRatesHTML(draft){
+ const stats={};for(const m of CAREER_INPUT_FIELDS[draft.role]){try{const v=parseCareerValue(draft.values[m.key],m);if(v!==null)stats[m.key]=v}catch{}}
+ const rates=careerRates(stats,draft.role),fields=draft.role==='hitter'?[['avg','타율'],['obp','출루율'],['slg','장타율'],['ops','OPS']]:[['era','평균자책점'],['wpct','승률']];
+ return fields.map(([key,label])=>`<span>${label} <b data-inline-rate="${key}">${rates[key]}</b></span>`).join('');
+}
+function inlineCareerFieldsHTML(draft){
+ const key=inlineCareerKey(draft.role,draft.name);
+ return `<div class="inline-career-editor"><label>기준 연도<input inputmode="numeric" data-inline-year value="${esc(draft.year)}" aria-label="${esc(draft.name)} 기준 연도"></label><label>KBO 연도별 표 붙여넣기<textarea rows="4" data-inline-paste placeholder="연도·팀명부터 마지막 기록까지 표 전체를 붙여넣어줘.">${esc(draft.raw)}</textarea></label><button type="button" class="btn g" data-inline-import="${key}">표에서 자동 채우기</button><div class="sb" data-inline-message role="status">${esc(draft.message)}</div><div class="note">기준 연도까지의 누적 기록이야. 이후 연도의 두산 경기 기록은 자동으로 더해져. 빈칸은 미확인, 0은 기록 없음이야.${draft.role==='hitter'?'<br>OPS에는 타수·안타·루타·볼넷·사구·희생플라이가 필요해.':''}</div><div class="inline-career-rates" data-inline-rates>${inlineCareerRatesHTML(draft)}</div><div class="inline-career-fields">${CAREER_INPUT_FIELDS[draft.role].map(m=>`<label>${m.label}<input data-inline-field="${m.key}" inputmode="decimal" value="${esc(draft.values[m.key])}" placeholder="${m.key==='ipOuts'?'예: 100.2 (100⅔이닝)':'기준 연도까지의 누적 '+m.label}"></label>`).join('')}</div></div>`;
+}
+function inlineCareerListHTML(){
+ const query=S(inlineCareerSearch).toLowerCase();
+ const players=recordVisibilityChoices().filter(p=>p.name.toLowerCase().includes(query)).sort((a,b)=>Number(!!CAREER_BASELINES[careerKey(a.role,a.name)])-Number(!!CAREER_BASELINES[careerKey(b.role,b.name)])||a.name.localeCompare(b.name,'ko')||a.role.localeCompare(b.role));
+ const selected=players.filter(p=>INLINE_CAREER_DRAFTS.get(inlineCareerKey(p.role,p.name))?.selected);
+ const shown=new Set([...players.slice(0,inlineCareerLimit),...selected].map(p=>inlineCareerKey(p.role,p.name)));
+ return `${players.filter(p=>shown.has(inlineCareerKey(p.role,p.name))).map(p=>{
+   const key=inlineCareerKey(p.role,p.name),draft=INLINE_CAREER_DRAFTS.get(key),completed=!!CAREER_BASELINES[careerKey(p.role,p.name)],active=!!draft?.selected;
+   return `<section class="inline-career-card" data-inline-card="${key}"><div class="inline-career-heading"><label style="display:flex;align-items:center;gap:10px;margin:0"><input type="checkbox" style="width:20px;height:20px;margin:0" data-inline-select="${key}" aria-label="${esc(p.name)} ${p.role==='hitter'?'타자':'투수'} 입력"${active?' checked':''}><span><b>${esc(p.name)}</b> <span class="sb">${p.role==='hitter'?'타자':'투수'}</span><span class="sb" style="display:block;font-size:11px">${completed?'입력 완료':'미입력'}</span></span></label>${active?`<button type="button" class="btn" style="width:auto;margin:0;padding:8px 12px" data-career-save-one="${key}">저장</button>`:''}</div>${active?inlineCareerFieldsHTML(draft):''}</section>`;
+ }).join('')||'<div class="empty">해당 선수가 없어.</div>'}${players.length>shown.size?'<button type="button" class="btn g" data-inline-more>선수 더 보기</button>':''}`;
+}
+function inlineCareerSelectedCount(){return [...INLINE_CAREER_DRAFTS.values()].filter(d=>d.selected).length}
+function adminCareerInputHTML(){
+ return `<div class="card"><h2 style="margin-top:0">통산 정보 입력</h2><div class="note">입력할 선수를 체크하면 아래에 입력 칸이 열려. KBO 연도별 표를 통째로 붙여넣거나 직접 수정할 수 있어.<br>미입력 선수를 먼저, 입력 완료 선수는 아래에 각각 가나다순으로 표시해.</div>${CAREER_WARNING?`<div class="note" role="status">${esc(CAREER_WARNING)}</div>`:''}<div class="inline-career-toolbar"><button type="button" class="btn" data-career-save-selected${inlineCareerSaving||!inlineCareerSelectedCount()?' disabled':''}>${inlineCareerSaving?'저장 중…':'선택한 '+inlineCareerSelectedCount()+'명 저장'}</button><div class="sb" id="inline_career_status" role="status">${esc(inlineCareerStatus)}</div></div><label for="inline_career_search">선수 검색</label><input id="inline_career_search" type="search" placeholder="선수 이름 검색" value="${esc(inlineCareerSearch)}"><fieldset id="inline_career_list" style="border:0;padding:0;margin:12px 0 0;min-width:0"${inlineCareerSaving?' disabled':''}>${inlineCareerListHTML()}</fieldset></div>`;
+}
+function refreshInlineCareerList(){const list=document.getElementById('inline_career_list');if(list){list.innerHTML=inlineCareerListHTML();list.disabled=inlineCareerSaving}updateInlineCareerToolbar()}
+function updateInlineCareerToolbar(){
+ const button=document.querySelector('[data-career-save-selected]');if(button){button.disabled=inlineCareerSaving||!inlineCareerSelectedCount();button.textContent=inlineCareerSaving?'저장 중…':'선택한 '+inlineCareerSelectedCount()+'명 저장'}
+ const status=document.getElementById('inline_career_status');if(status)status.textContent=inlineCareerStatus;
+}
+async function saveInlineCareer(keys){
+ requireAdmin();if(inlineCareerSaving)return;if(!SB)throw Error('저장 연결을 확인해줘.');
+ const drafts=keys.map(key=>INLINE_CAREER_DRAFTS.get(key)).filter(d=>d?.selected);if(!drafts.length)return;
+ inlineCareerStatus='';
+ try{
+   const known=new Set(recordVisibilityChoices().map(p=>inlineCareerKey(p.role,p.name)));
+   const rows=drafts.map(d=>{
+     if(!known.has(inlineCareerKey(d.role,d.name)))throw Error('선수 정보를 확인해줘.');
+     const year=Number(S(d.year));if(!/^\d{4}$/.test(S(d.year))||!Number.isInteger(year)||year<1981||year>=TODAY.getFullYear())throw Error(d.name+': 기준 연도는 '+(TODAY.getFullYear()-1)+'년 이전으로 입력해줘.');
+     const baseline={};for(const m of CAREER_INPUT_FIELDS[d.role]){let v;try{v=parseCareerValue(d.values[m.key],m)}catch(e){throw Error(d.name+': '+e.message)}if(v!==null)baseline[m.key]=v}
+     if(!Object.keys(baseline).length)throw Error(d.name+': 기록을 하나 이상 입력해줘.');
+     return {key:careerKey(d.role,d.name),body:{schemaVersion:2,name:d.name,role:d.role,baselineYear:year,baseline,updatedAt:new Date().toISOString()}};
+   });
+   inlineCareerSaving=true;updateInlineCareerToolbar();const list=document.getElementById('inline_career_list');if(list)list.disabled=true;
+   const r=await SB.from('kv').upsert(rows);if(r.error)throw r.error;
+   ++careerBaselineRevision;for(const row of rows)CAREER_BASELINES[row.key]=row.body;
+   for(const d of drafts){d.selected=false;d.message='저장했어.';}
+   CAREER_WARNING='';inlineCareerStatus=rows.length+'명 저장했어.';
+ }catch(e){inlineCareerStatus='저장하지 못했어: '+(e.message||'다시 시도해줘.');}
+ finally{inlineCareerSaving=false;refreshInlineCareerList();}
+}
+document.addEventListener('change',ev=>{
+ if(!isOwner||!ev.target.matches('[data-inline-select]')||inlineCareerSaving)return;
+ try{const [role,name]=JSON.parse(decodeURIComponent(ev.target.dataset.inlineSelect));inlineCareerDraft(role,name).selected=ev.target.checked;refreshInlineCareerList()}catch{}
+});
+document.addEventListener('input',ev=>{
+ if(!isOwner||inlineCareerSaving)return;
+ if(ev.target.id==='inline_career_search'){inlineCareerSearch=ev.target.value;inlineCareerLimit=80;refreshInlineCareerList();return}
+ const card=ev.target.closest('[data-inline-card]');if(!card)return;const d=INLINE_CAREER_DRAFTS.get(card.dataset.inlineCard);if(!d)return;
+ if(ev.target.matches('[data-inline-year]'))d.year=ev.target.value;
+ if(ev.target.matches('[data-inline-paste]'))d.raw=ev.target.value;
+ if(ev.target.matches('[data-inline-field]')){d.values[ev.target.dataset.inlineField]=ev.target.value;card.querySelector('[data-inline-rates]').innerHTML=inlineCareerRatesHTML(d)}
+});
+document.addEventListener('click',ev=>{
+ if(!isOwner||inlineCareerSaving)return;
+ const imported=ev.target.closest('[data-inline-import]');
+ if(imported){const d=INLINE_CAREER_DRAFTS.get(imported.dataset.inlineImport);if(!d)return;try{const result=parseKboCareerTable(d.raw,d.role,+d.year,'career');d.values=Object.fromEntries(CAREER_INPUT_FIELDS[d.role].map(m=>[m.key,result.baseline[m.key]===undefined?'':milestoneDisplay(result.baseline[m.key],m)]));d.message=(result.years.length?result.years.join(', ')+'년을 합산했어.':'해당 연도 기록이 없어.')+(result.excluded.length?' '+result.excluded.join(', ')+'년은 제외했어.':'')+(result.missingSacrificeYears.length?' 희생플라이는 확정할 수 없어. 기준 연도까지 누적 희생플라이를 직접 입력해줘.':d.role==='hitter'?' 희생플라이도 출루율·타석 기록과 대조해서 채웠어.':'')}catch(e){d.message=e.message}refreshInlineCareerList();return}
+ if(ev.target.closest('[data-inline-more]')){inlineCareerLimit+=80;refreshInlineCareerList();return}
+ const one=ev.target.closest('[data-career-save-one]');
+ if(one){void saveInlineCareer([one.dataset.careerSaveOne]).catch(e=>{inlineCareerStatus=e.message;updateInlineCareerToolbar()});return}
+ if(ev.target.closest('[data-career-save-selected]'))void saveInlineCareer([...INLINE_CAREER_DRAFTS.keys()]).catch(e=>{inlineCareerStatus=e.message;updateInlineCareerToolbar()});
+});
 function informationPage(){
  if(!isOwner)return '<div class="brand"><div class="logo">정보 입력</div></div><div class="card"><div class="note">관리자 로그인 후 사용할 수 있어요.</div><a href="#/admin">관리자 로그인</a></div>';
- return `<div class="brand"><div class="logo">정보 입력</div></div>${adminCareerInputHTML()}${adminRecordVisibilityHTML()}${careerEditorHTML()}`;
+ return `<div class="brand"><div class="logo">정보 입력</div></div>${adminCareerInputHTML()}${adminRecordVisibilityHTML()}`;
 }
 function updateNavigation(r){
  const links=[['home','홈'],['standings','순위'],['h2h','맞대결'],['records','개인기록'],['opponent','상대전적'],['milestones','예상 달성 기록']];
@@ -499,15 +577,6 @@ function updateNavigation(r){
  nav.dataset.owner=isOwner?'true':'false';
  nav.innerHTML=links.map(([key,label])=>`<a href="#/${key==='home'?'':key}" class="${r===key?'on':''}"${r===key?' aria-current="page"':''}>${label}</a>`).join('');
 }
-document.addEventListener('click',ev=>{
- if(!ev.target.closest('[data-admin-career-open]')||!isOwner)return;
- const selected=document.getElementById('admin_career_player')?.value;
- try{
-   const [role,name]=JSON.parse(selected);
-   if(!recordVisibilityChoices().some(p=>p.name===name&&p.role===role))return;
-   adminCareerPlayer=selected;milestoneScope='career';milestoneRole=role;milestoneEdit=name;route2();
- }catch{}
-});
 
 function requireAdmin(){if(!isOwner)throw new Error('관리자 로그인 후 사용할 수 있습니다');}
 let manualMutationRevision=0;
@@ -748,7 +817,7 @@ async function setUser(sess){
   if(sess){const r=await SB.from('admins').select('user_id').eq('user_id',sess.user.id);if(revision!==authRevision)return;isOwner=!r.error&&r.data.length>0}
   if(revision!==authRevision)return;
   packingUserId=isOwner?sess.user.id:'';
-  if(!isOwner){editing=null;eduDraft=null;adminView='manage';milestoneEdit=null}
+  if(!isOwner){editing=null;eduDraft=null;adminView='manage';milestoneEdit=null;INLINE_CAREER_DRAFTS.clear();inlineCareerStatus=''}
   route2();
 }
 setTimeout(()=>{
@@ -3965,7 +4034,7 @@ function careerSetupHTML(){
 function careerEditorHTML(){
  if(!isOwner||!milestoneEdit)return '';
  const entry=CAREER_BASELINES[baselineKey(milestoneRole,milestoneEdit)],year=entry?.baselineYear??TODAY.getFullYear()-1;
- return `<div class="sheetback"><div class="sheet"><div class="sheetbar"></div><div class="sheethead"><div><b>${esc(milestoneEdit)}</b><div class="sb">${milestoneScope==='bears'?'베어스 통산':'통산'} 기준 기록</div></div><button class="sheetclose" data-mileclose aria-label="닫기">×</button></div><label for="mile_baseyear">기준 연도</label><input id="mile_baseyear" inputmode="numeric" value="${year}"><div class="note">${milestoneScope==='bears'?'지난 시즌까지 OB·두산 소속으로 쌓은 KBO 정규시즌 기록을 저장해요. 다른 팀 기록은 제외해요.':'지난 시즌까지의 KBO 정규시즌 통산 기록을 저장해요.'} 아래에 KBO 연도별 표 전체를 붙여넣으면 올해 행은 자동으로 제외돼요. 빈칸은 미입력, 0은 기록 없음이에요.</div>${milestoneScope==='bears'?'<button type="button" class="btn" id="mile_copycareer">OB·두산에서만 뛰었다면 기존 통산 기록 채우기</button><div class="sb">다른 KBO 팀에서 뛴 적이 있다면 아래에 팀별 표를 붙여넣어주세요.</div>':''}<label for="mile_paste">KBO 통산 표 붙여넣기</label><textarea id="mile_paste" rows="4" placeholder="연도·팀명·기록이 있는 표 전체를 복사해서 붙여넣어주세요."></textarea><button type="button" class="btn" id="mile_import">지난 시즌까지 자동 합산</button><div id="mile_import_status" class="sb" role="status"></div><div class="note">자동 합산한 값은 아래 칸에서 확인·수정할 수 있어요. 여러 팀에서 뛴 시즌의 합계 행이 있으면 합계만 사용해요.</div>${CAREER_INPUT_FIELDS[milestoneRole].map(m=>`<label for="mile_base_${m.key}">${m.label}</label><input id="mile_base_${m.key}" data-careerinput inputmode="decimal" value="${entry?.baseline[m.key]===undefined?'':milestoneDisplay(entry.baseline[m.key],m)}" placeholder="${m.key==='ipOuts'?'예: 100.2 (100⅔이닝)':'지난 시즌까지의 통산 '+m.label}">`).join('')}${(milestoneRole==='hitter'?[['avg','타율'],['slg','장타율'],['obp','출루율'],['ops','OPS']]:[['era','평균자책점'],['wpct','승률']]).map(([key,label])=>`<label for="mile_rate_${key}">${label} · 자동 계산</label><input id="mile_rate_${key}" readonly value="${careerRates(entry?.baseline||{},milestoneRole)[key]}">`).join('')}<div class="note">비율은 더하지 않고 합계로 계산해요.${milestoneRole==='hitter'?' 출루율·OPS 계산에는 타수, 안타, 루타, 볼넷, 사구, 희생플라이가 필요해요. 표 붙여넣기로 희생플라이가 채워지지 않으면 직접 입력해주세요. 빈칸은 미확인으로 남고, 기록이 없음을 확인한 경우에만 0을 입력해주세요.':''}</div><button class="btn" id="mile_save">저장</button><div id="mile_error" class="sb" role="status"></div></div></div>`;
+ return `<div class="sheetback"><div class="sheet"><div class="sheetbar"></div><div class="career-editor-tools"><div class="sheethead"><div><b>${esc(milestoneEdit)}</b><div class="sb">${milestoneScope==='bears'?'베어스 통산':'통산'} 기준 기록</div></div><div style="display:flex;align-items:center;gap:8px"><button type="button" class="btn" id="mile_save_top" style="width:auto;margin:0;padding:8px 16px">저장</button><button class="sheetclose" data-mileclose aria-label="닫기">×</button></div></div><div id="mile_error_top" class="sb" role="status"></div></div><label for="mile_baseyear">기준 연도</label><input id="mile_baseyear" inputmode="numeric" value="${year}"><div class="note">${milestoneScope==='bears'?'지난 시즌까지 OB·두산 소속으로 쌓은 KBO 정규시즌 기록을 저장해요. 다른 팀 기록은 제외해요.':'지난 시즌까지의 KBO 정규시즌 통산 기록을 저장해요.'} 아래에 KBO 연도별 표 전체를 붙여넣으면 올해 행은 자동으로 제외돼요. 빈칸은 미입력, 0은 기록 없음이에요.</div>${milestoneScope==='bears'?'<button type="button" class="btn" id="mile_copycareer">OB·두산에서만 뛰었다면 기존 통산 기록 채우기</button><div class="sb">다른 KBO 팀에서 뛴 적이 있다면 아래에 팀별 표를 붙여넣어주세요.</div>':''}<label for="mile_paste">KBO 통산 표 붙여넣기</label><textarea id="mile_paste" rows="4" placeholder="연도·팀명·기록이 있는 표 전체를 복사해서 붙여넣어주세요."></textarea><button type="button" class="btn" id="mile_import">지난 시즌까지 자동 합산</button><div id="mile_import_status" class="sb" role="status"></div><div class="note">자동 합산한 값은 아래 칸에서 확인·수정할 수 있어요. 여러 팀에서 뛴 시즌의 합계 행이 있으면 합계만 사용해요.</div>${CAREER_INPUT_FIELDS[milestoneRole].map(m=>`<label for="mile_base_${m.key}">${m.label}</label><input id="mile_base_${m.key}" data-careerinput inputmode="decimal" value="${entry?.baseline[m.key]===undefined?'':milestoneDisplay(entry.baseline[m.key],m)}" placeholder="${m.key==='ipOuts'?'예: 100.2 (100⅔이닝)':'지난 시즌까지의 통산 '+m.label}">`).join('')}${(milestoneRole==='hitter'?[['avg','타율'],['slg','장타율'],['obp','출루율'],['ops','OPS']]:[['era','평균자책점'],['wpct','승률']]).map(([key,label])=>`<label for="mile_rate_${key}">${label} · 자동 계산</label><input id="mile_rate_${key}" readonly value="${careerRates(entry?.baseline||{},milestoneRole)[key]}">`).join('')}<div class="note">비율은 더하지 않고 합계로 계산해요.${milestoneRole==='hitter'?' 출루율·OPS 계산에는 타수, 안타, 루타, 볼넷, 사구, 희생플라이가 필요해요. 표 붙여넣기로 희생플라이가 채워지지 않으면 직접 입력해주세요. 빈칸은 미확인으로 남고, 기록이 없음을 확인한 경우에만 0을 입력해주세요.':''}</div><button class="btn" id="mile_save">저장</button><div id="mile_error" class="sb" role="status"></div></div></div>`;
 }
 function parseCareerValue(raw,metric){
  const s=S(raw).trim().replace(/,/g,'');if(!s)return null;
@@ -3973,7 +4042,7 @@ function parseCareerValue(raw,metric){
  if(!/^\d+$/.test(s)||!Number.isSafeInteger(+s))throw Error(metric.label+'에는 0 이상의 정수를 입력해주세요.');return +s;
 }
 async function saveCareerBaseline(){
- const button=document.getElementById('mile_save'),error=document.getElementById('mile_error');if(button.disabled)return;button.disabled=true;
+ const button=document.getElementById('mile_save'),error=document.getElementById('mile_error'),topError=document.getElementById('mile_error_top'),buttons=document.querySelectorAll('#mile_save,#mile_save_top');if(!button||button.disabled)return;buttons.forEach(b=>b.disabled=true);error.textContent='';if(topError)topError.textContent='';
  try{requireAdmin();if(!SB)throw Error('저장 연결을 확인해주세요.');
  const name=milestoneEdit,role=milestoneRole,raw=S(document.getElementById('mile_baseyear').value).trim(),year=Number(raw);
  if(!/^\d{4}$/.test(raw)||!Number.isInteger(year)||year<1981||year>=TODAY.getFullYear())throw Error('기준 연도는 '+(TODAY.getFullYear()-1)+'년 이전으로 입력해주세요.');
@@ -3983,7 +4052,7 @@ async function saveCareerBaseline(){
  const key=baselineKey(role,name),body={schemaVersion:2,name,role,baselineYear:year,baseline,updatedAt:new Date().toISOString()};
  const r=await SB.from('kv').upsert({key,body});if(r.error)throw r.error;
  ++careerBaselineRevision;CAREER_BASELINES[key]=body;CAREER_WARNING='';milestoneEdit=null;route2();
- }catch(e){error.textContent=e.message||'저장하지 못했습니다.';button.disabled=false}
+ }catch(e){error.textContent=e.message||'저장하지 못했습니다.';if(topError)topError.textContent=error.textContent;buttons.forEach(b=>b.disabled=false)}
 }
 
 function milestoneClose(remaining,metric,limit=10,inclusive=true){if(['d2','d3','hr','w','s','h','hbp'].includes(metric.key))return remaining>0&&remaining<=5;const maximum=metric.key==='ipOuts'?Math.min(limit,10)*3:Math.min(limit,10);return remaining>0&&remaining<=maximum}
@@ -4526,7 +4595,7 @@ function route(){
 }
 document.addEventListener('input',ev=>{if(ev.target.matches('[data-careerinput]'))updateCareerRates()});
 document.addEventListener('click',ev=>{
-  const t=ev.target.closest('[data-recordscope],[data-pmilestone],[data-pmilestonescope],[data-pmilestoneclose],[data-pmilestoneback],[data-mileopen],[data-mileclose],#mile_save,#mile_import,#mile_copycareer,[data-milescope],[data-milerole],[data-milemetric],[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-oppkind],[data-oppsort-pitch],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppdetail-stat],[data-opppitchstat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-sdimension],[data-svalue],[data-rleague],[data-hstat],[data-phretry],[data-sstat],[data-pstat],[data-prole],[data-rseason],[data-rpoststage],[data-rperiod],[data-rmonth],[data-rweek],[data-orderhist],[data-ordergame],[data-defenseretry],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],[data-hide-auto],[data-restore-auto],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
+  const t=ev.target.closest('[data-recordscope],[data-pmilestone],[data-pmilestonescope],[data-pmilestoneclose],[data-pmilestoneback],[data-mileopen],[data-mileclose],#mile_save,#mile_save_top,#mile_import,#mile_copycareer,[data-milescope],[data-milerole],[data-milemetric],[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-oppkind],[data-oppsort-pitch],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppdetail-stat],[data-opppitchstat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-sdimension],[data-svalue],[data-rleague],[data-hstat],[data-phretry],[data-sstat],[data-pstat],[data-prole],[data-rseason],[data-rpoststage],[data-rperiod],[data-rmonth],[data-rweek],[data-orderhist],[data-ordergame],[data-defenseretry],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],[data-hide-auto],[data-restore-auto],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
   if(!isOwner&&(t.dataset.edit||t.dataset.del||['save','saveroster','saveeduroster','admin_new','addhr'].includes(t.id)))return;
   const keep=()=>{const historyTop=document.querySelector('.historybox')?.scrollTop;const y=scrollY,left=document.querySelector('.opp-scroll,.record-scroll')?.scrollLeft;route2();const scroller=document.querySelector('.opp-scroll,.record-scroll');if(scroller&&left!==undefined)scroller.scrollLeft=left;const history=document.querySelector('.historybox');if(history&&historyTop!==undefined)history.scrollTop=historyTop;scrollTo(0,y)};
   if(t.dataset.recordscope!==undefined){if(['season','career'].includes(t.dataset.recordscope)){recScope=t.dataset.recordscope;recSort=null;playerSheet=null;playerHistoryStat=null;pitcherHistoryStat=null;keep()}}
@@ -4535,7 +4604,7 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.pmilestoneclose!==undefined||(t.dataset.pmilestoneback!==undefined&&ev.target===t)){playerMilestoneSheet=null;keep()}
   else if(t.dataset.mileopen!==undefined){if(isOwner){milestoneEdit=S(document.getElementById('mile_player')?.value);keep()}}
   else if(t.dataset.mileclose!==undefined){milestoneEdit=null;keep()}
-  else if(t.id==='mile_save'){saveCareerBaseline()}
+  else if(t.id==='mile_save'||t.id==='mile_save_top'){saveCareerBaseline()}
   else if(t.id==='mile_copycareer'){copyCareerToBears()}
   else if(t.id==='mile_import'){fillCareerFromTable()}
   else if(t.dataset.milescope){if(['career','season','bears'].includes(t.dataset.milescope)){if(milestoneScope==='season'&&doosanRegularSeasonComplete()&&t.dataset.milescope!=='season')milestoneListMode='upcoming';milestoneScope=t.dataset.milescope;milestoneMetric='all';milestoneEdit=null;playerMilestoneSheet=null;keep()}}
