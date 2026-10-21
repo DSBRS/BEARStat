@@ -757,6 +757,50 @@ function updateNavigation(r){
  nav.innerHTML=links.map(([key,label])=>`<a href="#/${key==='home'?'':key}" class="${r===key?'on':''}"${r===key?' aria-current="page"':''}>${label}</a>`).join('');
 }
 
+// Public static mirrors contain only rows already displayed by the site.
+// Auth, admin membership, edits and notification subscriptions stay outside the mirror.
+const publicArchive={manifest:null,checkedAt:0,pending:null,files:new Map(),error:'',base:new URL('data/',new URL('.',location.href)),
+ async refresh(force=false){
+  if(!force&&this.checkedAt&&Date.now()-this.checkedAt<300000)return this.manifest;
+  if(this.pending)return this.pending;
+  this.pending=(async()=>{try{const response=await fetch(new URL('manifest.json',this.base),{cache:'no-cache',signal:AbortSignal.timeout(12000)});if(response.status===404){this.checkedAt=Date.now();return this.manifest}if(!response.ok)throw Error('공개 기록 확인 실패');const m=await response.json();if(m.schemaVersion!==1||m.project!==SUPABASE_URL||!['events','kbo_game_records','futures_game_records','kv'].every(t=>Array.isArray(m.tables?.[t]?.shards)))throw Error('공개 기록 형식 오류');this.manifest=m;this.checkedAt=Date.now();this.error='';return m}catch{this.checkedAt=Date.now();this.error='최신 공개 기록을 확인하지 못했어요.';return this.manifest}finally{this.pending=null}})();return this.pending;
+ },
+ async rows(table){
+  const manifest=await this.refresh();if(!manifest?.tables[table])return null;
+  const shards=manifest.tables[table].shards;
+  const groups=[];
+  // Limit concurrency on older mobile devices.
+  for(let i=0;i<shards.length;i+=4)groups.push(...await Promise.all(shards.slice(i,i+4).map(async shard=>{
+   if(!/^[a-z0-9_-]+\.json$/.test(shard.file)||!/^[a-f0-9]{64}$/.test(shard.sha256))throw Error('공개 기록 파일 형식 오류');
+   if(!this.files.has(shard.file))this.files.set(shard.file,(async()=>{const r=await fetch(new URL(shard.file,this.base),{signal:AbortSignal.timeout(30000)});if(!r.ok)throw Error('공개 기록을 불러오지 못했어요.');const buffer=await r.arrayBuffer();const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',buffer)),b=>b.toString(16).padStart(2,'0')).join('');if(hash!==shard.sha256)throw Error('공개 기록 확인에 실패했어요.');const rows=JSON.parse(new TextDecoder().decode(buffer));if(!Array.isArray(rows)||rows.length!==shard.count)throw Error('공개 기록 일부가 누락됐어요.');return rows})().catch(e=>{this.files.delete(shard.file);throw e}));
+   return this.files.get(shard.file);
+  })));
+  const rows=groups.flat();if(rows.length!==manifest.tables[table].count)throw Error('공개 기록 일부가 누락됐어요.');return rows;
+ }
+};
+function archivedReadQuery(native,table,columns){
+ const filters=[],orders=[];let start=0,end=Infinity,single=false,signal=null,executed=null;
+ const query={
+  eq(k,v){filters.push(r=>r[k]===v);native=native.eq(k,v);return this},
+  gte(k,v){filters.push(r=>r[k]>=v);native=native.gte(k,v);return this},
+  gt(k,v){filters.push(r=>r[k]>v);native=native.gt(k,v);return this},
+  lte(k,v){filters.push(r=>r[k]<=v);native=native.lte(k,v);return this},
+  lt(k,v){filters.push(r=>r[k]<v);native=native.lt(k,v);return this},
+  in(k,values){filters.push(r=>values.includes(r[k]));native=native.in(k,values);return this},
+  like(k,value){const re=new RegExp('^'+String(value).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/%/g,'.*').replace(/_/g,'.')+'$');filters.push(r=>re.test(String(r[k]??'')));native=native.like(k,value);return this},
+  order(k,options={}){orders.push([k,options.ascending!==false]);native=native.order(k,options);return this},
+  range(a,b){start=a;end=b;native=native.range(a,b);return this},
+  limit(n){end=start+n-1;native=native.limit(n);return this},
+  maybeSingle(){single=true;native=native.maybeSingle();return this},
+  single(){single=true;native=native.single();return this},
+  abortSignal(s){signal=s;native=native.abortSignal(s);return this},
+  then(ok,bad){if(!executed)executed=(async()=>{if(isOwner)return native;const source=await publicArchive.rows(table);if(source===null)return native;if(signal?.aborted)throw Error('요청이 취소됐어요.');let rows=source.filter(r=>filters.every(f=>f(r)));if(orders.length)rows=rows.slice().sort((a,b)=>{for(const[k,asc]of orders){const d=a[k]<b[k]?-1:a[k]>b[k]?1:0;if(d)return asc?d:-d}return 0});rows=rows.slice(start,Number.isFinite(end)?end+1:undefined);const keys=columns==='*'?null:columns.split(',').map(v=>v.trim());rows=rows.map(r=>structuredClone(keys?Object.fromEntries(keys.map(k=>[k,r[k]])):r));return {data:single?(rows[0]||null):rows,error:null}})().catch(e=>({data:null,error:{message:e.message||'공개 기록 조회 실패'}}));return executed.then(ok,bad)}
+ };return query;
+}
+function withPublicArchive(client){
+ return new Proxy(client,{get(target,key){if(key!=='from'){const v=Reflect.get(target,key);return typeof v==='function'?v.bind(target):v}return table=>{const builder=target.from(table);if(!['events','kbo_game_records','futures_game_records','kv'].includes(table))return builder;return new Proxy(builder,{get(b,k){if(k==='select')return columns=>archivedReadQuery(b.select(columns),table,columns);const v=Reflect.get(b,k);return typeof v==='function'?v.bind(b):v}})}}});
+}
+
 function requireAdmin(){if(!isOwner)throw new Error('관리자 로그인 후 사용할 수 있습니다');}
 let manualMutationRevision=0;
 async function readPaged(table,columns,configure=q=>q){
@@ -835,6 +879,12 @@ async function recordFutureRows(table,columns,order,window,force=false){
 }
 async function readWindowedRecords(table,columns,order,{refreshHistory=false,refreshFuture=false,onCached=null,onRecent=null}={}){
  const window=recordWindow(),revision=recordCacheEditRevision;
+ if(!isOwner&&await publicArchive.refresh()){
+  try{const rows=await publicArchive.rows(table);if(rows!==null){
+   for(const kind of ['history','recent','future'])persistRecordSnapshot({schema:RECORD_CACHE_SCHEMA,table,kind,boundary:kind==='future'?window.horizon:window.cutoff,fetchedAt:Date.now(),rows:rows.filter(r=>kind==='history'?S(r.date)<window.cutoff:kind==='future'?S(r.date)>=window.horizon:S(r.date)>=window.cutoff&&S(r.date)<window.horizon)});
+   onCached?.(rows);onRecent?.(rows.filter(r=>S(r.date)>=window.cutoff&&S(r.date)<window.horizon),window);return rows;
+  }}catch{/* Keep the most recent device snapshot if a static shard is unavailable. */}
+ }
  const snapshots=await Promise.all(['history','recent','future'].map(kind=>readRecordSnapshot(table,kind)));
  const cached=applyRecordCacheEdits(table,[...snapshots].filter(Boolean).sort((a,b)=>a.fetchedAt-b.fetchedAt).flatMap(s=>s.rows));
  if(cached.length)onCached?.([...new Map(cached.map(r=>[S(r[order]),r])).values()]);
@@ -850,11 +900,11 @@ async function readWindowedRecords(table,columns,order,{refreshHistory=false,ref
  return unique;
 }
 function recordRefreshControlsHTML(){
- return `<details class="record-refresh" style="margin-top:18px;color:var(--sub);font-size:12px"><summary style="cursor:pointer">기록 업데이트</summary><div class="note">지난 기록은 이 기기에 저장해 재사용해요. 최근 일정은 화면을 열어둔 동안 5분 간격으로 확인해요. 다른 기기에서 과거 기록을 수정했다면 아래에서 다시 받아주세요.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="chip" data-refresh-recent${recordsLoading?' disabled':''}>최근 일정 새로고침</button><button type="button" class="chip" data-refresh-history${recordsLoading?' disabled':''}>과거 기록 다시 받기</button></div>${recordCacheStorageWarning?`<div class="note">${esc(recordCacheStorageWarning)}</div>`:''}<div role="status" class="note">${recordsLoading?'기록을 확인하고 있어요.':''}</div></details>`;
+ return `<details class="record-refresh" style="margin-top:18px;color:var(--sub);font-size:12px"><summary style="cursor:pointer">기록 업데이트</summary><div class="note">${publicArchive.manifest?'GitHub에 보관한 공개 기록으로 조회해요. 마지막 보관: '+esc(new Date(publicArchive.manifest.generatedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}))+'. 관리자 수정은 수파베이스에 저장되고 다음 공개 기록 갱신 뒤 반영돼요.':'지난 기록은 이 기기에 저장해 재사용해요. 최근 일정은 화면을 열어둔 동안 5분 간격으로 확인해요. 다른 기기에서 과거 기록을 수정했다면 아래에서 다시 받아주세요.'}</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="chip" data-refresh-recent${recordsLoading?' disabled':''}>최근 일정 새로고침</button><button type="button" class="chip" data-refresh-history${recordsLoading?' disabled':''}>과거 기록 다시 받기</button></div>${recordCacheStorageWarning?`<div class="note">${esc(recordCacheStorageWarning)}</div>`:''}<div role="status" class="note">${recordsLoading?'기록을 확인하고 있어요.':''}</div></details>`;
 }
 document.addEventListener('click',ev=>{
- if(ev.target.closest('[data-refresh-recent]'))void refreshLatestData(true,{metadata:true,future:true});
- if(ev.target.closest('[data-refresh-history]'))void refreshLatestData(true,{history:true,metadata:true,future:true});
+ if(ev.target.closest('[data-refresh-recent]')){publicArchive.checkedAt=0;void refreshLatestData(true,{metadata:true,future:true});}
+ if(ev.target.closest('[data-refresh-history]')){publicArchive.checkedAt=0;void refreshLatestData(true,{history:true,metadata:true,future:true});}
 });
 
 const live=()=>CUSTOM.some(e=>e.source==='kbo');
@@ -1090,7 +1140,7 @@ async function setUser(sess){
 }
 setTimeout(()=>{
  if(!window.supabase||!SUPABASE_URL)return;
- SB=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+ SB=withPublicArchive(supabase.createClient(SUPABASE_URL,SUPABASE_KEY));
  // Query admin membership outside the synchronous auth callback.
  SB.auth.onAuthStateChange((_e,sess)=>{setTimeout(()=>{void setUser(sess).catch(console.warn)},0)});
  void SB.auth.getSession().then(({data})=>setUser(data.session)).catch(console.warn);
@@ -1426,17 +1476,17 @@ function homeTodayScheduleHTML(){
 
 function rememberPushEnabled(enabled){try{if(enabled)localStorage.setItem('bearstat-push-enabled-v1','1');else localStorage.removeItem('bearstat-push-enabled-v1')}catch{}}
 function knownPushEnabled(){try{return 'Notification' in window&&Notification.permission==='granted'&&localStorage.getItem('bearstat-push-enabled-v1')==='1'}catch{return false}}
-const pushState={suppressed:knownPushEnabled(),supported:!!(window.isSecureContext&&'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window),ready:false,enabled:false,hasSubscription:false,busy:false,config:null,registration:null,message:'',open:false};
+const pushState={suppressed:knownPushEnabled(),supported:!!(window.isSecureContext&&'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window),ready:false,enabled:false,hasSubscription:false,migrate:false,busy:false,config:null,registration:null,message:'',open:false};
 function pushSettingsHTML(){
  const s=pushState;
  if(!s.open&&(s.enabled||s.suppressed))return '<div id="push_settings_slot"></div>';
- return `<div id="push_settings_slot"><div class="card push-settings"><details id="push_settings"${s.open?' open':''}><summary><span class="push-bell" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><span>일정 5분 전 알림</span><span class="push-state">${s.enabled?'켜짐':'꺼짐'}</span></summary><div class="note">알림을 켜면 사이트를 닫아도 시작 전 알림을 받아요. 시간이 정해진 일정만 알려주며, 지난 일정과 진행·종료·취소된 경기는 제외해요.</div>${!s.supported?'<div class="note">이 브라우저에서는 푸시 알림을 사용할 수 없어요. 아이폰은 Safari에서 홈 화면에 추가한 뒤 앱을 열어주세요.</div>':`<button type="button" class="btn${s.enabled?' g':''}" data-push-toggle${s.busy||(!s.ready&&!s.enabled&&!s.hasSubscription)?' disabled':''}>${s.busy?'처리 중…':(s.enabled||s.hasSubscription)?'이 기기 알림 끄기':'이 기기 알림 켜기'}</button>`}<div class="note">아이폰은 홈 화면에 추가한 웹앱에서 알림을 허용해주세요. 기기와 네트워크 상태에 따라 도착이 늦어질 수 있어요.</div>${isOwner?`<details class="push-admin"><summary>관리자 · 알림 서버 연결</summary><div class="note">서버 설정 파일을 적용한 뒤 한 번만 연결해주세요.</div><button type="button" class="btn g" data-push-setup${s.busy?' disabled':''}>알림 서버 연결하기</button></details>`:''}<div class="note" role="status" aria-live="polite">${esc(s.message||(!s.ready?'알림 서버 연결을 확인하고 있어요.':''))}</div></details></div></div>`;
+ return `<div id="push_settings_slot"><div class="card push-settings"><details id="push_settings"${s.open?' open':''}><summary><span class="push-bell" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><span>일정 5분 전 알림</span><span class="push-state">${s.enabled?'켜짐':'꺼짐'}</span></summary><div class="note">알림을 켜면 사이트를 닫아도 시작 전 알림을 받아요. 시간이 정해진 일정만 알려주며, 지난 일정과 진행·종료·취소된 경기는 제외해요.</div>${!s.supported?'<div class="note">이 브라우저에서는 푸시 알림을 사용할 수 없어요. 아이폰은 Safari에서 홈 화면에 추가한 뒤 앱을 열어주세요.</div>':`<button type="button" class="btn${s.enabled?' g':''}" data-push-toggle${s.busy||(!s.ready&&!s.enabled&&!s.hasSubscription)?' disabled':''}>${s.busy?'처리 중…':s.migrate?'새 서버로 이 기기 알림 연결':(s.enabled||s.hasSubscription)?'이 기기 알림 끄기':'이 기기 알림 켜기'}</button>`}${s.enabled?'<button type="button" class="btn g" data-push-test>이 기기로 테스트 알림 보내기</button>':''}${s.enabled&&s.legacySubscription?'<div class="note">테스트 알림이 도착했다면 이전 알림 연결을 정리해주세요.</div><button type="button" class="btn g" data-push-stop-legacy>이전 서버 알림 정리</button>':''}<div class="note">아이폰은 홈 화면에 추가한 웹앱에서 알림을 허용해주세요. 기기와 네트워크 상태에 따라 도착이 늦어질 수 있어요.</div>${isOwner?`<details class="push-admin"><summary>관리자 · 알림 서버 연결</summary><div class="note">서버 설정 파일을 적용한 뒤 한 번만 연결해주세요.</div><button type="button" class="btn g" data-push-setup${s.busy?' disabled':''}>알림 서버 연결하기</button></details>`:''}<div class="note" role="status" aria-live="polite">${esc(s.message||(!s.ready?'알림 서버 연결을 확인하고 있어요.':''))}</div></details></div></div>`;
 }
 function refreshPushSettings(){const slot=document.getElementById('push_settings_slot');if(slot)slot.outerHTML=pushSettingsHTML();}
 async function pushAPI(body=null,accessToken=''){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
  try{
-  const r=await fetch(SUPABASE_URL+'/functions/v1/bearstat-push',{method:body?'POST':'GET',headers:{apikey:SUPABASE_KEY,...(body?{'Content-Type':'application/json'}:{}),...(accessToken?{Authorization:'Bearer '+accessToken}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:controller.signal});
+  const r=await fetch('https://bearstat-push.y15one2.workers.dev/',{method:body?'POST':'GET',headers:{apikey:SUPABASE_KEY,...(body?{'Content-Type':'application/json'}:{}),...(accessToken?{Authorization:'Bearer '+accessToken}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:controller.signal});
   let data;try{data=await r.json()}catch{throw Error('알림 서버 설정이 아직 완료되지 않았어요.')}
   if(!r.ok)throw Error(data.error||'알림 서버에 연결하지 못했어요.');return data;
  }finally{clearTimeout(timer)}
@@ -1450,14 +1500,15 @@ function pushApplicationKey(value){return Uint8Array.from(atob(value.replace(/-/
 async function preparePush(){
  const s=pushState;if(!s.supported){s.message='지원하는 브라우저 또는 홈 화면에 추가한 웹앱에서 열어주세요.';refreshPushSettings();return;}
  try{
-  s.registration=await navigator.serviceWorker.register(new URL('./sw.js',location.href.split('#')[0]),{scope:new URL('./',location.href).pathname,updateViaCache:'none'});
+  s.registration=await navigator.serviceWorker.register(new URL('./sw-cloudflare.js',location.href.split('#')[0]),{scope:new URL('./push-cf/',location.href).pathname,updateViaCache:'none'});
   if(!s.registration.active)await Promise.race([navigator.serviceWorker.ready,new Promise((_,reject)=>setTimeout(()=>reject(Error('알림 파일을 확인하지 못했어요. 새로고침해주세요.')),10000))]);
   const subscription=await s.registration.pushManager.getSubscription(),token=pushToken();s.hasSubscription=!!subscription;
-  s.config=await pushAPI();s.ready=!!(s.config.ready&&s.config.publicKey);
+  if(navigator.serviceWorker.getRegistration){const legacy=await navigator.serviceWorker.getRegistration(new URL('./',location.href).href);s.legacyRegistration=legacy?.scope===new URL('./',location.href).href?legacy:null;s.legacySubscription=s.legacyRegistration?await s.legacyRegistration.pushManager.getSubscription():null;}
+  s.config=await pushAPI();s.ready=!!(s.config.ready&&s.config.publicKey);s.migrate=!!(subscription&&s.config.publicKey&&subscription.options?.applicationServerKey&&btoa(String.fromCharCode(...new Uint8Array(subscription.options.applicationServerKey))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')!==s.config.publicKey);
   if(s.ready&&subscription&&token&&Notification.permission==='granted'){const status=await pushAPI({action:'status',token,subscription:subscription.toJSON()});s.enabled=status.enabled===true;}
   else s.enabled=false;
   s.suppressed=s.enabled;rememberPushEnabled(s.enabled);
-  s.message=!s.ready?'알림 서버 설정이 아직 완료되지 않았어요.':s.enabled?'이 기기에서 시작 5분 전 알림을 받아요.':Notification.permission==='denied'?'브라우저 설정에서 이 사이트의 알림을 허용해주세요.':'알림 켜기를 누르면 기기의 알림 허용 창이 열려요.';
+  s.message=!s.ready?'알림 서버 설정이 아직 완료되지 않았어요.':s.migrate?'새 알림 서버가 준비됐어요. 아래 버튼으로 이 기기 알림을 다시 연결해주세요.':s.enabled?'이 기기에서 시작 5분 전 알림을 받아요.':Notification.permission==='denied'?'브라우저 설정에서 이 사이트의 알림을 허용해주세요.':'알림 켜기를 누르면 기기의 알림 허용 창이 열려요.';
  }catch(e){s.ready=false;s.message=e.message||'알림 서버에 연결하지 못했어요.';}
  finally{refreshPushSettings()}
 }
@@ -1467,7 +1518,7 @@ async function togglePush(){
  s.busy=true;refreshPushSettings();
  let fresh=null;
  try{
-  if(s.enabled||s.hasSubscription){
+  if((s.enabled||s.hasSubscription)&&!s.migrate){
    const sub=await s.registration.pushManager.getSubscription();if(!sub){s.enabled=false;s.hasSubscription=false;s.suppressed=false;rememberPushEnabled(false);s.message='이 기기 알림을 껐어요.';return;}
    let serverRemoved=false;try{await pushAPI({action:'unsubscribe',subscription:sub.toJSON(),token:pushToken()});serverRemoved=true}catch{}
    const browserRemoved=await sub.unsubscribe();if(!serverRemoved&&!browserRemoved)throw Error('알림을 끄지 못했어요. 다시 시도해주세요.');s.enabled=false;s.hasSubscription=false;s.suppressed=false;rememberPushEnabled(false);s.message='이 기기 알림을 껐어요.';return;
@@ -1475,10 +1526,19 @@ async function togglePush(){
   // Called synchronously from the user's click; never prompt on page load.
   const permission=await Notification.requestPermission();if(permission!=='granted'){s.message=permission==='denied'?'알림이 차단됐어요. 브라우저 설정에서 허용해주세요.':'알림 허용을 취소했어요.';return;}
   const token=pushToken(true);let sub=await s.registration.pushManager.getSubscription();
+  if(s.migrate&&sub){if(!await sub.unsubscribe())throw Error('기존 알림 연결을 바꾸지 못했어요. 다시 시도해주세요.');sub=null;s.hasSubscription=false;}
   if(!sub){sub=await s.registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:pushApplicationKey(s.config.publicKey)});fresh=sub;}
-  await pushAPI({action:'subscribe',subscription:sub.toJSON(),token});s.enabled=true;s.hasSubscription=true;s.suppressed=true;s.open=false;rememberPushEnabled(true);s.message='알림을 켰어요. 사이트를 닫아도 시작 5분 전 알림을 받아요.';
+  await pushAPI({action:'subscribe',subscription:sub.toJSON(),token});s.enabled=true;s.migrate=false;s.hasSubscription=true;s.suppressed=true;s.open=false;rememberPushEnabled(true);s.message='알림을 켰어요. 사이트를 닫아도 시작 5분 전 알림을 받아요.';
  }catch(e){if(fresh)try{await fresh.unsubscribe();s.hasSubscription=false}catch{}s.message=e.message||'알림 설정을 저장하지 못했어요.';}
  finally{s.busy=false;refreshPushSettings()}
+}
+async function stopLegacyPush(){
+ const s=pushState;if(!s.enabled||!s.legacySubscription||s.busy)return;s.busy=true;refreshPushSettings();
+ try{const subscription=s.legacySubscription;try{await fetch(SUPABASE_URL+'/functions/v1/bearstat-push',{method:'POST',headers:{apikey:SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({action:'unsubscribe',subscription:subscription.toJSON(),token:pushToken()}),signal:AbortSignal.timeout(10000)})}catch{}if(!await subscription.unsubscribe())throw Error('이전 알림 연결을 정리하지 못했어요. 다시 시도해주세요.');s.legacySubscription=null;s.message='이전 연결을 정리했어요. 새 서버의 알림은 계속 받아요.';}catch(e){s.message=e.message}finally{s.busy=false;refreshPushSettings()}
+}
+async function testPushNotification(){
+ if(!pushState.enabled||pushState.busy)return;pushState.busy=true;refreshPushSettings();
+ try{const sub=await pushState.registration.pushManager.getSubscription();if(!sub)throw Error('이 기기 알림을 다시 연결해주세요.');await pushAPI({action:'test',subscription:sub.toJSON(),token:pushToken()});pushState.message='테스트 알림을 보냈어요. 이 기기에 도착했는지 확인해주세요.';}catch(e){pushState.message=e.message||'테스트 알림을 보내지 못했어요.';}finally{pushState.busy=false;refreshPushSettings();}
 }
 async function setupPushServer(){
  if(!isOwner||pushState.busy)return;pushState.busy=true;pushState.open=true;refreshPushSettings();
@@ -1487,7 +1547,7 @@ async function setupPushServer(){
  finally{pushState.busy=false;refreshPushSettings()}
 }
 document.addEventListener('toggle',ev=>{if(ev.target.id==='push_settings')pushState.open=ev.target.open;},true);
-document.addEventListener('click',ev=>{if(ev.target.closest('[data-open-push]')){pushState.open=true;refreshPushSettings();const panel=document.getElementById('push_settings');if(panel){panel.open=true;panel.scrollIntoView({behavior:'smooth',block:'center'});}}if(ev.target.closest('[data-push-toggle]'))void togglePush();if(ev.target.closest('[data-push-setup]'))void setupPushServer();});
+document.addEventListener('click',ev=>{if(ev.target.closest('[data-open-push]')){pushState.open=true;refreshPushSettings();const panel=document.getElementById('push_settings');if(panel){panel.open=true;panel.scrollIntoView({behavior:'smooth',block:'center'});}}if(ev.target.closest('[data-push-stop-legacy]'))void stopLegacyPush();if(ev.target.closest('[data-push-test]'))void testPushNotification();if(ev.target.closest('[data-push-toggle]'))void togglePush();if(ev.target.closest('[data-push-setup]'))void setupPushServer();});
 setTimeout(()=>void preparePush(),0);
 
 function home(){
