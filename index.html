@@ -3580,7 +3580,7 @@ function adminCalendar(){
   return `<div class="card" style="margin-top:10px">
     <div class="calhead">
       <button class="ib" data-am="-1">‹</button>
-      <b>${y}년 ${m+1}월</b>
+      <div class="calendar-period"><label class="calendar-period-select"><select id="admin_jump_year" aria-label="관리자 달력 연도">${Array.from({length:Math.max(y,TODAY.getFullYear()+1)-Math.min(1982,y)+1},(_,i)=>Math.max(y,TODAY.getFullYear()+1)-i).map(v=>`<option value="${v}"${v===y?' selected':''}>${v}년</option>`).join('')}</select><span aria-hidden="true">⌄</span></label><span class="calendar-period-divider" aria-hidden="true"></span><label class="calendar-period-select"><select id="admin_jump_month" aria-label="관리자 달력 월">${Array.from({length:12},(_,i)=>`<option value="${i+1}"${i===m?' selected':''}>${i+1}월</option>`).join('')}</select><span aria-hidden="true">⌄</span></label></div>
       <span><button class="ib" data-am="0">오늘</button> <button class="ib" data-am="1">›</button></span>
     </div>
     <div class="grid">${'일월화수목금토'.split('').map(x=>`<div class="dow">${x}</div>`).join('')}${cells}</div>
@@ -3798,6 +3798,15 @@ if(typeof document!=='undefined'){
 }
 
 let adminListSource=null,adminSortedList=[],adminListLimit=80,adminListKey='';
+document.addEventListener('change',ev=>{
+ if(!['admin_jump_year','admin_jump_month'].includes(ev.target.id))return;
+ if(!isOwner)return;
+ const y=Number(document.getElementById('admin_jump_year')?.value),m=Number(document.getElementById('admin_jump_month')?.value);
+ if(!Number.isInteger(y)||!Number.isInteger(m)||y<1982||y>TODAY.getFullYear()+1||m<1||m>12)return;
+ adminCalView=new Date(y,m-1,1);
+ adminCalDate='';adminSearch='';
+ ev.target.blur();route2();
+});
 document.addEventListener('change',ev=>{
  if(!['calendar_jump_year','calendar_jump_month'].includes(ev.target.id))return;
  const y=Number(document.getElementById('calendar_jump_year')?.value),m=Number(document.getElementById('calendar_jump_month')?.value);
