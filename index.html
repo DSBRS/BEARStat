@@ -3212,7 +3212,9 @@ function normalizeH2hVenue(value){
  [/창원|마산/i,'창원NC파크'],
  [/광주|챔피언스\s*필드/i,'챔피언스필드'],
  [/사직/i,'사직야구장'],
- [/대구|라이온즈\s*파크/i,'라이온즈파크'],
+ [/대구\s*시민|대구시민운동장|대구\s*시민운동장|대구공설/i,'대구시민운동장 야구장'],
+ [/라이온즈\s*파크|삼성\s*라이온즈\s*파크/i,'라이온즈파크'],
+ [/^대구(?:\s*야구장)?$/i,'대구시민운동장 야구장'],
  [/대전|한화생명.*(?:파크|이글스)|이글스파크/i,'대전야구장'],
  [/고척/i,'고척돔'],
  [/울산/i,'울산문수야구장'],
@@ -3223,6 +3225,7 @@ function normalizeH2hVenue(value){
  return v.replace(/\s*\d[\d,]*\s*명.*$/,'').trim()||'경기장 미정';
 }
 function h2hView(){
+  if(h2hPeriod==='season')ensureSeasonOpponentSelection(h2hYear);
   const kb=Repo.all().filter(e=>e.type==='kbo'&&!e.demo&&!isExhibition(e)&&!isPostseasonRecord(e)&&recordRegularGame(e)&&(h2hPeriod==='career'||S(e.date).slice(0,4)===String(h2hYear)));
   const winPct=c=>{
     const n=(+c.W||0)+(+c.L||0);
@@ -3262,7 +3265,7 @@ function h2hView(){
     <h2>남은 일정</h2><div class="card">${left.length?left.map(row).join(''):'<div class="empty">남은 경기가 없습니다.</div>'}</div>
     <h2>잔여경기</h2><div class="card">${cancelled.length?cancelled.slice().reverse().map(cancelRow).join(''):'<div class="empty">취소된 경기가 없습니다.</div>'}</div>`;
   }
-  return `<div class="brand"><div class="logo">맞대결</div></div><div class="chips" role="group" aria-label="맞대결 집계 기간" style="margin-bottom:12px">${[['season','시즌별'],['career','통산']].map(([key,label])=>`<button type="button" class="chip${h2hPeriod===key?' on':''}" data-h2h-period="${key}" aria-pressed="${h2hPeriod===key}">${label}</button>`).join('')}</div>${h2hPeriod==='season'?`<div class="chips" role="group" aria-label="맞대결 시즌 선택" style="margin-bottom:12px">${[...new Set(Repo.all().filter(e=>e.type==='kbo'&&!e.demo&&!isExhibition(e)&&!isPostseasonRecord(e)&&recordRegularGame(e)).map(e=>Number(S(e.date).slice(0,4))).filter(y=>y>=1982&&y<=TODAY.getFullYear()))].concat(h2hYear).filter((y,i,a)=>a.indexOf(y)===i).sort((a,b)=>b-a).map(y=>`<button type="button" class="chip${h2hYear===y?' on':''}" data-h2h-year="${y}" aria-pressed="${h2hYear===y}">${y}년</button>`).join('')}</div>`:''}<div class="team-selection-buttons" role="group" aria-label="맞대결 상대 구단 선택">${rankedOpponentTeams().map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${esc(teamDisplayName(t))}</button>`).join('')}</div>${body||'<div class="empty">상대팀을 선택하세요.</div>'}`;
+  return `<div class="brand"><div class="logo">맞대결</div></div><div class="chips" role="group" aria-label="맞대결 집계 기간" style="margin-bottom:12px">${[['season','시즌별'],['career','통산']].map(([key,label])=>`<button type="button" class="chip${h2hPeriod===key?' on':''}" data-h2h-period="${key}" aria-pressed="${h2hPeriod===key}">${label}</button>`).join('')}</div>${h2hPeriod==='season'?`<div class="chips" role="group" aria-label="맞대결 시즌 선택" style="margin-bottom:12px">${[...new Set(Repo.all().filter(e=>e.type==='kbo'&&!e.demo&&!isExhibition(e)&&!isPostseasonRecord(e)&&recordRegularGame(e)).map(e=>Number(S(e.date).slice(0,4))).filter(y=>y>=1982&&y<=TODAY.getFullYear()))].concat(h2hYear).filter((y,i,a)=>a.indexOf(y)===i).sort((a,b)=>b-a).map(y=>`<button type="button" class="chip${h2hYear===y?' on':''}" data-h2h-year="${y}" aria-pressed="${h2hYear===y}">${y}년</button>`).join('')}</div>`:''}<div class="team-selection-buttons" role="group" aria-label="맞대결 상대 구단 선택">${rankedOpponentTeams(h2hPeriod==='season'?h2hYear:TODAY.getFullYear()).map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${esc(teamDisplayName(t))}</button>`).join('')}</div>${body||'<div class="empty">상대팀을 선택하세요.</div>'}`;
 }
 let opponentYear=TODAY.getFullYear();
 let opponentSeason='regular',opponentPostStage='all',opponentDefenseJob=null;
@@ -3310,7 +3313,7 @@ function opponentYearMenu(){
 if(typeof document!=='undefined')document.addEventListener('click',ev=>{
  const target=ev.target.closest('[data-opponent-year]');if(!target)return;
  const year=Number(target.dataset.opponentYear);if(!opponentAvailableYears().includes(year))return;
- opponentYear=year;oppHistorySheet=null;opponentPlayerTarget=null;opponentMatchupSort=null;opponentMatchupJob=null;opponentRelayJob=null;opponentPitcherRelayJob=null;rerender();
+ opponentYear=year;ensureSeasonOpponentSelection(year);oppHistorySheet=null;opponentPlayerTarget=null;opponentMatchupSort=null;opponentMatchupJob=null;opponentRelayJob=null;opponentPitcherRelayJob=null;rerender();
 });
 
 function opponentWinningHitDescription(e,name){
@@ -3701,6 +3704,7 @@ if(typeof document!=='undefined')document.addEventListener('click',ev=>{
 });
 
 function opponentStatsView(){
+  ensureSeasonOpponentSelection(opponentYear);
   if(isOpponentPlayerMatchup())return `<div class="brand"><div class="logo">상대전적</div></div>${opponentKindTabs()}${opponentYearMenu()}${opponentCompetitionMenus()}<div class="chips">${rankedOpponentTeams(opponentYear).map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${esc(teamDisplayName(t))}</button>`).join('')}</div>${recordLimitMenu('opponent',opponentKind)}${opponentPlayerMenu()}${opponentMatchupTable()}${opponentHistorySheetHTML()}`;
   if(opponentKind==='pitcher')return `<div class="brand"><div class="logo">상대전적</div></div>${opponentKindTabs()}${opponentYearMenu()}${opponentCompetitionMenus()}<div class="chips">${rankedOpponentTeams(opponentYear).map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${esc(teamDisplayName(t))}</button>`).join('')}</div>${recordLimitMenu('opponent',opponentKind)}${opponentPlayerMenu()}${h2h?recordLimitNote('opponent',opponentKind):''}${h2h?opponentPitchingTable():'<div class="empty">상대팀을 선택하세요.</div>'}${opponentHistorySheetHTML()}`;
   scheduleSacrificeFlies({games:recordFilterGames('opponent'),includePH:false});
@@ -5005,11 +5009,41 @@ function applyRecordLimit(rows,context,role){
  const minimum=recordMinimum(context,role,key),byName=context==='career'?null:recordParticipation(context,role);
  return rows.filter(r=>{const value=context==='career'?r.stats?.[role==='pitcher'?'ipOuts':'pa']:byName.get(r.n);return value!==null&&value!==undefined&&Number.isFinite(value)&&value>=minimum});
 }
-function rankedOpponentTeams(year=TODAY.getFullYear()){
- const rows=standingsDisplayData(year).rows||[],ranks=new Map();
- for(const r of rows){const name=S(r.n||r.team),rank=Number(r.rank);if(TEAMS.includes(name)&&Number.isFinite(rank)&&rank>0)ranks.set(name,rank)}
- return TEAMS.slice().sort((a,b)=>(ranks.get(a)??Infinity)-(ranks.get(b)??Infinity)||TEAMS.indexOf(a)-TEAMS.indexOf(b));
+// Season-specific opponents. Keys stay canonical for existing game/stat matching.
+function historicalOpponentName(team,year){
+ const y=Number(year);
+ if(team==='LG'&&y<=1989)return 'MBC청룡';
+ if(team==='KIA'&&y<=2001)return '해태타이거즈';
+ if(team==='한화'&&y<=1993)return '빙그레이글스';
+ if(team==='SSG'&&y<=2020)return 'SK와이번스';
+ if(team==='키움'){if(y===2008)return '우리히어로즈';if(y>=2009&&y<=2017)return '넥센히어로즈';}
+ if(team==='현대'){if(y<=1985)return '삼미슈퍼스타즈';if(y<=1987)return '청보핀토스';if(y<=1995)return '태평양돌핀스';return '현대유니콘스';}
+ return teamDisplayName(team);
 }
+function seasonOpponentTeams(year){
+ const y=Number(year);
+ if(!Number.isInteger(y)||y<1982)return TEAMS.slice();
+ const teams=['삼성','롯데',y<=1989?'MBC':'LG',y<=2001?'해태':'KIA'];
+ if(y<=1985)teams.push('삼미');
+ else if(y<=1987)teams.push('청보');
+ else if(y<=1995)teams.push('태평양');
+ else if(y<=2007)teams.push('현대');
+ else teams.push(y===2008?'우리':y<=2017?'넥센':'키움');
+ if(y>=1986)teams.push(y<=1993?'빙그레':'한화');
+ if(y>=1990&&y<=1999)teams.push('쌍방울');
+ if(y>=2000)teams.push(y<=2020?'SK':'SSG');
+ if(y>=2013)teams.push('NC');
+ if(y>=2015)teams.push('KT');
+ return teams;
+}
+function rankedOpponentTeams(year=TODAY.getFullYear()){
+ const teams=seasonOpponentTeams(year),rows=standingsDisplayData(year).rows||[],ranks=new Map();
+ const canonical=t=>({MBC:'LG',해태:'KIA',빙그레:'한화',SK:'SSG',삼미:'현대',청보:'현대',태평양:'현대',우리:'키움',넥센:'키움'})[t]||t;
+ for(const r of rows){const name=S(r.n||r.team),rank=Number(r.rank);if(Number.isFinite(rank)&&rank>0)ranks.set(name,rank)}
+ return teams.sort((a,b)=>(ranks.get(a)??ranks.get(canonical(a))??Infinity)-(ranks.get(b)??ranks.get(canonical(b))??Infinity)||teams.indexOf(a)-teams.indexOf(b));
+}
+function ensureSeasonOpponentSelection(year){const valid=seasonOpponentTeams(year);if(!valid.includes(h2h))h2h=valid[0]||'';}
+
 function choiceDropdown(label,buttons,aria='선택'){
  return `<details class="choice-dropdown"><summary aria-label="${esc(aria)}"><span>${label}</span><span class="choice-chevron" aria-hidden="true"></span></summary><div class="choice-options">${buttons}</div></details>`;
 }
@@ -5412,7 +5446,7 @@ function route(){
 document.addEventListener('input',ev=>{if(ev.target.matches('[data-careerinput]'))updateCareerRates()});
 document.addEventListener('click',ev=>{
   const yearButton=ev.target.closest('[data-h2h-year]');
-  if(yearButton){const y=Number(yearButton.dataset.h2hYear);if(Number.isInteger(y)&&y>=1982&&y<=TODAY.getFullYear()){h2hYear=y;h2hPeriod='season';route2()}return;}
+  if(yearButton){const y=Number(yearButton.dataset.h2hYear);if(Number.isInteger(y)&&y>=1982&&y<=TODAY.getFullYear()){h2hYear=y;h2hPeriod='season';ensureSeasonOpponentSelection(y);route2()}return;}
   const periodButton=ev.target.closest('[data-h2h-period]');
   if(periodButton){if(['season','career'].includes(periodButton.dataset.h2hPeriod)){h2hPeriod=periodButton.dataset.h2hPeriod;route2()}return;}
   const t=ev.target.closest('[data-recordscope],[data-pmilestone],[data-pmilestonescope],[data-pmilestoneclose],[data-pmilestoneback],[data-mileopen],[data-mileclose],#mile_save,#mile_save_top,#mile_import,#mile_copycareer,[data-milescope],[data-milerole],[data-milemetric],[data-d],[data-m],[data-t],[data-x],[data-sort],[data-osort],[data-oppkind],[data-oppsort-pitch],[data-player],[data-sheetclose],[data-sheetback],[data-gamebatter],[data-gameclose],[data-gameback],[data-opphist],[data-oppdetail-stat],[data-opppitchstat],[data-oppclose],[data-oppback],[data-rkind],[data-rptab],[data-rbtab],[data-sdimension],[data-svalue],[data-rleague],[data-hstat],[data-phretry],[data-sstat],[data-pstat],[data-prole],[data-rseason],[data-rpoststage],[data-rperiod],[data-rmonth],[data-rweek],[data-orderhist],[data-ordergame],[data-defenseretry],[data-defensepos],[data-ryear],[data-syear],[data-aroster],[data-aeduroster],[data-ad],[data-am],[data-hrdel],[data-edit],[data-del],[data-hide-auto],[data-restore-auto],#admin_search_btn,#admin_search_clear,#admin_all,#admin_new,#admin_back,#addhr,#save,#saveroster,#saveeduroster,#cancel,#login,#logout');if(!t)return;
