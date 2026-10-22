@@ -3224,6 +3224,36 @@ function normalizeH2hVenue(value){
  for(const [pattern,name] of aliases)if(pattern.test(v))return name;
  return v.replace(/\s*\d[\d,]*\s*명.*$/,'').trim()||'경기장 미정';
 }
+// Venue affiliation is historical: only label years supported by the mapping.
+function h2hVenueAffiliation(name,year){
+ const y=Number(year), v=S(name);
+ const rules=[
+  [/청주/,[[1982,1984,'OB 베어스','제2구장'],[1986,1993,'빙그레 이글스','제2구장'],[1994,9999,'한화 이글스','제2구장']]],
+  [/군산|월명/,[[1991,1999,'쌍방울 레이더스','제2구장'],[2001,9999,'KIA 타이거즈','제2구장']]],
+  [/포항/,[[2012,9999,'삼성 라이온즈','제2구장']]],
+  [/울산|문수/,[[2014,9999,'롯데 자이언츠','제2구장']]],
+  [/마산/,[[1982,2010,'롯데 자이언츠','제2구장']]],
+  [/수원종합|수원.*야구장/,[[1989,1995,'태평양 돌핀스','제2구장'],[1996,1999,'현대 유니콘스','제2구장']]],
+  [/전주/,[[1982,1989,'해태 타이거즈','제2구장']]],
+  [/춘천/,[[1982,1985,'삼미 슈퍼스타즈','제2구장'],[1985,1987,'청보 핀토스','제2구장'],[1988,1988,'태평양 돌핀스','제2구장']]],
+  [/잠실/,[[1982,1998,'OB 베어스·MBC/LG','공동 홈구장'],[1999,9999,'두산 베어스·LG 트윈스','공동 홈구장']]],
+  [/대구시민/,[[1982,2015,'삼성 라이온즈','제1구장']]],
+  [/라이온즈파크/,[[2016,9999,'삼성 라이온즈','제1구장']]],
+  [/사직/,[[1986,9999,'롯데 자이언츠','제1구장']]],
+  [/고척/,[[2016,9999,'넥센/키움 히어로즈','제1구장']]],
+  [/창원NC파크/,[[2019,9999,'NC 다이노스','제1구장']]],
+  [/챔피언스필드/,[[2014,9999,'KIA 타이거즈','제1구장']]],
+  [/위즈파크/,[[2015,9999,'KT 위즈','제1구장']]],
+  [/랜더스필드/,[[2002,9999,'SK/SSG','제1구장']]],
+  [/대전야구장/,[[1986,1993,'빙그레 이글스','제1구장'],[1994,2024,'한화 이글스','제1구장']]],
+ ];
+ for(const [pattern,periods] of rules){if(!pattern.test(v))continue;const found=periods.find(([a,b])=>y>=a&&y<=b);return found?`${found[2]} · ${found[3]}`:'';}
+ return '';
+}
+function h2hHomeAwayLabel(e){
+ const value=S(e.homeAway).toLowerCase();
+ return value==='home'?'두산 홈':value==='away'?'두산 원정':value==='neutral'?'중립경기':'';
+}
 function h2hView(){
   if(h2hPeriod==='season')ensureSeasonOpponentSelection(h2hYear);
   const kb=Repo.all().filter(e=>e.type==='kbo'&&!e.demo&&!isExhibition(e)&&!isPostseasonRecord(e)&&recordRegularGame(e)&&(h2hPeriod==='career'||S(e.date).slice(0,4)===String(h2hYear)));
@@ -3242,19 +3272,21 @@ function h2hView(){
     const venueMap=new Map();
     done.forEach(e=>{
       let label=normalizeH2hVenue(e.venue||e.place);
-      if(!venueMap.has(label))venueMap.set(label,{W:0,L:0,D:0});
+      if(!venueMap.has(label))venueMap.set(label,{W:0,L:0,D:0,games:[]});
       const vc=venueMap.get(label);
       vc[result(e)]++;
+      vc.games.push(e);
     });
     const venueRows=[...venueMap.entries()].map(([name,vc])=>`
       <div class="ev" style="align-items:center">
         <div class="bd">
           <div class="ti">${esc(name)}</div>
           <div class="sb">${vc.W}승 ${vc.D}무 ${vc.L}패 · 승률 ${winPct(vc)}</div>
+          <div class="sb" style="margin-top:5px">${[...new Set(vc.games.map(e=>{const year=S(e.date).slice(0,4);const owner=h2hVenueAffiliation(name,year);const ha=h2hHomeAwayLabel(e);return [ha,owner].filter(Boolean).join(' · ')}).filter(Boolean))].map(x=>esc(x)).join('<br>')||'홈구장 정보 확인 필요'}</div>
         </div>
       </div>`).join('');
 
-    const row=e=>{const r=result(e);return `<div class="ev"><div class="tm">${e.date.slice(5).replace('-','.')}</div><div class="bd"><div class="ti">${hasScore(e)?`${e.score.d}:${e.score.v} <span class="res ${r}" style="margin:0">${RL[r]||esc(e.statusText||'진행 중')}</span>`:(e.time||'시간 미정')}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place))}${e.stage?' · '+e.stage:''}</div></div></div>`};
+    const row=e=>{const r=result(e);return `<div class="ev"><div class="tm">${e.date.slice(5).replace('-','.')}</div><div class="bd"><div class="ti">${hasScore(e)?`${e.score.d}:${e.score.v} <span class="res ${r}" style="margin:0">${RL[r]||esc(e.statusText||'진행 중')}</span>`:(e.time||'시간 미정')}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place))}${e.stage?' · '+e.stage:''}${h2hHomeAwayLabel(e)?' · '+esc(h2hHomeAwayLabel(e)):''}${h2hVenueAffiliation(normalizeH2hVenue(e.venue||e.place),S(e.date).slice(0,4))?' · '+esc(h2hVenueAffiliation(normalizeH2hVenue(e.venue||e.place),S(e.date).slice(0,4))):''}</div></div></div>`};
     const cancelRow=e=>`<div class="ev"><div class="tm">${e.date.slice(5).replace('-','.')}</div><div class="bd"><div class="ti">${e.cancelReason?`${esc(e.cancelReason)}취소`:'경기취소'}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place))}</div></div></div>`;
     body=`<div class="card" style="margin-top:14px">
       <div class="top"><span>${h2hPeriod==='career'?'통산':h2hYear+' 시즌'} 상대전적 · 두산베어스 vs ${esc(teamDisplayName(h2h))}</span></div>
