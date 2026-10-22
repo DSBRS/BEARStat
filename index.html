@@ -249,6 +249,28 @@ nav a:last-child{flex:1.35}
 .push-ticket-toggle span{display:flex;flex-direction:column;gap:3px;min-width:0}
 .push-ticket-toggle b{font-size:14px;color:var(--navy,#11244c)}
 @media(max-width:380px){.push-reminder-panel{padding:12px}.push-reminder-row{gap:7px}.push-reminder-row input[type=number]{width:75px;flex-basis:75px}.push-reminder-row .push-reminder-save{padding:9px 10px;font-size:12px}}
+
+/* Notification screen: contain controls within their card on every viewport. */
+#push_settings_slot, #push_settings_slot *, #push_settings_slot *::before, #push_settings_slot *::after{box-sizing:border-box}
+#push_settings_slot{width:100%;min-width:0}
+#push_settings_slot .push-settings{min-width:0;overflow:hidden}
+#push_settings_slot .push-reminder-panel{width:100%;min-width:0;max-width:100%;padding:16px}
+#push_settings_slot .push-reminder-row{display:grid;grid-template-columns:minmax(0,90px) auto minmax(0,1fr);gap:10px;align-items:center;width:100%;min-width:0}
+#push_settings_slot .push-reminder-row input[type=number]{display:block;width:100%;min-width:0;max-width:none;min-height:44px;margin:0}
+#push_settings_slot .push-reminder-unit{white-space:nowrap}
+#push_settings_slot .push-reminder-row .push-reminder-save{display:block;width:100%;max-width:100%;min-width:0;margin:0;padding:11px 8px;min-height:44px;white-space:nowrap}
+#push_settings_slot .push-ticket-toggle{width:100%;min-width:0;align-items:center}
+#push_settings_slot .push-ticket-toggle input[type=checkbox]{appearance:auto;-webkit-appearance:checkbox;width:20px;min-width:20px;height:20px;margin:0;flex:0 0 20px}
+#push_settings_slot .push-ticket-toggle span{flex:1;min-width:0}
+.notification-page-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.notification-page-heading h1{font-size:clamp(21px,5vw,28px)!important;white-space:nowrap;flex:0 1 auto;min-width:0}
+.notification-page-heading>a.btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:auto!important;max-width:none!important;margin:0!important;padding:11px 18px;white-space:nowrap}
+@media(max-width:420px){
+ #push_settings_slot .push-reminder-row{grid-template-columns:minmax(0,1fr) auto;gap:9px}
+ #push_settings_slot .push-reminder-row .push-reminder-save{grid-column:1/-1;width:100%;margin:0}
+ #push_settings_slot .push-reminder-panel{padding:13px}
+ .notification-page-heading>a.btn{padding:9px 13px}
+}
 </style>
 
 <style>
@@ -1709,7 +1731,7 @@ setTimeout(()=>void preparePush(),0);
 
 function notificationSettingsPage(){
  pushState.open=true;
- return `<div class="brand"><h1 style="margin:0">알림 설정</h1><a class="btn g" href="#/">홈으로</a></div>${pushSettingsHTML()}`;
+ return `<div class="brand notification-page-heading"><h1 style="margin:0">알림 설정</h1><a class="btn g" href="#/">홈으로</a></div>${pushSettingsHTML()}`;
 }
 document.addEventListener('change',async ev=>{
  if(!ev.target.matches('[data-push-record-updates]'))return;
