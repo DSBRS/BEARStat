@@ -782,18 +782,76 @@ const BEAR_CHAMPIONSHIP_YEARS=[1982,1995,2001,2015,2016,2019];
 const BEAR_POSTSEASON_MVPS=[
  {year:2015,series:'한국시리즈',name:'정수빈'}
 ];
-const BEAR_INDIVIDUAL_AWARDS=[];
+let BEAR_MANAGED_AWARDS=[];
+let bearAwardEditId='';
+let bearAwardStatus='';
+const awardStoreKey='bearstat_awards_v1';
+function bearAllAwards(){return BEAR_MANAGED_AWARDS.filter(x=>x&&x.category!=='championship')}
+async function loadManagedAwards(){
+ if(!SB)return;
+ const {data,error}=await SB.from('kv').select('body').eq('key',awardStoreKey).maybeSingle();
+ if(error){console.warn('수상 기록 불러오기 실패',error);return}
+ BEAR_MANAGED_AWARDS=Array.isArray(data?.body)?data.body:[];
+ rerender();
+}
+async function persistManagedAwards(next){
+ requireAdmin();if(!SB)throw new Error('Supabase 연결이 필요해요.');
+ const {error}=await SB.from('kv').upsert({key:awardStoreKey,body:next});
+ if(error)throw error;
+ BEAR_MANAGED_AWARDS=next;
+}
+function awardAdminHTML(){
+ const current=BEAR_MANAGED_AWARDS.find(x=>x.id===bearAwardEditId)||{};
+ const categories=BEAR_AWARD_CATEGORIES.filter(([id])=>id!=='all');
+ const rows=BEAR_MANAGED_AWARDS.slice().sort((a,b)=>(+b.year||0)-(+a.year||0)||(+b.month||0)-(+a.month||0));
+ return `<h2>수상 기록 관리</h2><div class="card" id="award-admin-panel">
+ <div class="note">등록한 수상 기록은 수상 탭에 표시돼요. 우승 기록은 연도별로, 포스트시즌 MVP는 우승 카드 아래에 표시돼요.</div>
+ <form id="award-admin-form">
+ <input type="hidden" name="awardId" value="${esc(current.id||'')}">
+ <label>수상 종류</label><select name="awardCategory" required>${categories.map(([id,label])=>`<option value="${id}" ${current.category===id?'selected':''}>${label}</option>`).join('')}</select>
+ <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>연도</label><input name="awardYear" type="number" min="1982" max="2100" required value="${esc(current.year||new Date().getFullYear())}"></div><div><label>월 (월간 수상만)</label><select name="awardMonth"><option value="">해당 없음</option>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${+current.month===i+1?'selected':''}>${i+1}월</option>`).join('')}</select></div></div>
+ <label>수상 선수 / 우승팀</label><input name="awardName" required maxlength="100" placeholder="예: 정수빈 / 두산 베어스" value="${esc(current.name||'')}">
+ <label>수상 부문 · 제목 (선택)</label><input name="awardTitle" maxlength="150" placeholder="예: 외야수 부문, 한국시리즈 MVP" value="${esc(current.title||'')}">
+ <label>포스트시즌 시리즈 (우승 연도 MVP 입력 시)</label><select name="awardSeries"><option value="">해당 없음</option>${['와일드카드','준플레이오프','플레이오프','한국시리즈'].map(t=>`<option value="${t}" ${current.series===t?'selected':''}>${t}</option>`).join('')}</select>
+ <div class="note">우승 아래 포스트시즌 MVP를 넣으려면 수상 종류를 MVP로, 시리즈를 한국시리즈 등으로 선택해줘.</div>
+ <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="submit" class="btn" style="flex:1">${current.id?'수정 저장':'수상 기록 등록'}</button>${current.id?'<button type="button" class="btn g" style="flex:1" data-award-cancel>수정 취소</button>':''}</div>
+ </form>
+ <div id="award-admin-status" role="status" class="note" style="${bearAwardStatus?'':'display:none'}">${esc(bearAwardStatus)}</div>
+ <h2>등록된 수상 기록 (${rows.length})</h2>
+ ${rows.length?rows.map(x=>`<div class="ev"><div class="bd"><div class="ti">${esc(x.year)}년${x.month?' '+esc(x.month)+'월':''} · ${esc(BEAR_AWARD_CATEGORIES.find(c=>c[0]===x.category)?.[1]||'수상')}</div><div class="sb">${esc(x.name)}${x.title?' · '+esc(x.title):''}${x.series?' · '+esc(x.series)+' MVP':''}</div><button type="button" class="link" data-award-edit="${esc(x.id)}">수정</button><button type="button" class="link" data-award-delete="${esc(x.id)}">삭제</button></div></div>`).join(''):'<div class="empty">아직 등록한 수상 기록이 없어.</div>'}
+ </div>`;
+}
+document.addEventListener('submit',async ev=>{
+ if(ev.target.id!=='award-admin-form')return;
+ ev.preventDefault();const form=ev.target,fd=new FormData(form);
+ const category=String(fd.get('awardCategory')||''),year=Number(fd.get('awardYear')),month=Number(fd.get('awardMonth'))||null;
+ const name=String(fd.get('awardName')||'').trim(),title=String(fd.get('awardTitle')||'').trim(),series=String(fd.get('awardSeries')||'');
+ if(!BEAR_AWARD_CATEGORIES.some(x=>x[0]===category)||category==='all'||year<1982||year>2100||!name)return;
+ if(['monthly-cap','monthly-mvp'].includes(category)&&(!month||month<1||month>12)){alert('월간 수상은 월을 선택해줘.');return}
+ const id=String(fd.get('awardId')||'')||'award_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+ const item={id,category,year,month:['monthly-cap','monthly-mvp'].includes(category)?month:null,name,title,series:category==='mvp'?series:''};
+ const btn=form.querySelector('[type=submit]');btn.disabled=true;
+ try{await persistManagedAwards([...BEAR_MANAGED_AWARDS.filter(x=>x.id!==id),item]);bearAwardEditId='';bearAwardStatus='저장했어!';route2()}
+ catch(e){btn.disabled=false;const st=document.getElementById('award-admin-status');if(st){st.style.display='';st.textContent='저장 실패: '+e.message}else alert(e.message)}
+});
+document.addEventListener('click',async ev=>{
+ const edit=ev.target.closest('[data-award-edit]'),del=ev.target.closest('[data-award-delete]'),cancel=ev.target.closest('[data-award-cancel]');
+ if(edit){bearAwardEditId=edit.dataset.awardEdit;bearAwardStatus='';route2();document.getElementById('award-admin-panel')?.scrollIntoView({block:'start'});return}
+ if(cancel){bearAwardEditId='';bearAwardStatus='';route2();return}
+ if(del){if(!confirm('이 수상 기록을 삭제할까?'))return;try{await persistManagedAwards(BEAR_MANAGED_AWARDS.filter(x=>x.id!==del.dataset.awardDelete));if(bearAwardEditId===del.dataset.awardDelete)bearAwardEditId='';bearAwardStatus='삭제했어.';route2()}catch(e){alert('삭제 실패: '+e.message)}}
+});
 let bearAwardCategory='all';
 function awardsView(){
  const active=BEAR_AWARD_CATEGORIES.some(([id])=>id===bearAwardCategory)?bearAwardCategory:'all';
  const categories=`<div class="award-categories" role="group" aria-label="수상 분류">${BEAR_AWARD_CATEGORIES.map(([id,label])=>`<button type="button" class="award-filter${active===id?' on':''}" data-award-category="${id}" aria-pressed="${active===id}">${label}</button>`).join('')}</div>`;
  const showWins=active==='all'||active==='championship';
- const wins=showWins?`<section><h2>한국시리즈 우승</h2><div class="award-list">${BEAR_CHAMPIONSHIP_YEARS.slice().sort((a,b)=>b-a).map(year=>{
- const mvps=BEAR_POSTSEASON_MVPS.filter(item=>item.year===year);
- return `<article class="card award-card"><div class="award-heading"><b>${year}년</b><span>한국시리즈 우승</span></div>${mvps.length?`<div class="award-mvps"><strong>포스트시즌 MVP</strong>${mvps.map(item=>`<div>${esc(item.series)} MVP · <b>${esc(item.name)}</b></div>`).join('')}</div>`:''}</article>`;
+ const wins=showWins?`<section><h2>한국시리즈 우승</h2><div class="award-list">${[...new Set([...BEAR_CHAMPIONSHIP_YEARS,...BEAR_MANAGED_AWARDS.filter(x=>x.category==='championship').map(x=>+x.year)])].sort((a,b)=>b-a).map(year=>{
+ const winRecord=BEAR_MANAGED_AWARDS.find(x=>x.category==='championship'&&+x.year===year);
+ const mvps=[...BEAR_POSTSEASON_MVPS,...BEAR_MANAGED_AWARDS.filter(item=>item.category==='mvp'&&item.series)].filter(item=>item.year===year);
+ return `<article class="card award-card"><div class="award-heading"><b>${year}년</b><span>${esc(winRecord?.title||'한국시리즈 우승')}</span></div>${mvps.length?`<div class="award-mvps"><strong>포스트시즌 MVP</strong>${mvps.map(item=>`<div>${esc(item.series)} MVP · <b>${esc(item.name)}</b></div>`).join('')}</div>`:''}</article>`;
  }).join('')}</div></section>`:'';
- const individual=BEAR_INDIVIDUAL_AWARDS.filter(item=>active==='all'||item.category===active).slice().sort((a,b)=>(+b.year||0)-(+a.year||0));
- const other=active!=='championship'?`<section><h2>${active==='all'?'개인 수상':BEAR_AWARD_CATEGORIES.find(([id])=>id===active)?.[1]||'수상'} 기록</h2>${individual.length?`<div class="award-list">${individual.map(item=>`<article class="card award-card"><div class="award-heading"><b>${esc(String(item.year))}년</b><span>${esc(item.title||BEAR_AWARD_CATEGORIES.find(([id])=>id===item.category)?.[1]||'수상')}</span></div><div class="award-person">${esc(item.name||'')}</div></article>`).join('')}</div>`:'<div class="card"><div class="empty">확인된 수상 기록을 준비 중이에요.</div></div>'}</section>`:'';
+ const individual=bearAllAwards().filter(item=>!item.series&&(active==='all'||item.category===active)).slice().sort((a,b)=>(+b.year||0)-(+a.year||0));
+ const other=active!=='championship'?`<section><h2>${active==='all'?'개인 수상':BEAR_AWARD_CATEGORIES.find(([id])=>id===active)?.[1]||'수상'} 기록</h2>${individual.length?`<div class="award-list">${individual.map(item=>`<article class="card award-card"><div class="award-heading"><b>${esc(String(item.year))}년</b><span>${esc(item.title||BEAR_AWARD_CATEGORIES.find(([id])=>id===item.category)?.[1]||'수상')}</span></div><div class="award-person">${esc(item.name||'')}${item.month?' · '+esc(item.month)+'월':''}</div></article>`).join('')}</div>`:'<div class="card"><div class="empty">확인된 수상 기록을 준비 중이에요.</div></div>'}</section>`:'';
  return `<div class="brand"><div class="logo">수상</div></div>${categories}${wins}${other}`;
 }
 document.addEventListener('click',event=>{
@@ -1185,6 +1243,7 @@ async function setUser(sess){
   packingUserId=isOwner?sess.user.id:'';
   if(!isOwner){editing=null;eduDraft=null;adminView='manage';milestoneEdit=null;INLINE_CAREER_DRAFTS.clear();addedCareerPlayers=[];inlineCareerStatus=''}
   route2();
+  if(isOwner)void loadManagedAwards();
 }
 setTimeout(()=>{
  if(!window.supabase||!SUPABASE_URL)return;
@@ -1193,6 +1252,7 @@ setTimeout(()=>{
  SB.auth.onAuthStateChange((_e,sess)=>{setTimeout(()=>{void setUser(sess).catch(console.warn)},0)});
  void SB.auth.getSession().then(({data})=>setUser(data.session)).catch(console.warn);
  void refreshLatestData(true);
+ void loadManagedAwards();
  // Full-row realtime broadcasts are intentionally disabled to avoid repeated archive downloads.
 },0);
 
@@ -3856,6 +3916,7 @@ function admin(){
     </div>
   </div>
 
+  ${awardAdminHTML()}
   ${adminCalendar()}
   ${HIDDEN_AUTO_IDS.length?`<div class="card"><h2>숨긴 자동연동 일정</h2><div class="note">숨긴 일정은 홈·캘린더·일정 목록에서 제외되고, 자동연동이 다시 실행돼도 숨김이 유지됩니다.</div>${HIDDEN_AUTO_IDS.map(id=>`<div class="ev"><div class="bd"><div class="ti">${esc(id)}</div><button class="link" data-restore-auto="${esc(id)}">복원</button></div></div>`).join('')}</div>`:''}
 
