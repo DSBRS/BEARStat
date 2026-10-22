@@ -909,6 +909,7 @@ async function readWindowedRecords(table,columns,order,{refreshHistory=false,ref
  return unique;
 }
 function recordRefreshControlsHTML(){
+ if(!isOwner)return "";
  return `<details class="record-refresh" style="margin-top:18px;color:var(--sub);font-size:12px"><summary style="cursor:pointer">기록 업데이트</summary><div class="note">${publicArchive.manifest?'GitHub에 보관한 공개 기록으로 조회해요. 마지막 보관: '+esc(new Date(publicArchive.manifest.generatedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}))+'. 관리자 수정은 수파베이스에 저장되고 다음 공개 기록 갱신 뒤 반영돼요.':'지난 기록은 이 기기에 저장해 재사용해요. 최근 일정은 화면을 열어둔 동안 5분 간격으로 확인해요. 다른 기기에서 과거 기록을 수정했다면 아래에서 다시 받아주세요.'}</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="chip" data-refresh-recent${recordsLoading?' disabled':''}>최근 일정 새로고침</button><button type="button" class="chip" data-refresh-history${recordsLoading?' disabled':''}>과거 기록 다시 받기</button></div>${recordCacheStorageWarning?`<div class="note">${esc(recordCacheStorageWarning)}</div>`:''}<div role="status" class="note">${recordsLoading?'기록을 확인하고 있어요.':''}</div></details>`;
 }
 document.addEventListener('click',ev=>{
@@ -1593,7 +1594,6 @@ function home(){
   <h2>${sd.getMonth()+1}월 ${sd.getDate()}일 (${'일월화수목금토'[sd.getDay()]}) 일정</h2>
   <div class="card">${evs.length?evs.map(evRow).join(''):'<div class="empty">일정이 없습니다.</div>'}</div>
   ${homeNearMilestonesHTML()}
-  ${recordRefreshControlsHTML()}
   <div class="foot">${isOwner?'<a href="#/admin">관리자</a> · <a href="#/players">선수 관리</a>':''}</div>${gameBatterSheetHTML()}`;
 }
 
