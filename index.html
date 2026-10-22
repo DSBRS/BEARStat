@@ -391,6 +391,14 @@ table th button,table td button{ text-align:center }
 .sheet .pinch-hit-guide p{margin:8px 0 0;font-size:12px;line-height:1.65;color:var(--sub);word-break:keep-all;overflow-wrap:anywhere}
 .sheet .pinch-hit-guide a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 </style>
+<style>
+/* Awards: compact filters and year-by-year championship cards. */
+.award-categories{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 18px}
+.award-filter{border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink);font:inherit;font-size:12px;font-weight:700;padding:10px 12px;min-height:40px;cursor:pointer}
+.award-filter.on{border-color:var(--navy);box-shadow:inset 0 0 0 1px var(--navy);color:var(--navy);background:var(--chip)}
+.award-list{display:grid;gap:10px}.award-card{padding:16px}.award-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.award-heading b{font-size:18px;color:var(--navy)}.award-heading span{font-size:13px;font-weight:700}.award-mvps{border-top:1px solid var(--line);margin-top:12px;padding-top:12px;font-size:13px;line-height:1.8}.award-mvps strong{display:block;font-size:12px;color:var(--sub);margin-bottom:3px}.award-person{font-weight:700;margin-top:10px}
+@media(min-width:1024px){.award-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
+</style>
 </head>
 <body>
 <div id="app"></div>
@@ -407,6 +415,9 @@ const SUPABASE_URL="https://maxtwmgfobrnpxbjdzjl.supabase.co",SUPABASE_KEY="sb_p
  * 실서비스: 이 Repo를 REST API(/api/events?from=&to=)로 교체하면 웹·WidgetKit이 같은 JSON을 사용.
  */
 const TEAMS=['LG','KT','SSG','NC','KIA','롯데','삼성','한화','키움'];
+// Historical franchise names are selectable for manual games without changing current-season stats.
+const HISTORICAL_TEAMS=['OB','SK','넥센','우리','히어로즈','MBC','빙그레','해태','현대','쌍방울','태평양','청보','삼미'];
+const SELECTABLE_TEAMS=[...TEAMS,...HISTORICAL_TEAMS];
 // Display names only: stored opponent keys and record matching stay unchanged.
 const TEAM_DISPLAY_NAMES=Object.freeze({
  '두산':'두산베어스','OB':'OB베어스','오비':'OB베어스',
@@ -758,8 +769,37 @@ function informationPage(){
  if(!isOwner)return '<div class="brand"><div class="logo">정보 입력</div></div><div class="card"><div class="note">관리자 로그인 후 사용할 수 있어요.</div><a href="#/admin">관리자 로그인</a></div>';
  return `<div class="brand"><div class="logo">정보 입력</div></div>${adminCareerInputHTML()}${adminRecordVisibilityHTML()}`;
 }
+// Awards are kept separate from game records. Add verified entries here as they become available.
+const BEAR_AWARD_CATEGORIES=[['all','전체'],['championship','우승'],['mvp','MVP'],['golden','골든글러브'],['rookie','신인왕'],['monthly-cap','월간 캡스플레이'],['monthly-mvp','월간 MVP']];
+const BEAR_CHAMPIONSHIP_YEARS=[1982,1995,2001,2015,2016,2019];
+// MVP data is shown only when confirmed; never infer a winner from a championship.
+const BEAR_POSTSEASON_MVPS=[
+ {year:2015,series:'한국시리즈',name:'정수빈'}
+];
+const BEAR_INDIVIDUAL_AWARDS=[];
+let bearAwardCategory='all';
+function awardsView(){
+ const active=BEAR_AWARD_CATEGORIES.some(([id])=>id===bearAwardCategory)?bearAwardCategory:'all';
+ const categories=`<div class="award-categories" role="group" aria-label="수상 분류">${BEAR_AWARD_CATEGORIES.map(([id,label])=>`<button type="button" class="award-filter${active===id?' on':''}" data-award-category="${id}" aria-pressed="${active===id}">${label}</button>`).join('')}</div>`;
+ const showWins=active==='all'||active==='championship';
+ const wins=showWins?`<section><h2>한국시리즈 우승</h2><div class="award-list">${BEAR_CHAMPIONSHIP_YEARS.slice().sort((a,b)=>b-a).map(year=>{
+ const mvps=BEAR_POSTSEASON_MVPS.filter(item=>item.year===year);
+ return `<article class="card award-card"><div class="award-heading"><b>${year}년</b><span>한국시리즈 우승</span></div>${mvps.length?`<div class="award-mvps"><strong>포스트시즌 MVP</strong>${mvps.map(item=>`<div>${esc(item.series)} MVP · <b>${esc(item.name)}</b></div>`).join('')}</div>`:''}</article>`;
+ }).join('')}</div></section>`:'';
+ const individual=BEAR_INDIVIDUAL_AWARDS.filter(item=>active==='all'||item.category===active).slice().sort((a,b)=>(+b.year||0)-(+a.year||0));
+ const other=active!=='championship'?`<section><h2>${active==='all'?'개인 수상':BEAR_AWARD_CATEGORIES.find(([id])=>id===active)?.[1]||'수상'} 기록</h2>${individual.length?`<div class="award-list">${individual.map(item=>`<article class="card award-card"><div class="award-heading"><b>${esc(String(item.year))}년</b><span>${esc(item.title||BEAR_AWARD_CATEGORIES.find(([id])=>id===item.category)?.[1]||'수상')}</span></div><div class="award-person">${esc(item.name||'')}</div></article>`).join('')}</div>`:'<div class="card"><div class="empty">확인된 수상 기록을 준비 중이에요.</div></div>'}</section>`:'';
+ return `<div class="brand"><div class="logo">수상</div></div>${categories}${wins}${other}`;
+}
+document.addEventListener('click',event=>{
+ const button=event.target.closest('[data-award-category]');
+ if(!button)return;
+ const category=button.dataset.awardCategory;
+ if(!BEAR_AWARD_CATEGORIES.some(([id])=>id===category))return;
+ bearAwardCategory=category;
+ route2();
+});
 function updateNavigation(r){
- const links=[['home','홈'],['standings','순위'],['h2h','맞대결'],['records','개인기록'],['opponent','상대전적'],['milestones','예상 달성 기록']];
+ const links=[['home','홈'],['standings','순위'],['awards','수상'],['h2h','맞대결'],['records','개인기록'],['opponent','상대전적'],['milestones','예상 달성 기록']];
  if(isOwner)links.push(['info','정보 입력']);
  const nav=document.getElementById('nav');
  nav.dataset.owner=isOwner?'true':'false';
@@ -959,15 +999,7 @@ async function loadHistoricalProgress(){
  try{const r=await SB.from('kv').select('body').eq('key','kbo_history_sync').maybeSingle();if(!r.error&&r.data?.body?.source==='kbo-history')KBO_HISTORY_PROGRESS=r.data.body;}catch{}
  try{const r=await SB.from('kv').select('key,body').like('key','standings_official_%');if(r.error)return;for(const x of r.data||[]){const b=x.body;if(b?.schemaVersion===1&&b.source==='kbo'&&b.scope==='regular-season'&&Array.isArray(b.rows)&&b.rows.length>=6&&b.season>=1982){const old=KBO_OFFICIAL_RANK_BY_YEAR[b.season];if(!old||S(b.updatedAt)>=S(old.updatedAt))KBO_OFFICIAL_RANK_BY_YEAR[b.season]=b;}}}catch{}
 }
-function historyCollectionNote(){
- if(recLeague!=='kbo')return '';
- const games=Repo.all().filter(e=>e.type==='kbo'&&S(e.date).slice(0,4)===String(recYear)&&!isCancelled(e)&&hasScore(e)&&recordSeasonMatches(e)),ready=games.filter(e=>e.batting?.length&&e.pitching?.length).length,p=KBO_HISTORY_PROGRESS;
- const failed=p?Object.keys(p.failedDates||{}).length:0;
- const year=String(recYear),yearFailures=p?Object.keys(p.failedDates||{}).some(date=>date.slice(0,4)===year):false;
- if(p&&recYear<=Number(S(p.startDate).slice(0,4))&&S(p.nextDate)<year+'-01-01'&&!yearFailures&&ready===games.length)return '';
- return `<div class="note" role="status">저장된 ${ready}경기 기준 · 출전 선수 명단 자동 반영${p?`<br>과거 경기 ${p.complete?'날짜 확인 완료':'최근순 수집 중'}${p.lastCheckedDate?' · '+esc(p.lastCheckedDate)+'까지 확인':''}${failed?' · 재확인 대기 '+failed+'일':''}`:'<br>과거 경기 수집은 서버 자동 실행 후 시작돼요.'}<br>2001년부터 제공되는 경기 자료를 차례로 확인해요. 수집 중인 연도는 시즌 전체 합계와 다를 수 있어요.</div>`;
-}
-function historicalMatchupsHTML(year){
+function historyCollectionNote(){return ''; }function historicalMatchupsHTML(year){
  const b=KBO_OFFICIAL_RANK_BY_YEAR[year],name=b?.rows?.find(r=>/^(OB|두산)$/.test(r.n))?.n,matchups=b?.matchups?.[name];if(!matchups)return '';
  return `<h2>구단 상대전적</h2><div class="card"><table><tr><th>상대</th><th>승</th><th>무</th><th>패</th></tr>${Object.entries(matchups).map(([n,r])=>`<tr><td>${esc(teamDisplayName(n))}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td></tr>`).join('')}</table><div class="foot">KBO ${year}년 정규시즌 공식 승패표</div></div>`;
 }
@@ -3787,7 +3819,7 @@ function admin(){
     ? allList.filter(x=>[x.date,x.title,x.opp,x.venue,x.place,TYPES[x.type]].some(v=>S(v).toLowerCase().includes(q)))
     : (adminCalDate?allList.filter(x=>S(x.date)===S(adminCalDate)):allList);
   const placeCustom=!!e.place&&!VENUES.includes(e.place);
-  const oppCustom=!!e.opp&&!TEAMS.includes(e.opp);
+  const oppCustom=!!e.opp&&!SELECTABLE_TEAMS.includes(e.opp);
   const homeCustom=!!e.homeAway&&!['home','away'].includes(e.homeAway);
   const cancelReason=S(e.cancelReason);
   const cancelCustom=!!cancelReason&&!['우천','그라운드 사정','폭염','폭설','강풍','미세먼지','황사'].includes(cancelReason);
@@ -3845,7 +3877,7 @@ function admin(){
   <label>장소</label><select id="f_place"><option value="__custom__"${placeCustom?' selected':''}>✎ 직접 입력</option>${venueOptionsHTML(e.place)}</select>
   <input id="f_place_custom" value="${placeCustom?esc(e.place):''}" placeholder="✎ 장소를 직접 입력" style="margin-top:8px;${placeCustom?'':'display:none'}">
 
-  <label>상대팀 (경기)</label><select id="f_opp"${editing?.kboGameId?' disabled':''}><option value="__custom__"${oppCustom?' selected':''}>✎ 직접 입력</option>${['',...TEAMS].map(t=>`<option value="${t}"${(e.opp===t||(!e.opp&&t===''))?' selected':''}>${esc(teamDisplayName(t)||'상대팀 선택')}</option>`).join('')}</select>
+  <label>상대팀 (경기)</label><select id="f_opp"${editing?.kboGameId?' disabled':''}><option value="__custom__"${oppCustom?' selected':''}>✎ 직접 입력</option>${['',...SELECTABLE_TEAMS].map(t=>`<option value="${t}"${(e.opp===t||(!e.opp&&t===''))?' selected':''}>${esc(teamDisplayName(t)||'상대팀 선택')}</option>`).join('')}</select>
   <input id="f_opp_custom" value="${oppCustom?esc(e.opp):''}" placeholder="✎ 상대팀을 직접 입력 (예: 요미우리)" style="margin-top:8px;${oppCustom?'':'display:none'}"${editing?.kboGameId?' disabled':''}>
 
 <label>홈 / 원정</label><select id="f_homeAway"${editing?.kboGameId?' disabled':''}><option value="__custom__"${homeCustom?' selected':''}>✎ 직접 입력</option>
@@ -5145,7 +5177,7 @@ function route(){
     if(r==='records'){recKind='hitter';recBatTab='main';recSort={k:'avg',dir:'desc'};playerSheet=null;}
     if(r==='opponent'){opponentPlayerTarget=null;opponentMatchupJob=null;opponentMatchupSort=null;opponentKind='hitter';oppSort='avg';oppSortDir='desc';oppHistorySheet=null;}
   }
-  $('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));
+  $('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='awards'?awardsView():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));
   updateNavigation(r);
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
@@ -5398,7 +5430,7 @@ document.addEventListener('change',ev=>{
 
 document.addEventListener('input',ev=>{if(ev.target.matches('[data-edu-stat]'))captureEduInputs();const box=document.querySelector('#kbo_manual'),el=ev.target;if(box&&(el.matches('[data-batter],.hr-player,.hr-inning,.hr-runs')||/^f_(sd|so|starter|oppStarter|winP|loseP|saveP|holdP|gwRbi|doubles|triples|hits|steals|duration)$/.test(el.id)))box.checked=true});
 
-function route2(){const r=document.body.dataset.r;updateNavigation(r);$('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));}
+function route2(){const r=document.body.dataset.r;updateNavigation(r);$('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='awards'?awardsView():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));}
 document.addEventListener('click',ev=>{
  if(ev.target.closest('[data-admin-more]')){adminListLimit+=80;const y=scrollY;route2();scrollTo(0,y)}
  if(ev.target.closest('[data-retry-records]')){void refreshLatestData(true,{metadata:true})}
