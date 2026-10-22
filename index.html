@@ -5334,10 +5334,42 @@ function careerActivityHTML(name,role){
  const period=careerActivityPeriod(name,role,recScope);
  return `<div class="career-activity" data-career-activity><span>${recScope==='bears'?'OB·두산 활동 기간':'KBO 활동 기간'}</span><b>${esc(period.text)}</b>${period.basis?`<small>${esc(period.basis)}</small>`:''}</div>`;
 }
+function playerAwardRole(item){
+ if(item.role==='hitter'||item.role==='pitcher')return item.role;
+ const position=item.position||'';
+ if(position)return position.includes('투수')?'pitcher':'hitter';
+ const title=item.title||'';
+ if(/투수/.test(title))return 'pitcher';
+ if(/포수|내야수|외야수|루수|유격수|중견수|좌익수|우익수|지명타자/.test(title))return 'hitter';
+ return '';
+}
+function playerAwardsHTML(name,role){
+ const normalize=value=>String(value||'').replace(/\s+/g,'').trim();
+ const canonical=value=>{const key=normalize(value);return key==='스캇프록터'||key==='프록터'?'스캇프록터':key};
+ const seen=new Set();
+ const rows=BEAR_MANAGED_AWARDS.filter(item=>{
+  if(!item||item.category==='championship'||canonical(item.name)!==canonical(name))return false;
+  const awardRole=playerAwardRole(item);if(awardRole&&role&&awardRole!==role)return false;
+  const key=[item.year,item.month||'',item.category,item.series||'',item.field||item.title||''].join('|');
+  if(seen.has(key))return false;seen.add(key);return true;
+ }).sort((a,b)=>(+b.year||0)-(+a.year||0)||(+b.month||0)-(+a.month||0)||String(a.title||'').localeCompare(String(b.title||''),'ko'));
+ const units={'안타':'안타','홈런':'홈런','타점':'타점','득점':'득점','도루':'도루','승리타점':'승리타점','다승':'승','탈삼진':'탈삼진','세이브':'세이브','홀드':'홀드','세이브 포인트':'SP'};
+ return `<section data-player-awards style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line,#e4e5ed)"><h3 style="margin:0;font-size:17px">수상 기록${rows.length?' · '+rows.length+'건':''}</h3><div class="sb" style="margin:6px 0 12px">OB·두산 소속 · 전체 연도</div>${rows.length?`<ul style="list-style:none;margin:0;padding:0">${rows.map(item=>{
+ const label=item.title||(item.series?item.series+' MVP':BEAR_AWARD_CATEGORIES.find(([id])=>id===item.category)?.[1])||'수상';
+ const period=String(item.year)+'년'+(item.month?' '+item.month+'월':'');
+ const value=item.value===null||item.value===undefined||item.value===''?'':String(item.value)+(units[item.field]?' '+units[item.field]:'');
+ return `<li style="padding:10px 0;border-bottom:1px solid var(--line,#e4e5ed)"><span class="sb">${esc(period)}</span><div style="margin-top:3px;font-weight:700">${esc(label)}</div>${value?`<div class="sb" style="margin-top:3px">${esc(value)}</div>`:''}</li>`;
+ }).join('')}</ul>`:'<div class="sb">등록된 수상 내역이 없어요.</div>'}</section>`;
+}
+function addPlayerAwardsToSheet(content,name,role){
+ if(!content||!name)return content;
+ const index=content.lastIndexOf('</div></div>');if(index<0)return content;
+ return content.slice(0,index)+playerAwardsHTML(name,role)+content.slice(index);
+}
 function playerSheetHTML(){
  let html=isCareerScope()?personalCareerSheetHTML():playerSheetBaseHTML();
  if(html&&isCareerScope())html=html.replace(/(<button class="sheetclose" data-sheetclose>×<\/button><\/div>)/,header=>header+careerActivityHTML(playerSheet,recKind));
- return addPlayerMilestonesToSheet(html,playerSheet,recKind);
+ return addPlayerAwardsToSheet(addPlayerMilestonesToSheet(html,playerSheet,recKind),playerSheet,recKind);
 }
 function opponentHistorySheetHTML(){return oppHistorySheet?.stat==='matchup'?opponentMatchupSheetHTML():opponentHistorySheetBaseHTML()}
 // Share calculations only while producing one screen; never reuse stale data on later renders.
