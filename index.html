@@ -1223,7 +1223,24 @@ let mergedEventCache=null;
 Repo.all=function(){
  const refs=[CUSTOM,KBO_AUTO,FUTURES_AUTO,HIDDEN_AUTO_IDS];
  if(mergedEventCache&&refs.every((ref,i)=>ref===mergedEventCache.refs[i])){KBO_MERGE_WARNINGS=mergedEventCache.warnings;return mergedEventCache.rows;}
- const rows=(()=>{const automatic=new Map();for(const e of [...KBO_AUTO,...FUTURES_AUTO])automatic.set(e.type+':'+(e.kboGameId||e.id),e);const x=mergeEvents(_manualAll(),[...automatic.values()]);KBO_MERGE_WARNINGS=x.warnings;const hidden=new Set(HIDDEN_AUTO_IDS.map(S));return x.rows.filter(e=>!(e.kboGameId&&hidden.has(S(e.kboGameId))));})();
+ const rows=(()=>{
+  const automatic=new Map();
+  for(const e of [...KBO_AUTO,...FUTURES_AUTO])automatic.set(e.type+':'+(e.kboGameId||e.id),e);
+  const x=mergeEvents(_manualAll(),[...automatic.values()]);
+  KBO_MERGE_WARNINGS=x.warnings;
+  const hidden=new Set(HIDDEN_AUTO_IDS.map(S));
+  const visible=x.rows.filter(e=>!(e.kboGameId&&hidden.has(S(e.kboGameId))));
+  // Only ticket events are deduplicated by their actual booking identity.
+  // Different games/times remain independent; never mutate Supabase records.
+  const seenTickets=new Set();
+  return visible.filter(e=>{
+    if(e.type!=='ticket')return true;
+    const key=JSON.stringify([S(e.date),S(e.time),S(e.title).replace(/\s+/g,' ').trim()]);
+    if(seenTickets.has(key))return false;
+    seenTickets.add(key);
+    return true;
+  });
+ })();
  mergedEventCache={refs,rows,warnings:KBO_MERGE_WARNINGS};return rows;
 };
 let repoLoadPending=null,initialRecordsReady=false,recordsLoading=false,recordsLoadError='';
@@ -1348,7 +1365,18 @@ function eventsOnDate(ds){
  }
  return dateIndex.get(ds)||[];
 }
-const byDate=ds=>eventsOnDate(ds).slice().sort((a,b)=>(a.time||'99').localeCompare(b.time||'99'));
+// Ticket sales disappear from public schedules after their individual opening time.
+// Keep the underlying records untouched so the owner can still edit them in admin.
+function isPublicScheduleEvent(e){
+ if(e.type!=='ticket')return true;
+ const date=String(e.date||'').trim(),time=String(e.time||'').trim();
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return true;
+ const match=time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+ if(!match||+match[1]>23||+match[2]>59)return true;
+ const opening=new Date(+date.slice(0,4),+date.slice(5,7)-1,+date.slice(8,10),+match[1],+match[2]);
+ return Date.now()<opening.getTime();
+}
+const byDate=ds=>eventsOnDate(ds).filter(isPublicScheduleEvent).sort((a,b)=>(a.time||'99').localeCompare(b.time||'99'));
 const S=v=>{if(v===undefined||v===null)return'';const x=String(v).trim();return(x==='undefined'||x==='null'||x==='NaN')?'':x};
 const esc=v=>S(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const names=v=>[...new Set(S(v).split(/[,，、\n]+/).map(x=>x.trim()).filter(Boolean))];
@@ -1598,7 +1626,7 @@ function calendar(){
   let cells='';
   for(let i=0;i<42;i++){
     const d=addDays(start,i),ds=ymd(d);
-    const dot=calendarMarks(eventsOnDate(ds));
+    const dot=calendarMarks(eventsOnDate(ds).filter(isPublicScheduleEvent));
     cells+=`<button class="d${d.getMonth()!==m?' o':''}${d.getDay()===0?' sun':''}${ds===TS?' today':''}${ds===sel?' sel':''}" data-d="${ds}">${d.getDate()}${dot}</button>`;
   }
   return `<div class="card"><div class="calhead"><button class="ib" data-m="-1">‹</button><div class="calendar-period"><label class="calendar-period-select"><select id="calendar_jump_year" aria-label="캘린더 연도">${Array.from({length:Math.max(y,TODAY.getFullYear()+1)-Math.min(1982,y)+1},(_,i)=>Math.max(y,TODAY.getFullYear()+1)-i).map(v=>`<option value="${v}"${v===y?' selected':''}>${v}년</option>`).join('')}</select><span aria-hidden="true">⌄</span></label><span class="calendar-period-divider" aria-hidden="true"></span><label class="calendar-period-select"><select id="calendar_jump_month" aria-label="캘린더 월">${Array.from({length:12},(_,i)=>`<option value="${i+1}"${i===m?' selected':''}>${i+1}월</option>`).join('')}</select><span aria-hidden="true">⌄</span></label></div><span><button class="ib" data-m="0">오늘</button> <button class="ib" data-m="1">›</button></span></div>
