@@ -2045,6 +2045,10 @@ function battingCalculationHTML(r){
  const line=r?._opsLine,rates=battingRates(line),n=v=>Number.isFinite(v)?v:'—';
  return `<details class="phnote"><summary>계산 방법 · OPS / wRC+ / WAR</summary><p>OPS = 출루율 + 장타율<br>출루율 = (안타 + 볼넷 + 사구) ÷ (타수 + 볼넷 + 사구 + 희생플라이)<br>장타율 = 총루타 ÷ 타수<br>총루타 = 안타 + 2루타 + 2 × 3루타 + 3 × 홈런${line?`<br><br>선택한 기록: ${n(line.ab)}타수 ${n(line.hit)}안타 · 볼넷 ${n(line.bb)} · 사구 ${n(line.hbp)} · 희플 ${n(line.sf)} · 총루타 ${n(line.tb)}<br>출루율 ${formatOPS(rates.obp)} + 장타율 ${formatOPS(rates.slg)} = OPS ${formatOPS(rates.ops)}`:''}<br><br>wRC+는 가중 출루율을 바탕으로 리그 평균과 구장 환경을 보정한 득점 생산 지표예요. 리그 평균은 100이에요.<br>WAR은 대체 선수와 비교한 승리 기여도예요. 타자는 타격·주루·수비·포지션, 투수는 투구 성과 등의 평가를 반영해요.<br>시즌 OPS·wRC+·WAR은 <a href="https://m.sports.naver.com/kbaseball/record/kbo" target="_blank" rel="noopener noreferrer">네이버 스포츠</a>의 시즌 정규시즌 수치를 그대로 불러와요. 상세 계산 계수는 이 앱에서 계산하거나 추정하지 않아요.${r?.opsOfficial?'<br>표의 OPS는 네이버 시즌 전체 수치예요. 위 계산은 저장된 경기 기준이라 수집 중에는 다를 수 있어요.':''}${advancedRecordContext()?'':'<br>기간별·포스트시즌·통산 wRC+와 WAR은 별도 자료가 없어 표시하지 않아요.'}</p></details>`;
 }
+function playerRecordGuideHTML(r){
+ const calculation=battingCalculationHTML(r).replace(/^<details class="phnote"><summary>[^<]*<\/summary>/,'<h4 style="margin:16px 0 6px">계산 방법 · OPS / wRC+ / WAR</h4>').replace(/<\/details>$/,'');
+ return `<details class="phnote record-guide"><summary>안내</summary><div class="record-guide-content"><h4 style="margin:12px 0 6px">대타타율</h4>${pinchHitAverageNote()}${calculation}</div></details>`;
+}
 function pitcherCalculationHTML(){return `<details class="phnote"><summary>계산 방법 · 평균자책점 / WAR</summary><p>평균자책점 = 자책점 × 9 ÷ 투구 이닝<br>1아웃은 ⅓이닝으로 계산해요. 1.2이닝은 1⅔이닝이에요.<br>WAR은 <a href="https://m.sports.naver.com/kbaseball/record/kbo" target="_blank" rel="noopener noreferrer">네이버 스포츠</a>의 정규시즌 수치예요. 이 앱에서 직접 계산하지 않아요. 선발·구원 또는 기간별 수치로 나누지 않아요.</p></details>`;}
 
 function periodPinchHitAverage(name){
@@ -2601,9 +2605,9 @@ function playerSheetBaseHTML(){
         <button type="button" class="orderbox statclick${playerHistoryStat==='runs'?' on':''}" data-hstat="runs" aria-pressed="${playerHistoryStat==='runs'}"><b>${r.runs}</b><span>득점</span></button>
       <button type="button" class="orderbox statclick${playerHistoryStat==='sf'?' on':''}" data-hstat="sf" aria-pressed="${playerHistoryStat==='sf'}"><b>${r.sf??'—'}</b><span>희생플라이</span></button>
     </div>
-    <details class="phnote pinch-hit-guide"><summary>대타타율 안내</summary>${pinchHitAverageNote()}</details>
+    
     ${historyHTML(playerSheet)}
-    ${battingCalculationHTML(r)}
+    ${playerRecordGuideHTML(r)}
   </div></div>`;
 }
 
