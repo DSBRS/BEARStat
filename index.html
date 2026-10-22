@@ -822,7 +822,7 @@ function informationPage(){
  return `<div class="brand"><div class="logo">정보 입력</div></div>${adminCareerInputHTML()}${adminRecordVisibilityHTML()}`;
 }
 // Awards are kept separate from game records. Add verified entries here as they become available.
-const BEAR_AWARD_CATEGORIES=[['all','전체'],['championship','우승'],['mvp','KBO MVP'],['golden','골든글러브'],['defense','KBO 수비상'],['rookie','KBO 신인상'],['title-holder','KBO 타이틀홀더'],['monthly-cap','월간 캡스플레이'],['monthly-mvp','월간 MVP']];
+const BEAR_AWARD_CATEGORIES=[['all','전체'],['championship','우승'],['mvp','KBO MVP'],['golden','골든글러브'],['defense','KBO 수비상'],['rookie','KBO 신인상'],['title-holder','KBO 타이틀홀더'],['real-glove','리얼글러브 어워드'],['ilgoo','일구상'],['joa','조아제약 프로야구대상'],['choi-dongwon','최동원상'],['monthly-mvp','월간 MVP'],['etc','기타']];
 const BEAR_TITLE_HOLDER_FIELDS={hitter:['타율','안타','홈런','타점','득점','도루','출루율','장타율'],pitcher:['다승','평균자책점','탈삼진','세이브','홀드','승률','세이브 포인트']};
 function bearTitleHolderOptions(role,year){return (BEAR_TITLE_HOLDER_FIELDS[role]||[]).filter(v=>v!=='세이브 포인트'&&v!=='세이브'||(v==='세이브 포인트'?year<=2003:year>=2004)).map(v=>({value:v,label:v==='세이브 포인트'?'세이브 포인트 (~2003)':v==='세이브'?'세이브 (2004~)':v}));}
 function bearTitleHolderFieldsHTML(current={}){const role=current.role==='pitcher'?'pitcher':'hitter',year=Number(current.year)||new Date().getFullYear();return `<div id="award-title-holder-fields" style="${current.category==='title-holder'?'':'display:none'}"><label>타이틀홀더 구분</label><select name="awardRole"><option value="hitter" ${role==='hitter'?'selected':''}>타자</option><option value="pitcher" ${role==='pitcher'?'selected':''}>투수</option></select><label>타이틀홀더 부문</label><select name="awardField">${bearTitleHolderOptions(role,year).map(x=>`<option value="${x.value}" ${current.field===x.value?'selected':''}>${x.label}</option>`).join('')}</select><label>기록 수치 (선택)</label><input name="awardValue" maxlength="50" placeholder="예: .345 / 30홈런 / 18승" value="${esc(current.value||'')}"><div class="note">세이브 포인트 (~2003) / 세이브 (2004~)는 선택한 연도에 따라 자동으로 구분돼요.</div></div>`;}
@@ -859,7 +859,7 @@ function awardAdminHTML(){
  <div class="note">등록한 수상 기록은 수상 기록 탭에 표시돼요. 우승 기록은 연도별로, 포스트시즌 MVP는 우승 카드 아래에 표시돼요.</div>
  <form id="award-admin-form">
  <input type="hidden" name="awardId" value="${esc(current.id||'')}">
- <label>수상 종류</label><select name="awardCategory" required>${categories.map(([id,label])=>`<option value="${id}" ${current.category===id?'selected':''}>${label}</option>`).join('')}</select>
+ <label>수상 종류</label><select name="awardCategory" required>${categories.map(([id,label])=>`<option value="${id}" ${(current.category===id||(id==='etc'&&current.category==='monthly-cap'))?'selected':''}>${label}</option>`).join('')}</select>
  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>연도</label><input name="awardYear" type="number" min="1982" max="2100" required value="${esc(current.year||new Date().getFullYear())}"></div><div><label>월 (월간 수상만)</label><select name="awardMonth"><option value="">해당 없음</option>${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${+current.month===i+1?'selected':''}>${i+1}월</option>`).join('')}</select></div></div>
  ${bearTitleHolderFieldsHTML(current)}
  <label>수상 선수 / 우승팀</label><input name="awardName" required maxlength="100" placeholder="예: 정수빈 / 두산 베어스" value="${esc(current.name||'')}">
@@ -870,7 +870,7 @@ function awardAdminHTML(){
  </form>
  <div id="award-admin-status" role="status" class="note" style="${bearAwardStatus?'':'display:none'}">${esc(bearAwardStatus)}</div>
  <h2>등록된 수상 기록 (${rows.length})</h2>
- ${rows.length?rows.map(x=>`<div class="ev"><div class="bd"><div class="ti">${esc(x.year)}년${x.month?' '+esc(x.month)+'월':''} · ${esc(BEAR_AWARD_CATEGORIES.find(c=>c[0]===x.category)?.[1]||'수상')}</div><div class="sb">${esc(x.name)}${x.title?' · '+esc(x.title):''}${x.field?' · '+esc(x.field):''}${x.value?' · '+esc(x.value):''}${x.series?' · '+esc(x.series)+' MVP':''}</div><button type="button" class="link" data-award-edit="${esc(x.id)}">수정</button><button type="button" class="link" data-award-delete="${esc(x.id)}">삭제</button></div></div>`).join(''):'<div class="empty">아직 등록한 수상 기록이 없어.</div>'}
+ ${rows.length?rows.map(x=>`<div class="ev"><div class="bd"><div class="ti">${esc(x.year)}년${x.month?' '+esc(x.month)+'월':''} · ${esc((x.category==='monthly-cap'?'기타':BEAR_AWARD_CATEGORIES.find(c=>c[0]===x.category)?.[1])||'수상')}</div><div class="sb">${esc(x.name)}${x.title?' · '+esc(x.title):''}${x.field?' · '+esc(x.field):''}${x.value?' · '+esc(x.value):''}${x.series?' · '+esc(x.series)+' MVP':''}</div><button type="button" class="link" data-award-edit="${esc(x.id)}">수정</button><button type="button" class="link" data-award-delete="${esc(x.id)}">삭제</button></div></div>`).join(''):'<div class="empty">아직 등록한 수상 기록이 없어.</div>'}
  </div>`;
 }
 document.addEventListener('submit',async ev=>{
@@ -880,11 +880,11 @@ document.addEventListener('submit',async ev=>{
  const category=String(fd.get('awardCategory')||''),year=Number(fd.get('awardYear')),month=Number(fd.get('awardMonth'))||null;
  const name=String(fd.get('awardName')||'').trim(),title=String(fd.get('awardTitle')||'').trim(),series=String(fd.get('awardSeries')||'');
  if(!BEAR_AWARD_CATEGORIES.some(x=>x[0]===category)||category==='all'||year<1982||year>2100||!name)return;
- if(['monthly-cap','monthly-mvp'].includes(category)&&(!month||month<1||month>12)){alert('월간 수상은 월을 선택해줘.');return}
+ if(['monthly-mvp'].includes(category)&&(!month||month<1||month>12)){alert('월간 수상은 월을 선택해줘.');return}
  const role=category==='title-holder'?String(fd.get('awardRole')||'hitter'):'';const field=category==='title-holder'?String(fd.get('awardField')||''):'';const value=category==='title-holder'?String(fd.get('awardValue')||'').trim():'';
  if(category==='title-holder'&&!bearTitleHolderOptions(role,year).some(x=>x.value===field)){alert('선택한 연도에 해당하는 타이틀홀더 부문을 선택해줘.');return}
  const id=String(fd.get('awardId')||'')||'award_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
- const item={id,category,year,month:['monthly-cap','monthly-mvp'].includes(category)?month:null,name,title,series:category==='mvp'?series:'',role,field,value};
+ const item={id,category,year,month:['etc','monthly-mvp'].includes(category)?month:null,name,title,series:category==='mvp'?series:'',role,field,value};
  const btn=form.querySelector('[type=submit]');btn.disabled=true;
  try{await persistManagedAwards([...BEAR_MANAGED_AWARDS.filter(x=>x.id!==id),item]);bearAwardEditId='';bearAwardEditorOpen=false;bearAwardStatus='저장했어!';route2()}
  catch(e){btn.disabled=false;const st=document.getElementById('award-admin-status');if(st){st.style.display='';st.textContent='저장 실패: '+e.message}else alert(e.message)}
@@ -909,9 +909,16 @@ function awardsView(){
  const mvps=[...BEAR_POSTSEASON_MVPS,...BEAR_MANAGED_AWARDS.filter(item=>item.category==='mvp'&&item.series)].filter(item=>item.year===year);
  return `<article class="card award-card"><div class="award-heading"><b>${year}년</b><span>${esc(winRecord?.title||'한국시리즈 우승')}</span></div>${mvps.length?`<div class="award-mvps"><strong>포스트시즌 MVP</strong>${mvps.map(item=>`<div>${esc(item.series)} MVP · <b>${esc(item.name)}</b></div>`).join('')}</div>`:''}</article>`;
  }).join('')}</div></section>`:'';
- const individual=bearAllAwards().filter(item=>!item.series&&(active==='all'||item.category===active)).slice().sort((a,b)=>(+b.year||0)-(+a.year||0));
- const other=active!=='championship'?`<section><h2>${active==='all'?'개인 수상':BEAR_AWARD_CATEGORIES.find(([id])=>id===active)?.[1]||'수상'} 기록</h2>${individual.length?`<div class="award-list">${individual.map(item=>`<article class="card award-card"><div class="award-heading"><b>${esc(String(item.year))}년</b><span>${esc(item.category==='title-holder'?(item.field==='세이브 포인트'?'세이브 포인트 (~2003)':item.field==='세이브'?'세이브 (2004~)':item.field||'KBO 타이틀홀더'):item.title||BEAR_AWARD_CATEGORIES.find(([id])=>id===item.category)?.[1]||'수상')}</span></div><div class="award-person">${esc(item.name||'')}${item.month?' · '+esc(item.month)+'월':''}${item.category==='title-holder'?' · '+(item.role==='pitcher'?'투수':'타자')+(item.value?' · '+esc(item.value):''):''}</div></article>`).join('')}</div>`:'<div class="card"><div class="empty">확인된 수상 기록을 준비 중이에요.</div></div>'}</section>`:'';
- return `<div class="brand"><div class="logo">수상 기록</div>${isOwner?`<button type="button" class="chip" data-award-open>+ 수상 등록</button>`:''}</div>${categories}${isOwner&&bearAwardEditorOpen?`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button type="button" class="link" data-award-close>입력창 닫기 ×</button></div>${awardAdminHTML()}`:''}${isOwner&&bearAwardStatus&&!bearAwardEditorOpen?`<div class="note" role="status">${esc(bearAwardStatus)}</div>`:''}${wins}${other}`;
+ const individual=bearAllAwards().filter(item=>!item.series&&(active==='all'||item.category===active||(active==='etc'&&item.category==='monthly-cap'))).slice().sort((a,b)=>(+b.year||0)-(+a.year||0));
+ const separateCeremonies=['real-glove','ilgoo','joa','choi-dongwon'];
+ const ceremonySections=active==='all'?separateCeremonies.map(id=>{
+  const label=BEAR_AWARD_CATEGORIES.find(x=>x[0]===id)?.[1]||id;
+  const rows=individual.filter(item=>item.category===id);
+  return `<section><h2>${label}</h2>${rows.length?`<div class="award-list">${rows.map(item=>`<article class="card award-card"><div class="award-heading"><b>${esc(String(item.year))}년</b><span>${esc(item.title||label)}</span></div><div class="award-person">${esc(item.name||'')}</div></article>`).join('')}</div>`:'<div class="card"><div class="empty">아직 등록된 수상 기록이 없어요.</div></div>'}</section>`;
+ }).join(''):'';
+ const generalIndividual=active==='all'?individual.filter(item=>!separateCeremonies.includes(item.category)):individual;
+ const other=active!=='championship'?`<section><h2>${active==='all'?'개인 수상':BEAR_AWARD_CATEGORIES.find(([id])=>id===active)?.[1]||'수상'} 기록</h2>${generalIndividual.length?`<div class="award-list">${generalIndividual.map(item=>`<article class="card award-card"><div class="award-heading"><b>${esc(String(item.year))}년</b><span>${esc(item.category==='title-holder'?(item.field==='세이브 포인트'?'세이브 포인트 (~2003)':item.field==='세이브'?'세이브 (2004~)':item.field||'KBO 타이틀홀더'):item.title||(item.category==='monthly-cap'?'월간 캡스플레이':BEAR_AWARD_CATEGORIES.find(([id])=>id===item.category)?.[1])||'수상')}</span></div><div class="award-person">${esc(item.name||'')}${item.month?' · '+esc(item.month)+'월':''}${item.category==='title-holder'?' · '+(item.role==='pitcher'?'투수':'타자')+(item.value?' · '+esc(item.value):''):''}</div></article>`).join('')}</div>`:'<div class="card"><div class="empty">확인된 수상 기록을 준비 중이에요.</div></div>'}</section>`:'';
+ return `<div class="brand"><div class="logo">수상 기록</div>${isOwner?`<button type="button" class="chip" data-award-open>+ 수상 등록</button>`:''}</div>${categories}${isOwner&&bearAwardEditorOpen?`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button type="button" class="link" data-award-close>입력창 닫기 ×</button></div>${awardAdminHTML()}`:''}${isOwner&&bearAwardStatus&&!bearAwardEditorOpen?`<div class="note" role="status">${esc(bearAwardStatus)}</div>`:''}${wins}${other}${ceremonySections}`;
 }
 document.addEventListener('click',event=>{
  const button=event.target.closest('[data-award-category]');
