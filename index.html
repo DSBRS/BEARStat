@@ -904,10 +904,16 @@ function awardsView(){
  const active=BEAR_AWARD_CATEGORIES.some(([id])=>id===bearAwardCategory)?bearAwardCategory:'all';
  const categories=`<div class="award-categories" role="group" aria-label="수상 분류">${BEAR_AWARD_CATEGORIES.map(([id,label])=>`<button type="button" class="award-filter${active===id?' on':''}" data-award-category="${id}" aria-pressed="${active===id}">${label}</button>`).join('')}</div>`;
  const showWins=active==='all'||active==='championship';
- const wins=showWins?`<section><h2>한국시리즈 우승</h2><div class="award-list">${[...new Set([...BEAR_CHAMPIONSHIP_YEARS,...BEAR_MANAGED_AWARDS.filter(x=>x.category==='championship').map(x=>+x.year)])].sort((a,b)=>b-a).map(year=>{
+ const runnerUpYears=[2000,2005,2007,2008,2013,2017,2018,2020,2021];
+ const seriesOrder={'준PO':0,'PO':1,'한국시리즈':2};
+ const postseasonMvps=[...new Map([...BEAR_POSTSEASON_MVPS,...BEAR_MANAGED_AWARDS.filter(item=>item.category==='mvp'&&item.series)].map(item=>[`${item.year}|${item.series}`,item])).values()];
+ const championshipYears=[...new Set([...BEAR_CHAMPIONSHIP_YEARS,...BEAR_MANAGED_AWARDS.filter(x=>x.category==='championship').map(x=>+x.year)])];
+ const outcomeYears=active==='all'?[...new Set([...championshipYears,...runnerUpYears,...postseasonMvps.map(x=>+x.year)])]:championshipYears;
+ const wins=showWins?`<section><h2>${active==='all'?'포스트시즌':'한국시리즈 우승'}</h2><div class="award-list">${outcomeYears.sort((a,b)=>b-a).map(year=>{
  const winRecord=BEAR_MANAGED_AWARDS.find(x=>x.category==='championship'&&+x.year===year);
- const mvps=[...BEAR_POSTSEASON_MVPS,...BEAR_MANAGED_AWARDS.filter(item=>item.category==='mvp'&&item.series)].filter(item=>item.year===year);
- return `<article class="card award-card"><div class="award-heading"><b>${year}년</b><span>${esc(winRecord?.title||'한국시리즈 우승')}</span></div>${mvps.length?`<div class="award-mvps"><strong>포스트시즌 MVP</strong>${mvps.map(item=>`<div>${esc(item.series)} MVP · <b>${esc(item.name)}</b></div>`).join('')}</div>`:''}</article>`;
+ const mvps=postseasonMvps.filter(item=>+item.year===year).sort((a,b)=>(seriesOrder[a.series]??3)-(seriesOrder[b.series]??3));
+ const result=championshipYears.includes(year)?winRecord?.title||'한국시리즈 우승':runnerUpYears.includes(year)?'한국시리즈 준우승':'PO 진출';
+ return `<article class="card award-card"><div class="award-heading"><b>${year}년</b><span>${esc(result)}</span></div>${mvps.length?`<div class="award-mvps"><strong>포스트시즌 MVP</strong>${mvps.map(item=>`<div>${esc(item.series)} MVP · <b>${esc(item.name)}</b></div>`).join('')}</div>`:''}</article>`;
  }).join('')}</div></section>`:'';
  const individual=bearAllAwards().filter(item=>!item.series&&(active==='all'||item.category===active||(active==='etc'&&item.category==='monthly-cap'))).slice().sort((a,b)=>(+b.year||0)-(+a.year||0));
  const separateCeremonies=['real-glove','ilgoo','joa','choi-dongwon'];
