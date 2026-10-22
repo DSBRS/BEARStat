@@ -5396,7 +5396,7 @@ document.addEventListener('change',ev=>{
 
 document.addEventListener('input',ev=>{if(ev.target.matches('[data-edu-stat]'))captureEduInputs();const box=document.querySelector('#kbo_manual'),el=ev.target;if(box&&(el.matches('[data-batter],.hr-player,.hr-inning,.hr-runs')||/^f_(sd|so|starter|oppStarter|winP|loseP|saveP|holdP|gwRbi|doubles|triples|hits|steals|duration)$/.test(el.id)))box.checked=true});
 
-function route2(){const r=document.body.dataset.r;updateNavigation(r);$('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():home(),r));}
+function route2(){const r=document.body.dataset.r;updateNavigation(r);$('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));}
 document.addEventListener('click',ev=>{
  if(ev.target.closest('[data-admin-more]')){adminListLimit+=80;const y=scrollY;route2();scrollTo(0,y)}
  if(ev.target.closest('[data-retry-records]')){void refreshLatestData(true,{metadata:true})}
