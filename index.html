@@ -382,6 +382,15 @@ table th button,table td button{ text-align:center }
 <style>.inline-career-toolbar{position:sticky;top:0;z-index:6;background:var(--card);padding:10px 0;border-bottom:1px solid var(--line)}.inline-career-toolbar .btn{margin:0}.inline-career-toolbar [role="status"]:not(:empty){padding-top:8px}.inline-career-card{border:1px solid var(--line);border-radius:14px;margin:10px 0;overflow:hidden}.inline-career-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px}.inline-career-editor{padding:0 12px 12px}.inline-career-rates{display:flex;flex-wrap:wrap;gap:10px;background:var(--chip);padding:12px;border-radius:10px;margin:12px 0}.inline-career-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px}.inline-career-fields label{min-width:0}.inline-career-fields input{margin-top:6px}@media(max-width:380px){.inline-career-fields{grid-template-columns:1fr}}</style>
 <style>.player-table-search{margin:0 0 20px}.player-table-search input{display:block;box-sizing:border-box;width:100%;height:44px;margin:0;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--card);font-size:16px;line-height:22px;font-weight:400}.player-table-search [data-player-search-status]:empty{display:none}.player-table-search [data-player-search-status]:not(:empty){margin-top:7px;font-size:11px}</style>
 <style>.career-activity{display:flex;flex-direction:column;gap:5px;margin:12px 0;padding:12px 14px;border-radius:12px;background:var(--chip);line-height:1.5}.career-activity>span,.career-activity small{color:var(--sub);font-size:11px}.career-activity>b{font-size:14px;overflow-wrap:anywhere}</style>
+<style>
+.push-settings .push-record-toggle{display:flex;align-items:center;gap:10px;min-height:48px;box-sizing:border-box;cursor:pointer}
+.push-settings .push-record-toggle input[type="checkbox"]{appearance:auto;-webkit-appearance:checkbox;flex:0 0 20px;width:20px;height:20px;min-width:20px;max-width:20px;margin:0;padding:0;border-radius:4px;accent-color:var(--ink)}
+.push-settings .push-record-toggle span{flex:1;min-width:0;line-height:1.5;word-break:keep-all}
+.sheet .pinch-hit-guide{margin:14px 0 6px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--sub);font-size:12px;line-height:1.65}
+.sheet .pinch-hit-guide summary{font-size:12px;font-weight:500;color:var(--sub)}
+.sheet .pinch-hit-guide p{margin:8px 0 0;font-size:12px;line-height:1.65;color:var(--sub);word-break:keep-all;overflow-wrap:anywhere}
+.sheet .pinch-hit-guide a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+</style>
 </head>
 <body>
 <div id="app"></div>
@@ -1480,7 +1489,7 @@ const pushState={suppressed:knownPushEnabled(),supported:!!(window.isSecureConte
 function pushSettingsHTML(){
  const s=pushState;
  if(document.body.dataset.r!=='notifications'&&!s.open)return '<div id="push_settings_slot"></div>';
- return `<div id="push_settings_slot"><div class="card push-settings"><details id="push_settings"${s.open?' open':''}><summary><span class="push-bell" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><span>알림 설정</span><span class="push-state">${s.enabled?'켜짐':'꺼짐'}</span></summary><div class="note">알림을 켜면 사이트를 닫아도 시작 전 알림을 받아요. 시간이 정해진 일정만 알려주며, 지난 일정과 진행·종료·취소된 경기는 제외해요.</div>${!s.supported?'<div class="note">이 브라우저에서는 푸시 알림을 사용할 수 없어요. 아이폰은 Safari에서 홈 화면에 추가한 뒤 앱을 열어주세요.</div>':`<button type="button" class="btn${s.enabled?' g':''}" data-push-toggle${s.busy||(!s.ready&&!s.enabled&&!s.hasSubscription)?' disabled':''}>${s.busy?'처리 중…':s.migrate?'새 서버로 이 기기 알림 연결':(s.enabled||s.hasSubscription)?'이 기기 알림 끄기':'이 기기 알림 켜기'}</button>`}${s.enabled?'<button type="button" class="btn g" data-push-test>이 기기로 테스트 알림 보내기</button>':''}${s.enabled&&s.legacySubscription?'<div class="note">테스트 알림이 도착했다면 이전 알림 연결을 정리해주세요.</div><button type="button" class="btn g" data-push-stop-legacy>이전 서버 알림 정리</button>':''}<label class="note" style="display:flex;align-items:center;gap:10px"><input type="checkbox" data-push-record-updates${s.recordUpdates?' checked':''}${s.busy?' disabled':''}>기록 업데이트 알림 받기</label><div class="note">새 경기 기록이나 수정된 기록이 공개되면 알려드려요. 같은 내용의 단순 새로고침은 알리지 않아요.</div><div class="note">아이폰은 홈 화면에 추가한 웹앱에서 알림을 허용해주세요. 기기와 네트워크 상태에 따라 도착이 늦어질 수 있어요.</div>${isOwner?`<details class="push-admin"><summary>관리자 · 알림 서버 연결</summary><div class="note">서버 설정 파일을 적용한 뒤 한 번만 연결해주세요.</div><button type="button" class="btn g" data-push-setup${s.busy?' disabled':''}>알림 서버 연결하기</button></details>`:''}<div class="note" role="status" aria-live="polite">${esc(s.message||(!s.ready?'알림 서버 연결을 확인하고 있어요.':''))}</div></details></div></div>`;
+ return `<div id="push_settings_slot"><div class="card push-settings"><details id="push_settings"${s.open?' open':''}><summary><span class="push-bell" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><span>알림 설정</span><span class="push-state">${s.enabled?'켜짐':'꺼짐'}</span></summary><div class="note">알림을 켜면 사이트를 닫아도 시작 전 알림을 받아요. 시간이 정해진 일정만 알려주며, 지난 일정과 진행·종료·취소된 경기는 제외해요.</div>${!s.supported?'<div class="note">이 브라우저에서는 푸시 알림을 사용할 수 없어요. 아이폰은 Safari에서 홈 화면에 추가한 뒤 앱을 열어주세요.</div>':`<button type="button" class="btn${s.enabled?' g':''}" data-push-toggle${s.busy||(!s.ready&&!s.enabled&&!s.hasSubscription)?' disabled':''}>${s.busy?'처리 중…':s.migrate?'새 서버로 이 기기 알림 연결':(s.enabled||s.hasSubscription)?'이 기기 알림 끄기':'이 기기 알림 켜기'}</button>`}${s.enabled?'<button type="button" class="btn g" data-push-test>이 기기로 테스트 알림 보내기</button>':''}${s.enabled&&s.legacySubscription?'<div class="note">테스트 알림이 도착했다면 이전 알림 연결을 정리해주세요.</div><button type="button" class="btn g" data-push-stop-legacy>이전 서버 알림 정리</button>':''}<label class="note push-record-toggle"><input type="checkbox" data-push-record-updates${s.recordUpdates?' checked':''}${s.busy?' disabled':''}><span>기록 업데이트 알림 받기</span></label><div class="note">새 경기 기록이나 수정된 기록이 공개되면 알려드려요. 같은 내용의 단순 새로고침은 알리지 않아요.</div><div class="note">아이폰은 홈 화면에 추가한 웹앱에서 알림을 허용해주세요. 기기와 네트워크 상태에 따라 도착이 늦어질 수 있어요.</div>${isOwner?`<details class="push-admin"><summary>관리자 · 알림 서버 연결</summary><div class="note">서버 설정 파일을 적용한 뒤 한 번만 연결해주세요.</div><button type="button" class="btn g" data-push-setup${s.busy?' disabled':''}>알림 서버 연결하기</button></details>`:''}<div class="note" role="status" aria-live="polite">${esc(s.message||(!s.ready?'알림 서버 연결을 확인하고 있어요.':''))}</div></details></div></div>`;
 }
 function refreshPushSettings(){const slot=document.getElementById('push_settings_slot');if(slot)slot.outerHTML=pushSettingsHTML();}
 async function pushAPI(body=null,accessToken=''){
@@ -2393,7 +2402,7 @@ function playerSheetBaseHTML(){
         <button type="button" class="orderbox statclick${playerHistoryStat==='runs'?' on':''}" data-hstat="runs" aria-pressed="${playerHistoryStat==='runs'}"><b>${r.runs}</b><span>득점</span></button>
       <button type="button" class="orderbox statclick${playerHistoryStat==='sf'?' on':''}" data-hstat="sf" aria-pressed="${playerHistoryStat==='sf'}"><b>${r.sf??'—'}</b><span>희생플라이</span></button>
     </div>
-    ${pinchHitAverageNote()}
+    <details class="phnote pinch-hit-guide"><summary>대타타율 안내</summary>${pinchHitAverageNote()}</details>
     ${historyHTML(playerSheet)}
     ${battingCalculationHTML(r)}
   </div></div>`;
@@ -2816,9 +2825,34 @@ function pitcherRoleERA(name){
   return {starterEra:era(buckets.start),reliefEra:era(buckets.relief)};
 }
 
+const searchableTotals=new Map();
+let searchableTotalSequence=0;
+function searchableTotalRow(rows,render){
+  const key=String(++searchableTotalSequence);
+  searchableTotals.set(key,{rows,render});
+  if(searchableTotals.size>500)searchableTotals.delete(searchableTotals.keys().next().value);
+  return render(rows).replace('<tr class="record-total"',`<tr data-search-total="${key}" class="record-total"`);
+}
+function refreshSearchTotals(){
+  for(const row of document.querySelectorAll('#app [data-search-total]')){
+    const entry=searchableTotals.get(row.dataset.searchTotal);if(!entry)continue;
+    const visibleNames=new Set([...row.closest('table').querySelectorAll('tr')].filter(tr=>!tr.hidden).flatMap(tr=>{
+      const button=tr.querySelector('[data-player],[data-oppplayer],[data-matchup-player]');
+      return button?[button.dataset.player||button.dataset.oppplayer||button.dataset.matchupPlayer]:[];
+    }));
+    const selected=entry.rows.filter(r=>visibleNames.has(r.n));
+    const markup=entry.render(selected);
+    const template=document.createElement('template');template.innerHTML='<table><tbody>'+markup+'</tbody></table>';
+    const next=template.content.querySelector('tr');
+    if(next)row.innerHTML=next.innerHTML;
+    row.hidden=!selected.length;
+  }
+}
 function hitterTotalsRow(rows,cols,ranked=false,overrides={}){
-  if(!rows.length)return '';
-  const total=k=>rows.every(r=>r[k]!==null&&r[k]!==undefined&&Number.isFinite(Number(r[k])))?rows.reduce((sum,r)=>sum+Number(r[k]),0):null;
+  return searchableTotalRow(rows,selected=>hitterTotalMarkup(selected,cols,ranked,overrides));
+}
+function hitterTotalMarkup(rows,cols,ranked=false,overrides={}){
+  const total=k=>rows.length&&rows.every(r=>r[k]!==null&&r[k]!==undefined&&Number.isFinite(Number(r[k])))?rows.reduce((sum,r)=>sum+Number(r[k]),0):null;
   const ab=total('ab'),hit=total('hit');
   return `<tr class="record-total">${ranked?'<td>—</td>':''}${cols.map(([k])=>{
     if(k==='n')return '<td>합계</td>';
@@ -2831,6 +2865,9 @@ function hitterTotalsRow(rows,cols,ranked=false,overrides={}){
 }
 
 function pitcherTotalsRow(rows,cols){
+  return searchableTotalRow(rows,selected=>pitcherTotalMarkup(selected,cols));
+}
+function pitcherTotalMarkup(rows,cols){
   const sum=k=>rows.reduce((n,r)=>n+(Number(r[k])||0),0);
   const selected=new Set(rows.map(r=>r.n));
   const buckets={all:{outs:0,er:0,complete:true},start:{outs:0,er:0,complete:true},relief:{outs:0,er:0,complete:true}};
@@ -2845,7 +2882,7 @@ function pitcherTotalsRow(rows,cols){
   }
   const era=b=>b.complete&&b.outs>0?(b.er*27/b.outs).toFixed(2):'—';
   const outs=buckets.all.outs,ip=buckets.all.complete?(outs%3?`${Math.floor(outs/3)}.${outs%3}`:String(outs/3)):'—';
-  return hitterTotalsRow(rows,cols,false,{ip,era:era(buckets.all),starterEra:era(buckets.start),reliefEra:era(buckets.relief)});
+  return hitterTotalMarkup(rows,cols,false,{ip,era:era(buckets.all),starterEra:era(buckets.start),reliefEra:era(buckets.relief)});
 }
 
 function records(){
@@ -3318,17 +3355,20 @@ function opponentPitchingRows(opp){
   }
   return [...byName.values()].map(row=>({...row,starterEra:opponentRoleERA([row],'start'),reliefEra:opponentRoleERA([row],'relief'),ip:row.ipOuts===null?'—':row.ipOuts%3?`${Math.floor(row.ipOuts/3)}.${row.ipOuts%3}`:String(row.ipOuts/3),era:row.ipOuts!==null&&row.ipOuts>0&&row.earnedRuns!==null?(row.earnedRuns*27/row.ipOuts).toFixed(2):null}));
 }
+function opponentPitchTotalMarkup(rows,columns,base){
+  const sum=k=>rows.every(r=>r[k]!==null)?rows.reduce((n,r)=>n+Number(r[k]),0):null;
+  const outs=sum('ipOuts'),er=sum('earnedRuns');
+  const total={n:'합계',starterEra:opponentRoleERA(rows,'start'),reliefEra:opponentRoleERA(rows,'relief'),...Object.fromEntries(base.filter(([k])=>!['ip','era','starterEra','reliefEra'].includes(k)).map(([k])=>[k,sum(k)])),ip:outs===null?'—':outs%3?`${Math.floor(outs/3)}.${outs%3}`:String(outs/3),era:outs!==null&&outs>0&&er!==null?(er*27/outs).toFixed(2):null};
+  return `<tr class="record-total"><td>—</td><td>합계</td>${columns.map(([k])=>`<td>${total[k]===null?'—':total[k]}</td>`).join('')}</tr>`;
+}
 function opponentPitchingTable(){
   const rows=applyRecordLimit(opponentPitchingRows(h2h),'opponent','pitcher'),key=opponentPitchSort,dir=opponentPitchDirection==='asc'?1:-1;
   const value=row=>key==='ip'?row.ipOuts:row[key];
   rows.sort((a,b)=>{const av=value(a),bv=value(b);if(av===null)return bv===null?a.n.localeCompare(b.n,'ko'):1;if(bv===null)return -1;return (Number(av)-Number(bv))*dir||a.n.localeCompare(b.n,'ko');});
   const base=[['g','등판'],['ip','이닝'],['era','평균자책점'],['starterEra','선발 평자'],['reliefEra','불펜 평자'],['hits','피안타'],['homeRuns','피홈런'],['strikeouts','탈삼진'],['walks','볼넷'],['hitByPitch','사구'],['runs','실점'],['earnedRuns','자책'],['w','승리'],['l','패전'],['s','세이브'],['h','홀드']];
   const columns=[...base.filter(([k])=>k===key),...base.filter(([k])=>k!==key)];
-  const sum=k=>rows.every(r=>r[k]!==null)?rows.reduce((n,r)=>n+Number(r[k]),0):null;
-  const outs=sum('ipOuts'),er=sum('earnedRuns');
-  const total={n:'합계',starterEra:opponentRoleERA(rows,'start'),reliefEra:opponentRoleERA(rows,'relief'),...Object.fromEntries(base.filter(([k])=>!['ip','era','starterEra','reliefEra'].includes(k)).map(([k])=>[k,sum(k)])),ip:outs===null?'—':outs%3?`${Math.floor(outs/3)}.${outs%3}`:String(outs/3),era:outs!==null&&outs>0&&er!==null?(er*27/outs).toFixed(2):null};
   const nameWidth=Math.max(90,...rows.map(r=>Array.from(r.n).length*14+8));
-  return `<div class="card"><div class="top"><span>${opponentYear} ${opponentSeasonLabel()} · 두산베어스 vs ${esc(teamDisplayName(h2h))} · 투수 기록</span></div>${rows.length?`<div class="recscroll opp-scroll"><table class="opp-record-table" style="width:${34+nameWidth+columns.length*72}px"><colgroup><col style="width:34px"><col style="width:${nameWidth}px">${columns.map(()=>'<col style="width:72px">').join('')}</colgroup><thead><tr><th>순위</th><th>선수</th>${columns.map(([k,label])=>`<th><button class="opp-th${key===k?' active':''}" data-oppsort-pitch="${k}">${label}${key===k?(dir===1?' ↑':' ↓'):''}</button></th>`).join('')}</tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td><button class="playerlink" data-opphist="pitcher" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${esc(r.n)}</button></td>${columns.map(([k])=>`<td>${r[k]===null?'—':r[k]}</td>`).join('')}</tr>`).join('')}<tr class="record-total"><td>—</td><td>합계</td>${columns.map(([k])=>`<td>${total[k]===null?'—':total[k]}</td>`).join('')}</tr></tbody></table></div>`:'<div class="empty">선택한 기준에 해당하는 상대 투수 기록이 없습니다.</div>'}</div>`;
+  return `<div class="card"><div class="top"><span>${opponentYear} ${opponentSeasonLabel()} · 두산베어스 vs ${esc(teamDisplayName(h2h))} · 투수 기록</span></div>${rows.length?`<div class="recscroll opp-scroll"><table class="opp-record-table" style="width:${34+nameWidth+columns.length*72}px"><colgroup><col style="width:34px"><col style="width:${nameWidth}px">${columns.map(()=>'<col style="width:72px">').join('')}</colgroup><thead><tr><th>순위</th><th>선수</th>${columns.map(([k,label])=>`<th><button class="opp-th${key===k?' active':''}" data-oppsort-pitch="${k}">${label}${key===k?(dir===1?' ↑':' ↓'):''}</button></th>`).join('')}</tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td><button class="playerlink" data-opphist="pitcher" data-oppplayer="${esc(r.n)}" data-oppteam="${esc(h2h)}">${esc(r.n)}</button></td>${columns.map(([k])=>`<td>${r[k]===null?'—':r[k]}</td>`).join('')}</tr>`).join('')}${searchableTotalRow(rows,selected=>opponentPitchTotalMarkup(selected,columns,base))}</tbody></table></div>`:'<div class="empty">선택한 기준에 해당하는 상대 투수 기록이 없습니다.</div>'}</div>`;
 }
 
 let opponentPlayerTarget=null,opponentMatchupJob=null,opponentMatchupSort=null;
@@ -4773,8 +4813,9 @@ function applyPlayerTableSearch(){
   const matches=!queries.length||queries.some(query=>normalizedName.includes(query));
   row.hidden=!matches;total++;if(matches)shown++;
  }
+ refreshSearchTotals();
  const status=document.querySelector('[data-player-search-status]');
- if(status)status.textContent=queries.length?(shown?shown+'명 표시 · 표 합계는 전체 선수 기준이야.':total?'현재 조건의 기록에 일치하는 선수가 없어.':'현재 조건에 표시할 선수 기록이 없어.') : '';
+ if(status)status.textContent=queries.length?(shown?shown+'명 표시 · 합계는 표시된 선수 기준이에요.':total?'현재 조건의 기록에 일치하는 선수가 없어.':'현재 조건에 표시할 선수 기록이 없어.') : '';
 }
 document.addEventListener('input',event=>{
  const input=event.target;if(!input.matches('[data-player-search]'))return;
