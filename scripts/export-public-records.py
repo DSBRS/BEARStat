@@ -3,7 +3,7 @@
 import argparse, datetime, hashlib, json, os, re, tempfile, urllib.request
 from pathlib import Path
 TABLES={'events':('id','id,date,body'),'kbo_game_records':('game_id','game_id,date,body'),'futures_game_records':('game_id','game_id,date,body')}
-PUBLIC_KEYS=['bears_career_%','bears_franchise_%','bears_roster%','edu_roster_%','standings_others%','standings_auto_%','standings_official_%','kbo_situational_%','kbo_pinch_hit_%','naver_advanced_%','futures_sync_%','bearstat_player_visibility_v1','hidden_auto_events','kbo_history_sync']
+PUBLIC_KEYS=['bears_career_%','bears_franchise_%','bears_roster%','edu_roster_%','standings_others%','standings_auto_%','standings_official_%','kbo_situational_%','kbo_pinch_hit_%','naver_advanced_%','futures_sync_%','bearstat_player_visibility_v1','hidden_auto_events','kbo_history_sync','bearstat_awards_v1']
 def public_key(k):
  return any(re.fullmatch(re.escape(p).replace('%','.*'),k) for p in PUBLIC_KEYS)
 def encode(value):return json.dumps(value,ensure_ascii=False,separators=(',',':')).encode()
