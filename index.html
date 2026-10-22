@@ -665,6 +665,14 @@ async function saveInlineCareer(keys){
  finally{inlineCareerSaving=false;refreshInlineCareerList();}
 }
 document.addEventListener('change',ev=>{
+  if(ev.target?.id!=='f_type')return;
+  const wrap=document.getElementById('event_custom_title_wrap');
+  if(wrap)wrap.style.display=['kbo','edu'].includes(ev.target.value)?'none':'';
+  const input=document.getElementById('f_title');
+  if(input)input.placeholder=ev.target.value==='ticket'?'예: 2027 두산 베어스 시즌권 예매':'예: 일정 이름을 입력하세요';
+});
+
+document.addEventListener('change',ev=>{
  if(!isOwner||!ev.target.matches('[data-inline-select]')||inlineCareerSaving)return;
  try{const [scope,role,name]=JSON.parse(decodeURIComponent(ev.target.dataset.inlineSelect));const draft=inlineCareerDraft(role,name,scope);draft.selected=ev.target.checked;draft.collapsed=false;refreshInlineCareerList()}catch{}
 });
@@ -3957,6 +3965,11 @@ function admin(){
   ${adminStepTabs(e)}
   <section data-admin-step="1" style="${adminFormStep===1?'':'display:none'}">
   <label>종류</label><select id="f_type"${editing?.kboGameId?' disabled':''}>${['kbo','futures','club','fan','broadcast','radio','ticket','edu','etc'].map(k=>`<option value="${k}"${e.type===k?' selected':''}>${TYPES[k]}</option>`).join('')}</select>
+  <div id="event_custom_title_wrap" style="${['kbo','edu'].includes(e.type)?'display:none':''}">
+    <label for="f_title">일정 제목</label>
+    <input id="f_title" value="${esc(e.title&&e.title!==TYPES[e.type]?e.title:'')}" placeholder="${e.type==='ticket'?'예: 2027 두산 베어스 시즌권 예매':'예: 일정 이름을 입력하세요'}">
+    <div class="note">티켓 예매처럼 제목이 필요한 일정에 표시됩니다.</div>
+  </div>
   <label>날짜</label><input id="f_date" type="date"${editing?.kboGameId?' disabled':''} value="${e.date}"><label>시간</label><input id="f_time" type="time" value="${e.time||''}">
   <label for="f_headerNo">더블헤더</label><select id="f_headerNo"><option value="0"${![1,2].includes(+e.headerNo)?' selected':''}>일반 경기</option><option value="1"${+e.headerNo===1?' selected':''}>더블헤더 1차전 (DH1)</option><option value="2"${+e.headerNo===2?' selected':''}>더블헤더 2차전 (DH2)</option></select>
   </section>
@@ -5482,7 +5495,7 @@ if(g&&!opp){
   return;
 }
 
-const title=g?'두산 vs '+opp:(TYPES[type]||'일정');
+const title=g?'두산 vs '+opp:(S($('#f_title')?.value).trim()||(TYPES[type]||'일정'));
 
 if(!v('date')){
   alert('날짜는 필수입니다');
