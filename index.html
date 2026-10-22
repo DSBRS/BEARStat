@@ -433,6 +433,12 @@ function teamDisplayName(value){
  return (Object.hasOwn(TEAM_DISPLAY_NAMES,name)?TEAM_DISPLAY_NAMES[name]:null)||(Object.hasOwn(TEAM_DISPLAY_NAMES,compact)?TEAM_DISPLAY_NAMES[compact]:null)||
    (Object.values(TEAM_DISPLAY_NAMES).includes(compact)?compact:name);
 }
+function gameTitleWithHeader(e){
+ const base=String(['kbo','edu','futures'].includes(e.type)?teamDisplayText(e.title):e.title||'');
+ const no=Number(e.headerNo)||0;
+ if(![1,2].includes(no)||/\bDH[12]\b|더블헤더\s*[12]차전/i.test(base))return base;
+ return base+' · DH'+no;
+}
 function teamDisplayText(value){
  return String(value??'').replace(/(^|[^가-힣A-Za-z])(두산|OB|오비|LG|엘지|KT|kt|케이티|SSG|NC|KIA|기아|롯데|삼성|한화|키움|SK|넥센|우리|MBC|빙그레|해태|현대|쌍방울|태평양|청보|삼미)(?=$|[^가-힣A-Za-z])/g,
    (_,prefix,name)=>prefix+teamDisplayName(name));
@@ -1399,7 +1405,7 @@ function gameCard(e,kind){
   const r=result(e),sub=[e.stage,e.gameNo?e.gameNo+'차전':''].filter(Boolean).join(' · ');
   const st=starterDisplayName(e.starter),ost=starterDisplayName(e.oppStarter);
 
-  return `<div class="card"><div class="top"><span>${e.venue||''}${e.homeAway?` <span class="tag">${e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':esc(e.homeAway)}</span>`:''}</span><span>${e.stage?`<span class="badge">${sub}</span>`:'정규시즌'}${e.series?` <span class="tag" style="margin:0 0 0 4px">${e.series}</span>`:''}</span></div>
+  return `<div class="card"><div class="top"><span>${e.venue||''}${e.homeAway?` <span class="tag">${e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':esc(e.homeAway)}</span>`:''}</span><span>${e.stage?`<span class="badge">${sub}</span>`:'정규시즌'}${[1,2].includes(+e.headerNo)?` <span class="tag">DH${+e.headerNo}</span>`:''}${e.series?` <span class="tag" style="margin:0 0 0 4px">${e.series}</span>`:''}</span></div>
   <div class="vs"><span class="vh">vs</span><span class="t">${esc(teamDisplayName(e.opp)||'상대팀 미정')}</span></div>
   ${isCancelled(e)?`<div class="sb" style="margin-top:8px">${esc(e.venue||e.place||'')}</div><div class="note" style="margin-top:16px;font-weight:800">${cancellationMessage(e)}</div>`:(hasScore(e)?`<div class="score">${e.score.d} : ${e.score.v}<span class="res ${r}">${RL[r]||esc(e.statusText||'진행 중')}</span></div>`:(showUpcomingScheduleTime(e)?`<div class="time">${e.time||'<span class=tbd>시간 미정</span>'}</div>`:''))}
   ${isCancelled(e)?'':`<div class="meta"><span>경기장</span><span>${e.venue||'미정'}</span>${st?`<span>두산 선발</span><span>${esc(st)}</span>`:''}${ost?`<span>${esc(teamDisplayName(e.opp)||'상대팀')} 선발</span><span>${esc(ost)}</span>`:''}</div>`}</div>`;
@@ -1417,7 +1423,7 @@ function evRow(e){
   else if(e.type==='broadcast'||e.type==='radio')sb=[e.program,e.players&&e.players.join(', '),e.channel].filter(Boolean).join(' · ');
   else sb=[e.place].filter(Boolean).join(' · ');
   const g=['kbo','edu','futures'].includes(e.type),o=g&&openIds.has(e.id);
-  return `<div class="ev${g?' tap':''}"${g?` data-x="${esc(e.id)}"`:''}><div class="bd">${showUpcomingScheduleTime(e)?`<div class="event-start-time">${esc(e.time||'--:--')}</div>`:''}<div class="ti"><span class="tag">${TYPES[e.type]||'기타'}</span>${g?esc(teamDisplayText(e.title)):e.title}${e.demo?' <span class="tag">DEMO</span>':''}</div>${sb?`<div class="sb">${sb}</div>`:''}${e.desc?`<div class="sb">${e.desc}</div>`:''}${g?`<div class="more">${o?'접기 ▴':'경기 상세 ▾'}</div>`:''}${o?detail(e):''}</div></div>`;
+  return `<div class="ev${g?' tap':''}"${g?` data-x="${esc(e.id)}"`:''}><div class="bd">${showUpcomingScheduleTime(e)?`<div class="event-start-time">${esc(e.time||'--:--')}</div>`:''}<div class="ti"><span class="tag">${TYPES[e.type]||'기타'}</span>${g?esc(gameTitleWithHeader(e)):e.title}${e.demo?' <span class="tag">DEMO</span>':''}</div>${sb?`<div class="sb">${sb}</div>`:''}${e.desc?`<div class="sb">${e.desc}</div>`:''}${g?`<div class="more">${o?'접기 ▴':'경기 상세 ▾'}</div>`:''}${o?detail(e):''}</div></div>`;
 }
 function calendarIconSVG(symbol){
   const shapes={
@@ -3858,7 +3864,7 @@ function admin(){
     ${list.length?list.slice(0,adminListLimit).map(x=>`<div class="ev">
       <div class="tm">${x.date.slice(5)}</div>
       <div class="bd">
-        <div class="ti">${esc(['kbo','edu','futures'].includes(x.type)?teamDisplayText(x.title):x.title)}</div>
+        <div class="ti">${esc(gameTitleWithHeader(x))}</div>
         <div class="sb">${TYPES[x.type]}${isCancelled(x)?' · '+(x.cancelReason?esc(x.cancelReason)+'취소':'경기취소'):''}${x.kboGameId?' · KBO 자동연동':''}${x.venue?' · '+esc(x.venue):''}</div>
         ${adminEditActions(x)}<div style="display:flex;justify-content:flex-start;margin-top:20px;padding-top:12px;border-top:1px solid var(--line)">${x.kboGameId?`<button type="button" class="link" style="margin:0;padding:8px 12px" data-hide-auto="${esc(x.kboGameId)}">일정 숨기기</button>`:`<button type="button" class="link" style="margin:0;padding:8px 12px" data-del="${x.id}">삭제</button>`}</div>
       </div>
@@ -3874,6 +3880,7 @@ function admin(){
   <section data-admin-step="1" style="${adminFormStep===1?'':'display:none'}">
   <label>종류</label><select id="f_type"${editing?.kboGameId?' disabled':''}>${['kbo','futures','club','fan','broadcast','radio','ticket','edu','etc'].map(k=>`<option value="${k}"${e.type===k?' selected':''}>${TYPES[k]}</option>`).join('')}</select>
   <label>날짜</label><input id="f_date" type="date"${editing?.kboGameId?' disabled':''} value="${e.date}"><label>시간</label><input id="f_time" type="time" value="${e.time||''}">
+  <label for="f_headerNo">더블헤더</label><select id="f_headerNo"><option value="0"${![1,2].includes(+e.headerNo)?' selected':''}>일반 경기</option><option value="1"${+e.headerNo===1?' selected':''}>더블헤더 1차전 (DH1)</option><option value="2"${+e.headerNo===2?' selected':''}>더블헤더 2차전 (DH2)</option></select>
   </section>
   ${editing?.kboGameId?'':`<section data-admin-step="2" style="${adminFormStep===2?'':'display:none'}">
   <div id="edu_editor">${e.type==='edu'?eduEditorHTML(e,'selection'):''}</div>
@@ -5406,7 +5413,7 @@ if(!v('date')){
     const cancellationOverride=!!old.cancellationOverride||cancelled!==isCancelled(old)||cancelReason!==S(old.cancelReason);
     const status=cancelled?'cancelled':(old.status==='cancelled'||!old.status?((sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?'final':'scheduled'):old.status);
     if(t.disabled)return;t.disabled=true;t.textContent='저장 중…';
-    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:editing?.kboGameId?(old.players||[]):v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp,cancelReason,cancelled,status,cancellationOverride,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>{t.disabled=false;t.textContent=editing?'일정 수정':'일정 추가';alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다'))});
+    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:editing?.kboGameId?(old.players||[]):v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp,cancelReason,cancelled,status,cancellationOverride,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),headerNo:Number(v('headerNo'))||0,gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>{t.disabled=false;t.textContent=editing?'일정 수정':'일정 추가';alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다'))});
   }
   else if(t.id==='cancel'){editing=null;adminView='manage';keep()}
   else if(t.dataset.hideAuto){if(confirm('이 자동연동 일정을 숨길까요?\n숨긴 뒤에도 자동연동으로 다시 나타나지 않습니다.'))Repo.hideAuto(t.dataset.hideAuto).then(()=>keep()).catch(e=>alert('숨기지 못했습니다: '+(e.message||'')))}
