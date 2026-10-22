@@ -784,6 +784,7 @@ const BEAR_POSTSEASON_MVPS=[
 ];
 let BEAR_MANAGED_AWARDS=[];
 let bearAwardEditId='';
+let bearAwardEditorOpen=false;
 let bearAwardStatus='';
 const awardStoreKey='bearstat_awards_v1';
 function bearAllAwards(){return BEAR_MANAGED_AWARDS.filter(x=>x&&x.category!=='championship')}
@@ -823,7 +824,8 @@ function awardAdminHTML(){
 }
 document.addEventListener('submit',async ev=>{
  if(ev.target.id!=='award-admin-form')return;
- ev.preventDefault();const form=ev.target,fd=new FormData(form);
+ ev.preventDefault();
+ if(!isOwner)return;const form=ev.target,fd=new FormData(form);
  const category=String(fd.get('awardCategory')||''),year=Number(fd.get('awardYear')),month=Number(fd.get('awardMonth'))||null;
  const name=String(fd.get('awardName')||'').trim(),title=String(fd.get('awardTitle')||'').trim(),series=String(fd.get('awardSeries')||'');
  if(!BEAR_AWARD_CATEGORIES.some(x=>x[0]===category)||category==='all'||year<1982||year>2100||!name)return;
@@ -831,12 +833,16 @@ document.addEventListener('submit',async ev=>{
  const id=String(fd.get('awardId')||'')||'award_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
  const item={id,category,year,month:['monthly-cap','monthly-mvp'].includes(category)?month:null,name,title,series:category==='mvp'?series:''};
  const btn=form.querySelector('[type=submit]');btn.disabled=true;
- try{await persistManagedAwards([...BEAR_MANAGED_AWARDS.filter(x=>x.id!==id),item]);bearAwardEditId='';bearAwardStatus='저장했어!';route2()}
+ try{await persistManagedAwards([...BEAR_MANAGED_AWARDS.filter(x=>x.id!==id),item]);bearAwardEditId='';bearAwardEditorOpen=false;bearAwardStatus='저장했어!';route2()}
  catch(e){btn.disabled=false;const st=document.getElementById('award-admin-status');if(st){st.style.display='';st.textContent='저장 실패: '+e.message}else alert(e.message)}
 });
 document.addEventListener('click',async ev=>{
  const edit=ev.target.closest('[data-award-edit]'),del=ev.target.closest('[data-award-delete]'),cancel=ev.target.closest('[data-award-cancel]');
- if(edit){bearAwardEditId=edit.dataset.awardEdit;bearAwardStatus='';route2();document.getElementById('award-admin-panel')?.scrollIntoView({block:'start'});return}
+ const open=ev.target.closest('[data-award-open]'),close=ev.target.closest('[data-award-close]');
+ if(!isOwner)return;
+ if(open){bearAwardEditId='';bearAwardEditorOpen=true;bearAwardStatus='';route2();document.getElementById('award-admin-panel')?.scrollIntoView({block:'start'});return}
+ if(close){bearAwardEditId='';bearAwardEditorOpen=false;bearAwardStatus='';route2();return}
+ if(edit){bearAwardEditId=edit.dataset.awardEdit;bearAwardEditorOpen=true;bearAwardStatus='';route2();document.getElementById('award-admin-panel')?.scrollIntoView({block:'start'});return}
  if(cancel){bearAwardEditId='';bearAwardStatus='';route2();return}
  if(del){if(!confirm('이 수상 기록을 삭제할까?'))return;try{await persistManagedAwards(BEAR_MANAGED_AWARDS.filter(x=>x.id!==del.dataset.awardDelete));if(bearAwardEditId===del.dataset.awardDelete)bearAwardEditId='';bearAwardStatus='삭제했어.';route2()}catch(e){alert('삭제 실패: '+e.message)}}
 });
@@ -852,7 +858,7 @@ function awardsView(){
  }).join('')}</div></section>`:'';
  const individual=bearAllAwards().filter(item=>!item.series&&(active==='all'||item.category===active)).slice().sort((a,b)=>(+b.year||0)-(+a.year||0));
  const other=active!=='championship'?`<section><h2>${active==='all'?'개인 수상':BEAR_AWARD_CATEGORIES.find(([id])=>id===active)?.[1]||'수상'} 기록</h2>${individual.length?`<div class="award-list">${individual.map(item=>`<article class="card award-card"><div class="award-heading"><b>${esc(String(item.year))}년</b><span>${esc(item.title||BEAR_AWARD_CATEGORIES.find(([id])=>id===item.category)?.[1]||'수상')}</span></div><div class="award-person">${esc(item.name||'')}${item.month?' · '+esc(item.month)+'월':''}</div></article>`).join('')}</div>`:'<div class="card"><div class="empty">확인된 수상 기록을 준비 중이에요.</div></div>'}</section>`:'';
- return `<div class="brand"><div class="logo">수상</div></div>${categories}${wins}${other}`;
+ return `<div class="brand"><div class="logo">수상</div>${isOwner?`<button type="button" class="chip" data-award-open>+ 수상 등록</button>`:''}</div>${categories}${isOwner&&bearAwardEditorOpen?`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button type="button" class="link" data-award-close>입력창 닫기 ×</button></div>${awardAdminHTML()}`:''}${isOwner&&bearAwardStatus&&!bearAwardEditorOpen?`<div class="note" role="status">${esc(bearAwardStatus)}</div>`:''}${wins}${other}`;
 }
 document.addEventListener('click',event=>{
  const button=event.target.closest('[data-award-category]');
@@ -3916,7 +3922,6 @@ function admin(){
     </div>
   </div>
 
-  ${awardAdminHTML()}
   ${adminCalendar()}
   ${HIDDEN_AUTO_IDS.length?`<div class="card"><h2>숨긴 자동연동 일정</h2><div class="note">숨긴 일정은 홈·캘린더·일정 목록에서 제외되고, 자동연동이 다시 실행돼도 숨김이 유지됩니다.</div>${HIDDEN_AUTO_IDS.map(id=>`<div class="ev"><div class="bd"><div class="ti">${esc(id)}</div><button class="link" data-restore-auto="${esc(id)}">복원</button></div></div>`).join('')}</div>`:''}
 
