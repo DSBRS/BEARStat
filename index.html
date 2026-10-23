@@ -1325,8 +1325,23 @@ function isUpcomingKbo(e){
   return e&&e.type==='kbo'&&!isCancelled(e)&&!hasScore(e)&&S(e.date)>=TS;
 }
 
-let queuedRerender=null;
-function rerender(){if(queuedRerender!==null)return;queuedRerender=setTimeout(()=>{queuedRerender=null;rerenderNow()},150);}
+// Keep background record updates from replacing the page during a scroll gesture.
+let queuedRerender=null,recordScrollTouch=false,recordScrollActiveUntil=0,lastRecordBackgroundRender=0;
+function noteRecordScroll(){recordScrollActiveUntil=Date.now()+300;}
+window.addEventListener('scroll',noteRecordScroll,{passive:true});
+window.addEventListener('wheel',noteRecordScroll,{passive:true});
+window.addEventListener('touchstart',()=>{recordScrollTouch=true;noteRecordScroll()},{passive:true});
+const endRecordScrollTouch=ev=>{recordScrollTouch=!!ev.touches?.length;noteRecordScroll()};
+window.addEventListener('touchend',endRecordScrollTouch,{passive:true});
+window.addEventListener('touchcancel',endRecordScrollTouch,{passive:true});
+window.addEventListener('blur',()=>{recordScrollTouch=false;noteRecordScroll()});
+function flushRecordRerender(){
+ queuedRerender=null;
+ const now=Date.now(),delay=Math.max(recordScrollActiveUntil-now,700-(now-lastRecordBackgroundRender));
+ if(recordScrollTouch||delay>0){queuedRerender=setTimeout(flushRecordRerender,Math.max(80,delay));return;}
+ lastRecordBackgroundRender=now;rerenderNow();
+}
+function rerender(){if(queuedRerender!==null)return;queuedRerender=setTimeout(flushRecordRerender,150);}
 function rerenderNow(){if(document.body.dataset.r==='admin'&&adminView==='form'&&document.querySelector('[data-admin-step]'))return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;const guideOpen=document.querySelector('.record-guide')?.open;const historyTop=document.querySelector('.historybox')?.scrollTop;const y=scrollY,opponentScroll=document.querySelector('.opp-scroll,.record-scroll')?.scrollLeft;route2();if(guideOpen){const guide=document.querySelector('.record-guide');if(guide)guide.open=true;}if(opponentScroll!==undefined){const scroller=document.querySelector('.opp-scroll,.record-scroll');if(scroller)scroller.scrollLeft=opponentScroll;}const history=document.querySelector('.historybox');if(history&&historyTop!==undefined)history.scrollTop=historyTop;scrollTo(0,y)}
 let authRevision=0;
 async function setUser(sess){
@@ -3378,6 +3393,9 @@ function opponentCompetitionMatches(e){
  return ['와일드카드','준플레이오프','플레이오프','한국시리즈'].includes(stage)?stage===label:String(e.kbo?.seriesId??e.seriesId)===opponentPostStage;
 }
 function opponentGames(opp=''){
+ return recordRenderMemo('opponent-games:'+JSON.stringify([opponentYear,opponentSeason,opponentPostStage,opp]),()=>uncachedOpponentGames(opp));
+}
+function uncachedOpponentGames(opp=''){
  const seen=new Set();return Repo.all().filter(e=>{if(e.demo||e.type!=='kbo'||isCancelled(e)||isExhibition(e)||!hasScore(e)||S(e.date)>TS||S(e.date).slice(0,4)!==String(opponentYear)||opp&&S(e.opp)!==S(opp)||!opponentCompetitionMatches(e))return false;
  const key=S(e.kboGameId||e.id)||[e.date,e.opp,e.homeAway,e.headerNo||0].join('|');if(seen.has(key))return false;seen.add(key);return true;});
 }
@@ -3488,24 +3506,32 @@ let opponentRelayJob=null;
 const OPP_RELAY_STATS=new Set(['ab','hit','d2','d3','hr','avg']);
 function startOpponentRelay(){
  const selected=oppHistorySheet;
- if(selected?.stat!=='avgdetail'||!OPP_RELAY_STATS.has(selected.detailStat)){opponentRelayJob=null;return;}
- const {name,opp,detailStat:stat}=selected,signature=JSON.stringify([name,opp,stat,opponentYear]);
+ const stat=selected?.stat==='avgdetail'?selected.detailStat:selected?.stat;
+ if(!selected||!OPP_RELAY_STATS.has(stat)){opponentRelayJob=null;return;}
+ const {name,opp}=selected,signature=JSON.stringify([name,opp,stat,opponentYear,opponentSeason,opponentPostStage]);
  if(opponentRelayJob?.signature===signature)return;
  const games=opponentPlayerGames(name,opp).filter(g=>stat==='avg'?g.ab>0:g[stat]>0).filter(g=>/^\d{8}[A-Z]{4}\d$/.test(S(g.event.kboGameId))&&finalBoxBattingPlays(g.event,name,stat)===null);
  const job={signature,total:games.length,done:0,failed:0,running:true};opponentRelayJob=job;let next=0;
  primePlayerRelay(games.map(g=>g.event.kboGameId),name,'hitter').catch(()=>{}).then(()=>Promise.all(Array.from({length:2},async()=>{
-  while(next<games.length&&opponentRelayJob===job&&oppHistorySheet===selected&&selected.detailStat===stat){
+  while(next<games.length&&opponentRelayJob===job&&oppHistorySheet===selected&&(selected.stat==='avgdetail'?selected.detailStat:selected.stat)===stat){
    const game=games[next++];try{const b=await readSituationRelay(game.event.kboGameId,name,'hitter');if(!relayPlayerAvailable(b,game.event.kboGameId,name,'hitter'))throw Error('서버에서 이 선수의 경기 기록을 사용 불가로 표시')}catch(error){job.failed++;(job.errors||=[]).push({date:game.event.date,opp:game.event.opp||'',id:game.event.kboGameId,reason:error.message||'연결 오류'})}job.done++;
    if(opponentRelayJob===job&&oppHistorySheet===selected)rerender();
   }
  }))).finally(()=>{job.running=false;if(opponentRelayJob===job&&oppHistorySheet===selected)rerender()});
 }
 function opponentPlayDetails(e,name,stat){
- const final=finalBoxBattingPlays(e,name,stat);if(final)return final;
- const relay=cachedPlayerRelay(e.kboGameId,name,'hitter');if(!relay||!OPP_RELAY_STATS.has(stat)||!relayPlayerAvailable(relay,e.kboGameId,name,'hitter'))return null;
- const side=S(e.kboGameId).slice(8,10)==='OB'?'away':'home';
- return relay.plays.filter(p=>p.side===side&&p.batter===name&&(stat==='avg'?p.stats.ab>0:p.stats[stat]>0)).map(p=>`${p.inning}회${p.side==='away'?'초':'말'} · ${S(p.pitcher)?S(p.pitcher):'투수 미확인'} · ${p.result}`);
+ if(!OPP_RELAY_STATS.has(stat))return null;
+ const final=finalBoxBattingPlays(e,name,stat);
+ let plays=final;
+ if(plays===null){
+  const relay=cachedPlayerRelay(e.kboGameId,name,'hitter');
+  if(!relay||!relayPlayerAvailable(relay,e.kboGameId,name,'hitter'))return null;
+  const side=S(e.kboGameId).slice(8,10)==='OB'?'away':'home';
+  plays=relay.plays.filter(p=>p.side===side&&p.batter===name&&Number(p.stats?.[stat==='avg'?'ab':stat])>0);
+ }
+ return plays.map(p=>`${p.inning}회${p.side==='away'?'초':'말'}${S(p.pitcher)?' · '+S(p.pitcher):''} · ${p.result}`);
 }
+
 function opponentDetailHistoryHTML(name,opp,stat){
  if(stat==='errors')return opponentErrorHistoryHTML(name,opp);
  const labels={ab:'타수',hit:'안타',rbi:'타점',runs:'득점',avg:'타율',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루',gw:'결승타'},label=labels[stat];
@@ -3617,6 +3643,8 @@ function opponentHistorySheetBaseHTML(){
   if(oppHistorySheet.stat==='avg')return opponentBattingSheetHTML(oppHistorySheet.name);
   const label={hit:'안타',rbi:'타점',runs:'득점',sb:'도루',hr:'홈런',gw:'결승타'}[oppHistorySheet.stat]||'기록';
   const unit=oppHistorySheet.stat==='rbi'?'타점':'개';
+  const showPlays=OPP_RELAY_STATS.has(oppHistorySheet.stat);
+  if(showPlays)startOpponentRelay();
   const rows=opponentStatHistory(oppHistorySheet.name,oppHistorySheet.stat,oppHistorySheet.opp);
   const total=rows.reduce((s,x)=>s+(+x.count||0),0);
   return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div>
@@ -3627,11 +3655,11 @@ function opponentHistorySheetBaseHTML(){
       </div>
       <button class="sheetclose" data-oppclose>×</button>
     </div>
-    <div class="historybox" style="border-top:0;margin-top:8px;padding-top:0;max-height:50vh">
+    <div class="historybox" style="border-top:0;margin-top:8px;padding-top:0">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <b>총 ${total}${unit}</b>
       </div>
-      ${rows.length?rows.map(x=>`
+      ${showPlays?opponentDetailHistoryHTML(oppHistorySheet.name,oppHistorySheet.opp,oppHistorySheet.stat):rows.length?rows.map(x=>`
         <div class="historyrow" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
           <div>
             ${historyCardHeader(x)}
@@ -5762,7 +5790,16 @@ document.addEventListener('change',ev=>{
 
 document.addEventListener('input',ev=>{if(ev.target.matches('[data-edu-stat]'))captureEduInputs();const box=document.querySelector('#kbo_manual'),el=ev.target;if(box&&(el.matches('[data-batter],.hr-player,.hr-inning,.hr-runs')||/^f_(sd|so|starter|oppStarter|winP|loseP|saveP|holdP|gwRbi|doubles|triples|hits|steals|duration)$/.test(el.id)))box.checked=true});
 
-function route2(){const r=document.body.dataset.r;updateNavigation(r);$('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='awards'?awardsView():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));}
+function route2(){
+ const r=document.body.dataset.r,x=window.scrollX,y=window.scrollY;
+ const scrollGroups=['.sheet','.historybox','.opp-scroll,.record-scroll','.recscroll'];
+ const positions=scrollGroups.map(selector=>[selector,[...document.querySelectorAll(selector)].map(el=>({top:el.scrollTop,left:el.scrollLeft}))]);
+ updateNavigation(r);
+ $('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='awards'?awardsView():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));
+ for(const [selector,saved] of positions)document.querySelectorAll(selector).forEach((el,i)=>{if(saved[i]){el.scrollTop=saved[i].top;el.scrollLeft=saved[i].left;}});
+ window.scrollTo({left:x,top:y,behavior:'instant'});
+}
+
 document.addEventListener('click',ev=>{
  if(ev.target.closest('[data-admin-more]')){adminListLimit+=80;const y=scrollY;route2();scrollTo(0,y)}
  if(ev.target.closest('[data-retry-records]')){void refreshLatestData(true,{metadata:true})}
