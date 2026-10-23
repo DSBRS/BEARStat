@@ -438,6 +438,7 @@ table th button,table td button{ text-align:center }
 @media(min-width:1024px){.award-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
 </style>
 <style>.career-bears-period{display:flex;flex-direction:column;gap:5px;margin-top:7px;padding-top:12px;border-top:1px solid var(--line)}.career-bears-period>span,.career-bears-period>small{color:var(--sub);font-size:11px}.career-bears-period>b{font-size:14px;overflow-wrap:anywhere}</style>
+<style>#ticket_site_wrap[hidden],#event_venue_wrap[hidden]{display:none!important}</style>
 </head>
 <body>
 <div id="app"></div>
@@ -709,6 +710,8 @@ document.addEventListener('change',ev=>{
   if(wrap)wrap.style.display=['kbo','edu'].includes(ev.target.value)?'none':'';
   const input=document.getElementById('f_title');
   if(input)input.placeholder=ev.target.value==='ticket'?'예: 2027 두산 베어스 시즌권 예매':'예: 일정 이름을 입력하세요';
+  const ticketSite=document.getElementById('ticket_site_wrap');if(ticketSite)ticketSite.hidden=ev.target.value!=='ticket';
+  const venue=document.getElementById('event_venue_wrap');if(venue)venue.hidden=ev.target.value==='ticket';
 });
 
 document.addEventListener('change',ev=>{
@@ -1249,7 +1252,7 @@ Repo.all=function(){
   const seenTickets=new Set();
   return visible.filter(e=>{
     if(e.type!=='ticket')return true;
-    const key=JSON.stringify([S(e.date),S(e.time),S(e.title).replace(/\s+/g,' ').trim()]);
+    const key=JSON.stringify([S(e.date),S(e.time),S(e.title).replace(/\s+/g,' ').trim(),ticketSiteName(e)]);
     if(seenTickets.has(key))return false;
     seenTickets.add(key);
     return true;
@@ -1578,10 +1581,12 @@ function showUpcomingScheduleTime(e){
  if(S(e.date)===TS){const m=S(e.time).match(/^(\d{1,2}):(\d{2})/);if(m){const now=new Date();if(+m[1]*60+(+m[2])<=now.getHours()*60+now.getMinutes())return false;}}
  return true;
 }
+function ticketSiteName(e){return e?.type==='ticket'?S(e.ticketSite||e.bookingSite||e.venue||e.place).trim():'';}
 function evRow(e){
   let sb='';
   if(['kbo','edu','futures'].includes(e.type)){const r=result(e);sb=isCancelled(e)?[e.venue,e.cancelReason?`취소 사유: ${e.cancelReason}`:'취소 경기'].filter(Boolean).join(' · '):[e.venue,hasScore(e)?`${e.score.d}:${e.score.v} ${RL[r]||esc(e.statusText||'진행 중')}`:'',e.stage?[e.stage,e.gameNo?e.gameNo+'차전':''].join(' '):'',starterDisplayName(e.starter)].filter(Boolean).join(' · ');}
   else if(e.type==='broadcast'||e.type==='radio')sb=[e.program,e.players&&e.players.join(', '),e.channel].filter(Boolean).join(' · ');
+  else if(e.type==='ticket')sb=esc(ticketSiteName(e));
   else sb=[e.place].filter(Boolean).join(' · ');
   const g=['kbo','edu','futures'].includes(e.type),o=g&&openIds.has(e.id);
   return `<div class="ev${g?' tap':''}"${g?` data-x="${esc(e.id)}"`:''}><div class="bd">${showUpcomingScheduleTime(e)?`<div class="event-start-time">${esc(e.time||'--:--')}</div>`:''}<div class="ti"><span class="tag">${TYPES[e.type]||'기타'}</span>${g?esc(gameTitleWithHeader(e)):e.title}${e.demo?' <span class="tag">DEMO</span>':''}</div>${sb?`<div class="sb">${sb}</div>`:''}${e.desc?`<div class="sb">${e.desc}</div>`:''}${g?`<div class="more">${o?'접기 ▴':'경기 상세 ▾'}</div>`:''}${o?detail(e):''}</div></div>`;
@@ -4138,7 +4143,7 @@ function admin(){
       <div class="tm">${x.date.slice(5)}</div>
       <div class="bd">
         <div class="ti">${esc(gameTitleWithHeader(x))}</div>
-        <div class="sb">${TYPES[x.type]}${isCancelled(x)?' · '+(x.cancelReason?esc(x.cancelReason)+'취소':'경기취소'):''}${x.kboGameId?' · KBO 자동연동':''}${x.venue?' · '+esc(x.venue):''}</div>
+        <div class="sb">${TYPES[x.type]}${isCancelled(x)?' · '+(x.cancelReason?esc(x.cancelReason)+'취소':'경기취소'):''}${x.kboGameId?' · KBO 자동연동':''}${x.type==='ticket'?(ticketSiteName(x)?' · '+esc(ticketSiteName(x)):''):(x.venue?' · '+esc(x.venue):'')}</div>
         ${adminEditActions(x)}<div style="display:flex;justify-content:flex-start;margin-top:20px;padding-top:12px;border-top:1px solid var(--line)">${x.kboGameId?`<button type="button" class="link" style="margin:0;padding:8px 12px" data-hide-auto="${esc(x.kboGameId)}">일정 숨기기</button>`:`<button type="button" class="link" style="margin:0;padding:8px 12px" data-del="${x.id}">삭제</button>`}</div>
       </div>
     </div>`).join(''):'<div class="empty">해당 일정이 없습니다.</div>'}
@@ -4157,6 +4162,10 @@ function admin(){
     <input id="f_title" value="${esc(e.title&&e.title!==TYPES[e.type]?e.title:'')}" placeholder="${e.type==='ticket'?'예: 2027 두산 베어스 시즌권 예매':'예: 일정 이름을 입력하세요'}">
     <div class="note">티켓 예매처럼 제목이 필요한 일정에 표시됩니다.</div>
   </div>
+  <div id="ticket_site_wrap"${e.type==='ticket'?'':' hidden'}>
+    <label for="f_ticketSite">티켓팅 사이트</label>
+    <input id="f_ticketSite" value="${esc(ticketSiteName(e))}" placeholder="예: 티켓링크, NOL 티켓, 구단 공식 홈페이지" autocomplete="off">
+  </div>
   <label>날짜</label><input id="f_date" type="date"${editing?.kboGameId?' disabled':''} value="${e.date}"><label>시간</label><input id="f_time" type="time" value="${e.time||''}">
   <label for="f_headerNo">더블헤더</label><select id="f_headerNo"><option value="0"${![1,2].includes(+e.headerNo)?' selected':''}>일반 경기</option><option value="1"${+e.headerNo===1?' selected':''}>더블헤더 1차전 (DH1)</option><option value="2"${+e.headerNo===2?' selected':''}>더블헤더 2차전 (DH2)</option></select>
   </section>
@@ -4168,8 +4177,10 @@ function admin(){
   <section data-admin-step="3" style="${adminFormStep===3?'':'display:none'}">
   <label for="f_cancelReason">경기 취소</label><select id="f_cancelReason"><option value="__custom__"${cancelCustom?' selected':''}>✎ 직접 입력</option><option value=""${!isCancelled(e)?' selected':''}>정상 경기</option><option value="__cancelled__"${isCancelled(e)&&!cancelReason?' selected':''}>⊘ 경기 취소 (사유 미지정)</option>${['우천','그라운드 사정','폭염','폭설','강풍','미세먼지','황사'].map(x=>`<option value="${x}"${cancelReason===x?' selected':''}>${CANCEL_ICONS[x]} ${x}</option>`).join('')}</select>
   <input id="f_cancelReason_custom" value="${cancelCustom?esc(cancelReason):''}" placeholder="✎ 취소 사유 직접 입력" style="margin-top:8px;${cancelCustom?'':'display:none'}">
+  <div id="event_venue_wrap"${e.type==='ticket'?' hidden':''}>
   <label>장소</label><select id="f_place"><option value="__custom__"${placeCustom?' selected':''}>✎ 직접 입력</option>${venueOptionsHTML(e.place)}</select>
   <input id="f_place_custom" value="${placeCustom?esc(e.place):''}" placeholder="✎ 장소를 직접 입력" style="margin-top:8px;${placeCustom?'':'display:none'}">
+  </div>
 
   <label>상대팀 (경기)</label><select id="f_opp"${editing?.kboGameId?' disabled':''}><option value="__custom__"${oppCustom?' selected':''}>✎ 직접 입력</option>${['',...SELECTABLE_TEAMS].map(t=>`<option value="${t}"${(e.opp===t||(!e.opp&&t===''))?' selected':''}>${esc(teamDisplayName(t)||'상대팀 선택')}</option>`).join('')}</select>
   <input id="f_opp_custom" value="${oppCustom?esc(e.opp):''}" placeholder="✎ 상대팀을 직접 입력 (예: 요미우리)" style="margin-top:8px;${oppCustom?'':'display:none'}"${editing?.kboGameId?' disabled':''}>
@@ -5718,7 +5729,7 @@ if(!v('date')){
     const cancellationOverride=!!old.cancellationOverride||cancelled!==isCancelled(old)||cancelReason!==S(old.cancelReason);
     const status=cancelled?'cancelled':(old.status==='cancelled'||!old.status?((sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?'final':'scheduled'):old.status);
     if(t.disabled)return;t.disabled=true;t.textContent='저장 중…';
-    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,place:customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:editing?.kboGameId?(old.players||[]):v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp,cancelReason,cancelled,status,cancellationOverride,venue:customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),headerNo:Number(v('headerNo'))||0,gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>{t.disabled=false;t.textContent=editing?'일정 수정':'일정 추가';alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다'))});
+    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,ticketSite:type==='ticket'?v('ticketSite'):'',place:type==='ticket'?v('ticketSite'):customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:editing?.kboGameId?(old.players||[]):v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp,cancelReason,cancelled,status,cancellationOverride,venue:type==='ticket'?v('ticketSite'):customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),headerNo:Number(v('headerNo'))||0,gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>{t.disabled=false;t.textContent=editing?'일정 수정':'일정 추가';alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다'))});
   }
   else if(t.id==='cancel'){editing=null;adminView='manage';keep()}
   else if(t.dataset.hideAuto){if(confirm('이 자동연동 일정을 숨길까요?\n숨긴 뒤에도 자동연동으로 다시 나타나지 않습니다.'))Repo.hideAuto(t.dataset.hideAuto).then(()=>keep()).catch(e=>alert('숨기지 못했습니다: '+(e.message||'')))}
