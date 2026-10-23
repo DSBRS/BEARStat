@@ -3430,7 +3430,7 @@ function opponentYearMenu(){
 if(typeof document!=='undefined')document.addEventListener('click',ev=>{
  const target=ev.target.closest('[data-opponent-year]');if(!target)return;
  const year=Number(target.dataset.opponentYear);if(!opponentAvailableYears().includes(year))return;
- opponentYear=year;ensureSeasonOpponentSelection(year);oppHistorySheet=null;opponentPlayerTarget=null;opponentMatchupSort=null;opponentMatchupJob=null;opponentRelayJob=null;opponentPitcherRelayJob=null;rerender();
+ opponentYear=year;ensureSeasonOpponentSelection(year,false);oppHistorySheet=null;opponentPlayerTarget=null;opponentMatchupSort=null;opponentMatchupJob=null;opponentRelayJob=null;opponentPitcherRelayJob=null;rerender();
 });
 
 function opponentWinningHitDescription(e,name){
@@ -3831,7 +3831,7 @@ if(typeof document!=='undefined')document.addEventListener('click',ev=>{
 });
 
 function opponentStatsView(){
-  ensureSeasonOpponentSelection(opponentYear);
+  ensureSeasonOpponentSelection(opponentYear,false);
   if(isOpponentPlayerMatchup())return `<div class="brand"><div class="logo">상대전적</div></div>${opponentKindTabs()}${opponentYearMenu()}${opponentCompetitionMenus()}<div class="chips">${rankedOpponentTeams(opponentYear).map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${esc(teamDisplayName(t))}</button>`).join('')}</div>${recordLimitMenu('opponent',opponentKind)}${opponentPlayerMenu()}${opponentMatchupTable()}${opponentHistorySheetHTML()}`;
   if(opponentKind==='pitcher')return `<div class="brand"><div class="logo">상대전적</div></div>${opponentKindTabs()}${opponentYearMenu()}${opponentCompetitionMenus()}<div class="chips">${rankedOpponentTeams(opponentYear).map(t=>`<button class="chip${t===h2h?' on':''}" data-t="${t}">${esc(teamDisplayName(t))}</button>`).join('')}</div>${recordLimitMenu('opponent',opponentKind)}${opponentPlayerMenu()}${h2h?recordLimitNote('opponent',opponentKind):''}${h2h?opponentPitchingTable():'<div class="empty">상대팀을 선택하세요.</div>'}${opponentHistorySheetHTML()}`;
   scheduleSacrificeFlies({games:recordFilterGames('opponent'),includePH:false});
@@ -5175,7 +5175,7 @@ function rankedOpponentTeams(year=TODAY.getFullYear()){
  for(const r of rows){const name=S(r.n||r.team),rank=Number(r.rank);if(Number.isFinite(rank)&&rank>0)ranks.set(name,rank)}
  return teams.sort((a,b)=>(ranks.get(a)??ranks.get(canonical(a))??Infinity)-(ranks.get(b)??ranks.get(canonical(b))??Infinity)||teams.indexOf(a)-teams.indexOf(b));
 }
-function ensureSeasonOpponentSelection(year){const valid=seasonOpponentTeams(year);if(!valid.includes(h2h))h2h=valid[0]||'';}
+function ensureSeasonOpponentSelection(year,autoSelect=true){const valid=seasonOpponentTeams(year);if(!valid.includes(h2h))h2h=autoSelect?(valid[0]||''):'';}
 
 function choiceDropdown(label,buttons,aria='선택'){
  return `<details class="choice-dropdown"><summary aria-label="${esc(aria)}"><span>${label}</span><span class="choice-chevron" aria-hidden="true"></span></summary><div class="choice-options">${buttons}</div></details>`;
