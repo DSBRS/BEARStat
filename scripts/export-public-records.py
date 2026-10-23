@@ -7,6 +7,60 @@ PUBLIC_KEYS=['bears_career_%','bears_franchise_%','bears_roster%','edu_roster_%'
 def public_key(k):
  return any(re.fullmatch(re.escape(p).replace('%','.*'),k) for p in PUBLIC_KEYS)
 def encode(value):return json.dumps(value,ensure_ascii=False,separators=(',',':')).encode()
+VOLATILE_KEYS={'fetchedAt','updatedAt','generatedAt','syncedAt','lastSyncedAt','lastFetchedAt','lastCheckedAt','checkedAt','collectedAt','parserVersion'}
+def notification_content(value):
+ if isinstance(value,dict):return {k:notification_content(v) for k,v in sorted(value.items()) if k not in VOLATILE_KEYS}
+ if isinstance(value,list):return [notification_content(v) for v in value]
+ return value
+def notification_digest(value):return hashlib.sha256(encode(notification_content(value))).hexdigest()
+def notification_index(records):
+ index={}
+ for table,rows in records.items():
+  for row in rows:
+   key=str(row.get('key') if table=='kv' else row.get('id') if table=='events' else row.get('game_id'))
+   if table=='kv' and (key.startswith(('futures_sync_','kbo_history_sync'))):continue
+   index[table+':'+key]=(notification_digest(row),row)
+ return index
+def previous_notification_records(root,manifest):
+ if not manifest:return None
+ records={}
+ for table,meta in manifest['tables'].items():
+  rows=[]
+  for shard in meta['shards']:
+   name=shard['file']
+   if Path(name).name!=name:raise ValueError('Invalid archive shard path')
+   data=(root/name).read_bytes()
+   if hashlib.sha256(data).hexdigest()!=shard['sha256']:raise ValueError('Invalid previous archive shard')
+   rows.extend(json.loads(data))
+  records[table]=rows
+ return records
+def notification_label(table,row,before=None):
+ body=row.get('body') or {};body=body if isinstance(body,dict) else {}
+ if table=='kv':
+  key=row['key'];year=re.search(r'(?:19|20)\d{2}',key);prefix=(year[0]+'년 ') if year else ''
+  labels=[('kbo_situational_','상황별 기록'),('kbo_pinch_hit_','대타 기록'),('naver_advanced_','세부 기록'),('standings_','팀 순위'),('bears_roster','선수단'),('edu_roster_','교육리그 선수단'),('bears_career_','선수 통산 기록'),('bears_franchise_','팀 통산 기록'),('bearstat_awards_','수상 기록'),('hidden_auto_events','일정 표시'),('bearstat_player_visibility','선수 표시')]
+  return prefix+next((label for start,label in labels if key.startswith(start)),'기록 설정')
+ date=str(row.get('date',''));opp=str(body.get('opp') or '')
+ game=table!='events' or body.get('type') in ('kbo','futures','edu')
+ title=('두산 vs '+opp) if game and opp else str(body.get('title') or ('경기' if game else '일정'))
+ parts=[];old=(before or {}).get('body') or {};old=old if isinstance(old,dict) else {}
+ if before and game:
+  for label,fields in [('경기 결과',('score','status','result')),('타자 기록',('batting','hitters')),('투수 기록',('pitching','pitchers')),('경기 세부 기록',('kbo',))]:
+   if any(notification_digest(body.get(k))!=notification_digest(old.get(k)) for k in fields):parts.append(label)
+ return (date+' '+title+(' · '+', '.join(parts[:2]) if parts else '')).strip()[:160]
+def record_notification_summary(root,old,records):
+ previous=previous_notification_records(root,old);current=notification_index(records);prior=notification_index(previous) if previous is not None else None
+ fingerprint=lambda index:notification_digest([[key,value[0]] for key,value in sorted(index.items())])
+ changes=[]
+ if prior is not None:
+  for key in sorted(set(current)|set(prior)):
+   after=current.get(key);before=prior.get(key)
+   if after and before and after[0]==before[0]:continue
+   table=key.split(':',1)[0];row=(after or before)[1]
+   action='추가' if before is None else '삭제' if after is None else '수정'
+   changes.append(notification_label(table,row,before[1] if before else None)+' '+action)
+  changes=sorted(set(changes),reverse=True)
+ return {'schemaVersion':1,'fingerprint':fingerprint(current),'previousFingerprint':fingerprint(prior) if prior is not None else None,'total':len(changes),'changes':changes[:8]}
 def configuration(html):
  s=Path(html).read_text();get=lambda name:re.search(r'\b'+name+r'\s*=\s*[\'\"]([^\'\"]+)',s)[1]
  return os.getenv('SUPABASE_URL') or get('SUPABASE_URL'),os.getenv('SUPABASE_ANON_KEY') or get('SUPABASE_KEY')
@@ -34,6 +88,7 @@ def export(html,destination):
   print(table,len(rows),'rows')
  filters='('+','.join('key.like.'+p if '%' in p else 'key.eq.'+p for p in PUBLIC_KEYS)+')'
  records['kv']=[r for r in get_rows(url,key,'kv','key,body','key',{'or':filters}) if public_key(r['key'])]
+ notification=record_notification_summary(root,old,records)
  # Fetch everything before publishing anything; a failed query never replaces the last good manifest.
  tables={};objects={}
  for table,rows in records.items():
@@ -45,7 +100,7 @@ def export(html,destination):
    dates=[r['date'] for r in items if 'date'in r]
    shards.append({'file':name,'sha256':digest,'count':len(items),'minDate':min(dates) if dates else None,'maxDate':max(dates) if dates else None})
   tables[table]={'count':len(rows),'shards':shards}
- manifest={'schemaVersion':1,'project':url,'tables':tables}
+ manifest={'schemaVersion':1,'project':url,'tables':tables,'recordNotifications':notification}
  # Refresh the small rolling schedule even when the underlying rows did not change.
  manifest['generatedAt']=datetime.datetime.now(datetime.timezone.utc).isoformat()
  for name,data in objects.items():
