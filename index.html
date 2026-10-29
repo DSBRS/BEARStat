@@ -3304,10 +3304,12 @@ function hrEditor(e){
 
 let h2hPeriod='season';
 let h2hYear=TODAY.getFullYear();
-function normalizeH2hVenue(value){
+function normalizeH2hVenue(value,date=''){
  const raw=S(value).trim();
  if(!raw)return '경기장 미정';
  const v=raw.replace(/\([^)]*(?:명|매진|관중)[^)]*\)/g,' ').replace(/\b[0-9]{1,3}(?:,[0-9]{3})+\s*명\b/g,' ').replace(/(?:월|화|수|목|금|토|일)요일/g,' ').replace(/\b\d{1,2}:\d{2}\b/g,' ').replace(/\b(?:홈|원정)\b/g,' ').replace(/[·,，|]/g,' ').replace(/\s+/g,' ').trim();
+ const year=Number(S(date).slice(0,4));
+ if(/한화생명.*볼파크|대전.*볼파크/i.test(v)||(/^대전(?:야구장)?$/.test(v.replace(/\s/g,''))&&year>=2025))return '대전 한화생명 볼파크';
  const aliases=[
  [/잠실|서울종합운동장|잠실종합운동장/i,'잠실야구장'],
  [/수원|위즈\s*파크|KT\s*위즈파크/i,'위즈파크'],
@@ -3348,6 +3350,7 @@ function h2hVenueAffiliation(name,year){
   [/챔피언스필드/,[[2014,9999,'KIA 타이거즈','제1구장']]],
   [/위즈파크/,[[2015,9999,'KT 위즈','제1구장']]],
   [/랜더스필드/,[[2002,9999,'SK/SSG','제1구장']]],
+  [/한화생명 볼파크/,[[2025,9999,'한화 이글스','제1구장']]],
   [/대전야구장/,[[1986,1993,'빙그레 이글스','제1구장'],[1994,2024,'한화 이글스','제1구장']]],
  ];
  for(const [pattern,periods] of rules){if(!pattern.test(v))continue;const found=periods.find(([a,b])=>y>=a&&y<=b);return found?`${found[2]} · ${found[3]}`:'';}
@@ -3356,6 +3359,14 @@ function h2hVenueAffiliation(name,year){
 function h2hHomeAwayLabel(e){
  const value=S(e.homeAway).toLowerCase();
  return value==='home'?'두산 홈':value==='away'?'두산 원정':value==='neutral'?'중립경기':'';
+}
+function h2hVenueGameLabel(e){
+ const name=normalizeH2hVenue(e.venue||e.place,e.date),side=S(e.homeAway).toLowerCase();
+ if(/잠실/.test(name)){
+  if(side==='home')return '두산 홈구장';
+  if(side==='away'&&/LG|엘지/i.test(S(e.opp)))return 'LG 홈구장';
+ }
+ return [h2hHomeAwayLabel(e),h2hVenueAffiliation(name,S(e.date).slice(0,4))].filter(Boolean).join(' · ');
 }
 function h2hView(){
   if(h2hPeriod==='season')ensureSeasonOpponentSelection(h2hYear);
@@ -3374,7 +3385,7 @@ function h2hView(){
 
     const venueMap=new Map();
     done.forEach(e=>{
-      let label=normalizeH2hVenue(e.venue||e.place);
+      let label=normalizeH2hVenue(e.venue||e.place,e.date);
       // Shared Jamsil games must be split by the designated home team.
       const side=/잠실/.test(label)?S(e.homeAway).toLowerCase():'';
       const key=label+'|'+side;
@@ -3392,8 +3403,8 @@ function h2hView(){
         </div>
       </div>`;}).join('');
 
-    const row=e=>{const r=result(e);return `<div class="ev"><div class="tm">${e.date.slice(5).replace('-','.')}</div><div class="bd"><div class="ti">${hasScore(e)?`${e.score.d}:${e.score.v} <span class="res ${r}" style="margin:0">${RL[r]||esc(e.statusText||'진행 중')}</span>`:(e.time||'시간 미정')}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place))}${e.stage?' · '+e.stage:''}${h2hHomeAwayLabel(e)?' · '+esc(h2hHomeAwayLabel(e)):''}${h2hVenueAffiliation(normalizeH2hVenue(e.venue||e.place),S(e.date).slice(0,4))?' · '+esc(h2hVenueAffiliation(normalizeH2hVenue(e.venue||e.place),S(e.date).slice(0,4))):''}</div></div></div>`};
-    const cancelRow=e=>`<div class="ev"><div class="tm">${e.date.slice(5).replace('-','.')}</div><div class="bd"><div class="ti">${e.cancelReason?`${esc(e.cancelReason)}취소`:'경기취소'}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place))}</div></div></div>`;
+    const row=e=>{const r=result(e);return `<div class="ev"><div class="tm">${e.date.slice(5).replace('-','.')}</div><div class="bd"><div class="ti">${hasScore(e)?`${e.score.d}:${e.score.v} <span class="res ${r}" style="margin:0">${RL[r]||esc(e.statusText||'진행 중')}</span>`:(e.time||'시간 미정')}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place,e.date))}${e.stage?' · '+e.stage:''}${h2hVenueGameLabel(e)?' · '+esc(h2hVenueGameLabel(e)):''}</div></div></div>`};
+    const cancelRow=e=>`<div class="ev"><div class="tm">${e.date.slice(5).replace('-','.')}</div><div class="bd"><div class="ti">${e.cancelReason?`${esc(e.cancelReason)}취소`:'경기취소'}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place,e.date))}</div></div></div>`;
     body=`<div class="card" style="margin-top:14px">
       <div class="top"><span>${h2hPeriod==='career'?'통산':h2hYear+' 시즌'} 상대전적 · 두산베어스 vs ${esc(teamDisplayName(h2h))}</span></div>
       <div class="big">${c.W}승 ${c.D}무 ${c.L}패 <span class="sb" style="font-size:16px;font-weight:800">· 승률 ${winPct(c)}</span></div>
