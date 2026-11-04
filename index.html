@@ -1675,7 +1675,7 @@ function calendarMarks(events,includeOther=false){
       marks.push(`<span class="cal-mark${icon?'':' circle'}${cancellation[0]?' cancellation':type==='kbo'?' baseball':type==='futures'?' sparkle':type==='handball'?' handball':' heart'}" data-icon="${esc(icon)}" style="color:${color}" title="${title}" aria-label="${title}">${cancellation[0]?cancellationLeagueIcon(icon,type):icon==='♥'?icon:calendarIconSVG(icon)||icon}</span>`);
     }
   }
-  if(includeOther&&events.some(e=>!['kbo','futures','edu'].includes(e.type)))marks.push('<span class="cal-mark circle" style="color:var(--sub)" title="기타 일정" aria-label="기타 일정"></span>');
+  if(includeOther&&events.some(e=>!['kbo','futures','edu','handball'].includes(e.type)))marks.push('<span class="cal-mark circle" style="color:var(--sub)" title="기타 일정" aria-label="기타 일정"></span>');
   return marks.length?`<span class="cal-marks">${marks.join('')}</span>`:'';
 }
 function calendar(){
