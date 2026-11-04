@@ -66,12 +66,16 @@ def fetch_entry(today=None):
         entry = parse_entry(source, date)
         if entry['players']:
             return entry
-    raise ValueError('No published Doosan entry within the last seven days')
-
+    print('No published Doosan entry within the last seven days; keeping existing data.')
+    return None
 
 if __name__ == '__main__':
     entry = fetch_entry()
-    output = Path('data/bears-entry.json')
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(entry, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    print(f"Doosan entry: {entry['asOf']}, {len(entry['players'])} players")
+    if entry is not None:
+        output = Path('data/bears-entry.json')
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(entry, ensure_ascii=False, indent=2) + '\n',
+            encoding='utf-8'
+        )
+        print(f"Doosan entry: {entry['asOf']}, {len(entry['players'])} players")
