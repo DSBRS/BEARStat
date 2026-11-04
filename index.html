@@ -54,6 +54,7 @@ h2{font-size:12px;letter-spacing:1.2px;color:var(--sub);margin:20px 2px 8px;font
 .cal-mark{display:inline-flex;align-items:center;justify-content:center;width:10px;height:11px;font-size:9.5px;line-height:1;font-style:normal}
 .cal-mark svg{display:block;width:10px;height:10px;flex-shrink:0}
 .cal-mark.baseball svg{width:10px;height:10px}
+.cal-mark.handball svg{width:10px;height:10px}
 .cal-mark.sparkle svg{width:10.4px;height:10.4px}
 .cal-mark.heart{font-size:13px}
 .cal-mark.cancellation svg{width:10px;height:10px}
@@ -484,7 +485,7 @@ function teamDisplayText(value){
    (_,prefix,name)=>prefix+teamDisplayName(name));
 }
 
-const TYPES={kbo:'KBO',futures:'퓨처스리그',edu:'교육리그',club:'구단 행사',fan:'팬 행사',broadcast:'방송',radio:'라디오/유튜브',ticket:'티켓 예매',etc:'기타'};
+const TYPES={kbo:'KBO',futures:'퓨처스리그',edu:'교육리그',handball:'핸드볼',club:'구단 행사',fan:'팬 행사',broadcast:'방송',radio:'라디오/유튜브',ticket:'티켓 예매',etc:'기타'};
 const EXISTING_VENUES=['서울종합운동장 야구장','수원 케이티 위즈 파크','인천 SSG 랜더스필드','창원NC파크','광주-기아 챔피언스 필드','사직 야구장','대구 삼성 라이온즈 파크','대전 한화생명 볼파크','고척 스카이돔','이천 베어스 파크','고양 국가대표 야구 훈련장','서산 전용 연습구장','LG 챔피언스 파크','문경 상무 야구장','상동 야구장','삼성 라이온즈 볼파크','울산 문수 야구장','기아 챌린저스 필드','익산 국가대표 야구훈련장','마산 야구장'];
 // New choices only; existing saved places and schedules are never migrated.
 const HISTORICAL_VENUES=[
@@ -1632,6 +1633,7 @@ function calendarIconSVG(symbol){
     '✦':'<path d="M12 1C13.6 7.7 16.3 10.4 23 12C16.3 13.6 13.6 16.3 12 23C10.4 16.3 7.7 13.6 1 12C7.7 10.4 10.4 7.7 12 1Z"/>',
     '♥':'<path d="M12 22S1 14.4 1 7.5C1 1 9-1 12 5c3-6 11-4 11 2.5C23 14.4 12 22 12 22z"/>',
     'baseball':'<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.7" stroke-width="2.8"/><path d="M6.1 4.5C10.1 8.2 10.1 15.8 6.1 19.5M17.9 4.5C13.9 8.2 13.9 15.8 17.9 19.5" stroke-width="2.8"/><path d="M6.3 7.5l2.4-.9M7.3 12h2.5M6.3 16.5l2.4.9M15.3 6.6l2.4.9M14.2 12h2.5M15.3 17.4l2.4-.9" stroke-width="2.8"/></g>',
+    'handball':'<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.8"/><path d="M4.4 5.8c3.8 1.2 6.2 4.3 6.8 8.7M19.6 5.8c-3.8 1.2-6.2 4.3-6.8 8.7M5.2 18.8c2.2-2.1 4.5-3.1 6.8-3.1s4.6 1 6.8 3.1M8.1 2.9c1.1 2 2.4 3.2 3.9 3.7 1.5-.5 2.8-1.7 3.9-3.7"/></g>',
     '☂':'<path d="M1 11a11 11 0 0 1 22 0H1z"/><path d="M12 2v18a3 3 0 0 0 6 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4 13.5c-.5.9-1.2 1.8-1.2 2.4a1.2 1.2 0 0 0 2.4 0c0-.6-.7-1.5-1.2-2.4zM21 13.5c-.5.9-1.2 1.8-1.2 2.4a1.2 1.2 0 0 0 2.4 0c0-.6-.7-1.5-1.2-2.4zM7 18c-.4.7-1 1.4-1 1.9a1 1 0 0 0 2 0c0-.5-.6-1.2-1-1.9z"/>',
     '☀':'<circle cx="12" cy="12" r="5"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
     '❆':'<path d="M12 1v22M2.5 6.5l19 11M2.5 17.5l19-11M9 3l3 3 3-3M9 21l3-3 3 3M3 10l4-1-1-4M18 19l-1-4 4-1M3 14l4 1-1 4M18 5l-1 4 4 1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="5.5"/>',
@@ -1661,7 +1663,7 @@ function cancellationLeagueIcon(symbol,type){
 
 function calendarMarks(events,includeOther=false){
   const marks=[];
-  for(const [type,symbol,label] of [['kbo','baseball','KBO'],['futures','✦','퓨처스리그'],['edu','♥','교육리그']]){
+  for(const [type,symbol,label] of [['kbo','baseball','KBO'],['futures','✦','퓨처스리그'],['edu','♥','교육리그'],['handball','handball','핸드볼']]){
     const games=events.filter(e=>e.type===type),groups=new Map();
     for(const game of games){
       const side=game.homeAway||'',reason=S(game.cancelReason);
@@ -1670,7 +1672,7 @@ function calendarMarks(events,includeOther=false){
     }
     for(const {side,cancellation} of groups.values()){
       const color=side==='home'?'#eb1d25':side==='away'?'#1A1748':'var(--sub)',where=side==='home'?'홈':side==='away'?'원정':'경기',icon=cancellation[0]||symbol,title=label+' '+where+(cancellation[1]?' · '+cancellation[1]:'');
-      marks.push(`<span class="cal-mark${icon?'':' circle'}${cancellation[0]?' cancellation':type==='kbo'?' baseball':type==='futures'?' sparkle':' heart'}" data-icon="${esc(icon)}" style="color:${color}" title="${title}" aria-label="${title}">${cancellation[0]?cancellationLeagueIcon(icon,type):icon==='♥'?icon:calendarIconSVG(icon)||icon}</span>`);
+      marks.push(`<span class="cal-mark${icon?'':' circle'}${cancellation[0]?' cancellation':type==='kbo'?' baseball':type==='futures'?' sparkle':type==='handball'?' handball':' heart'}" data-icon="${esc(icon)}" style="color:${color}" title="${title}" aria-label="${title}">${cancellation[0]?cancellationLeagueIcon(icon,type):icon==='♥'?icon:calendarIconSVG(icon)||icon}</span>`);
     }
   }
   if(includeOther&&events.some(e=>!['kbo','futures','edu'].includes(e.type)))marks.push('<span class="cal-mark circle" style="color:var(--sub)" title="기타 일정" aria-label="기타 일정"></span>');
@@ -1699,7 +1701,7 @@ document.addEventListener('click',ev=>{
 let calendarLegendOpen=false;
 function calendarLegendIcon(symbol){return `<span class="calendar-legend-icon" aria-hidden="true">${symbol==='♥'?symbol:calendarIconSVG(symbol)||symbol}</span>`;}
 function calendarLegendHTML(){
- const games=[['baseball','KBO'],['✦','퓨처스리그'],['♥','교육리그']];
+ const games=[['baseball','KBO'],['✦','퓨처스리그'],['♥','교육리그'],['handball','핸드볼']];
  const cancellations=[...Object.entries(CANCEL_ICONS).map(([label,symbol])=>[symbol,label+' 취소']),['⊘','기타 사유 또는 사유 미지정 취소']];
  const leagues=[['kbo','KBO'],['futures','퓨처스'],['edu','교육리그']];
  return `<details class="calendar-legend" id="calendar_legend"${calendarLegendOpen?' open':''}>
@@ -4219,7 +4221,7 @@ function admin(){
   <div class="note" id="admin_step_title">${adminFormStep} / 7 · ${ADMIN_STEP_LABELS[adminFormStep-1]}</div>
   ${adminStepTabs(e)}
   <section data-admin-step="1" style="${adminFormStep===1?'':'display:none'}">
-  <label>종류</label><select id="f_type"${editing?.kboGameId?' disabled':''}>${['kbo','futures','club','fan','broadcast','radio','ticket','edu','etc'].map(k=>`<option value="${k}"${e.type===k?' selected':''}>${TYPES[k]}</option>`).join('')}</select>
+  <label>종류</label><select id="f_type"${editing?.kboGameId?' disabled':''}>${['kbo','futures','club','fan','broadcast','radio','ticket','edu','handball','etc'].map(k=>`<option value="${k}"${e.type===k?' selected':''}>${TYPES[k]}</option>`).join('')}</select>
   <div id="event_custom_title_wrap" style="${['kbo','edu'].includes(e.type)?'display:none':''}">
     <label for="f_title">일정 제목</label>
     <input id="f_title" value="${esc(e.title&&e.title!==TYPES[e.type]?e.title:'')}" placeholder="${e.type==='ticket'?'예: 2027 두산 베어스 시즌권 예매':'예: 일정 이름을 입력하세요'}">
