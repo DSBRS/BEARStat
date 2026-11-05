@@ -3405,27 +3405,6 @@ function h2hCareerRecord(team){
 }
 function h2hCounts(games){const c={W:0,L:0,D:0};for(const e of games){const r=result(e);if(r!==null)c[r]++;}return c;}
 function h2hCountText(c){return `${c.W}승 ${c.D}무 ${c.L}패`;}
-function h2hCareerNote(data,games){
- const saved=h2hCounts(games),covered=h2hCounts(games.filter(e=>data.years.includes(+S(e.date).slice(0,4))));
- const delta={W:data.count.W-covered.W,L:data.count.L-covered.L,D:data.count.D-covered.D};
- const signed=n=>n>0?'+'+n:String(n),same=Object.values(delta).every(n=>n===0);
- const differences=data.years.flatMap(y=>{
-  const r=Object.entries(h2hOfficialSeason(y).row).find(([n])=>h2hTeamKey(n)===data.team)[1];
-  const official={W:r.w,D:r.d,L:r.l},stored=h2hCounts(games.filter(e=>+S(e.date).slice(0,4)===y));
-  return ['W','L','D'].some(k=>official[k]!==stored[k])?[{year:y,official,stored}]:[];
- });
- return `<details class="sb" style="margin-top:10px"><summary style="cursor:pointer">집계 정보</summary>
- <div style="margin-top:8px;line-height:1.8">
- <a href="https://www.koreabaseball.com/Record/TeamRank/TeamRank.aspx" target="_blank" rel="noopener" style="color:inherit">KBO 공식 팀간 승패표</a> · 1982–${TODAY.getFullYear()}년 정규시즌 · OB·두산 통합<br>
- 공식 원표 확인: 2026-11-05 · 1985 청보 / 2001 KIA / 2008 우리 표기 기준<br>
- 저장 경기 ${games.length}경기 · ${h2hCountText(saved)}<br>
- ${same?'공식·저장 승무패 합계 일치':`공식 − 저장: ${signed(delta.W)}승 ${signed(delta.D)}무 ${signed(delta.L)}패`}
- ${data.missing.length?`<br>공식 미확인: ${data.missing.join(', ')}년`:''}
- ${differences.map(r=>`<div>${r.year}년 · 공식 ${h2hCountText(r.official)} / 저장 ${h2hCountText(r.stored)}</div>`).join('')}
- <div>경기 목록·구장별 전적은 저장된 경기 기준입니다.</div>
- </div></details>`;
-}
-
 let h2hPeriod='season';
 let h2hYear=TODAY.getFullYear();
 function normalizeH2hVenue(value,date=''){
@@ -3539,15 +3518,14 @@ function h2hView(){
         </div>
       </div>`;}).join('');
 
-    const row=e=>{const r=result(e);return `<div class="ev"><div class="tm">${h2hPeriod==='career'?esc(e.date.replaceAll('-','.')):e.date.slice(5).replace('-','.')}</div><div class="bd"><div class="ti">${hasScore(e)?`${e.score.d}:${e.score.v} <span class="res ${r}" style="margin:0">${RL[r]||esc(e.statusText||'진행 중')}</span>`:(e.time||'시간 미정')}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place,e.date))}${e.stage?' · '+e.stage:''}${h2hVenueGameLabel(e)?' · '+esc(h2hVenueGameLabel(e)):''}</div></div></div>`};
-    const cancelRow=e=>`<div class="ev"><div class="tm">${h2hPeriod==='career'?esc(e.date.replaceAll('-','.')):e.date.slice(5).replace('-','.')}</div><div class="bd"><div class="ti">${e.cancelReason?`${esc(e.cancelReason)}취소`:'경기취소'}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place,e.date))}</div></div></div>`;
+    const row=e=>{const r=result(e);return `<div class="ev"><div class="tm" style="flex-shrink:0">${h2hPeriod==='career'?`<span style="display:block;font-size:11px;color:var(--sub)">${esc(e.date.slice(0,4))}</span>`:''}${esc(e.date.slice(5).replace('-','.'))}</div><div class="bd"><div class="ti">${hasScore(e)?`${e.score.d}:${e.score.v} <span class="res ${r}" style="margin:0">${RL[r]||esc(e.statusText||'진행 중')}</span>`:(e.time||'시간 미정')}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place,e.date))}${e.stage?' · '+e.stage:''}${h2hVenueGameLabel(e)?' · '+esc(h2hVenueGameLabel(e)):''}</div></div></div>`};
+    const cancelRow=e=>`<div class="ev"><div class="tm" style="flex-shrink:0">${h2hPeriod==='career'?`<span style="display:block;font-size:11px;color:var(--sub)">${esc(e.date.slice(0,4))}</span>`:''}${esc(e.date.slice(5).replace('-','.'))}</div><div class="bd"><div class="ti">${e.cancelReason?`${esc(e.cancelReason)}취소`:'경기취소'}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place,e.date))}</div></div></div>`;
     body=`<div class="card" style="margin-top:14px">
       <div class="top"><span>${h2hPeriod==='career'?'통산':h2hYear+' 시즌'} 상대전적 · 두산베어스 vs ${esc(teamDisplayName(h2hOpponent))}</span></div>
       <div class="big">${career&&!career.years.length?'공식 집계 미확인':h2hCountText(c)} <span class="sb" style="font-size:16px;font-weight:800">· 승률 ${career&&!career.years.length?'—':winPct(c)}</span></div>
-      ${career?h2hCareerNote(career,done):''}
       ${venueRows?`<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:6px">${venueRows}</div>`:''}
     </div>
-    <h2>진행된 경기${h2hPeriod==='career'?' · 저장 기록':''}</h2><div class="card">${done.length?done.slice().reverse().map(row).join(''):'<div class="empty">진행된 경기가 없습니다.</div>'}</div>
+    <h2>진행된 경기</h2><div class="card">${done.length?done.slice().reverse().map(row).join(''):'<div class="empty">진행된 경기가 없습니다.</div>'}</div>
     <h2>남은 일정</h2><div class="card">${left.length?left.map(row).join(''):'<div class="empty">남은 경기가 없습니다.</div>'}</div>
     <h2>잔여경기</h2><div class="card">${cancelled.length?cancelled.slice().reverse().map(cancelRow).join(''):'<div class="empty">취소된 경기가 없습니다.</div>'}</div>`;
   }
