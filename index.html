@@ -521,8 +521,8 @@ const TODAY=new Date();TODAY.setHours(0,0,0,0);const TS=ymd(TODAY);
 
 const DEMO=[]; // 기존 KBO 데모 일정
 const HANDBALL_AUTO=[
-  {id:'handball-2627-doosan-01',type:'handball',source:'handball-auto',date:'2026-12-06',time:'17:00',title:'충남도청 vs 두산',opp:'충남도청',homeAway:'away',place:'인천선학체육관',venue:'인천선학체육관',status:'scheduled',desc:'신한 super SOL 26-27 핸드볼 H리그 남자부 정규리그',players:[]},
-  {id:'handball-2627-doosan-02',type:'handball',source:'handball-auto',date:'2026-12-10',time:'15:40',title:'인천도시공사 vs 두산',opp:'인천도시공사',homeAway:'away',place:'인천선학체육관',venue:'인천선학체육관',status:'scheduled',desc:'신한 super SOL 26-27 핸드볼 H리그 남자부 정규리그',players:[]},
+  {id:'handball-2627-doosan-01',type:'handball',source:'handball-auto',date:'2026-12-06',time:'17:10',title:'두산 vs 충남도청',opp:'충남도청',homeAway:'away',place:'인천선학체육관',venue:'인천선학체육관',status:'scheduled',desc:'신한 super SOL 26-27 핸드볼 H리그 남자부 정규리그',players:[]},
+  {id:'handball-2627-doosan-02',type:'handball',source:'handball-auto',date:'2026-12-10',time:'15:40',title:'두산 vs 인천도시공사',opp:'인천도시공사',homeAway:'away',place:'인천선학체육관',venue:'인천선학체육관',status:'scheduled',desc:'신한 super SOL 26-27 핸드볼 H리그 남자부 정규리그',players:[]},
   {id:'handball-2627-doosan-03',type:'handball',source:'handball-auto',date:'2026-12-12',time:'18:20',title:'두산 vs 하남시청',opp:'하남시청',homeAway:'home',place:'인천선학체육관',venue:'인천선학체육관',status:'scheduled',desc:'신한 super SOL 26-27 핸드볼 H리그 남자부 정규리그',players:[]},
   {id:'handball-2627-doosan-04',type:'handball',source:'handball-auto',date:'2026-12-19',time:'16:10',title:'두산 vs 상무 피닉스',opp:'상무 피닉스',homeAway:'home',place:'인천선학체육관',venue:'인천선학체육관',status:'scheduled',desc:'신한 super SOL 26-27 핸드볼 H리그 남자부 정규리그',players:[]},
   {id:'handball-2627-doosan-05',type:'handball',source:'handball-auto',date:'2026-12-23',time:'17:50',title:'SK호크스 vs 두산',opp:'SK호크스',homeAway:'away',place:'인천선학체육관',venue:'인천선학체육관',status:'scheduled',desc:'신한 super SOL 26-27 핸드볼 H리그 남자부 정규리그',players:[]},
@@ -1648,12 +1648,16 @@ function showUpcomingScheduleTime(e){
 function ticketSiteName(e){return e?.type==='ticket'?S(e.ticketSite||e.bookingSite||e.venue||e.place).trim():'';}
 function evRow(e){
   let sb='';
+  const handballFixture={'2026-12-06':{opp:'충남도청',time:'17:10'},'2026-12-10':{opp:'인천도시공사',time:'15:40'}};
+  const handballInfo=e.type==='handball'?handballFixture[e.date]:null;
+  const handballOpponent=handballInfo?.opp||e.opp||'';
+  const handballTitle=handballOpponent?`두산 vs ${handballOpponent}`:e.title;
   if(['kbo','edu','futures'].includes(e.type)){const r=result(e);sb=isCancelled(e)?[e.venue,e.cancelReason?`취소 사유: ${e.cancelReason}`:'취소 경기'].filter(Boolean).join(' · '):[e.venue,hasScore(e)?`${e.score.d}:${e.score.v} ${RL[r]||esc(e.statusText||'진행 중')}`:'',e.stage?[e.stage,e.gameNo?e.gameNo+'차전':''].join(' '):'',starterDisplayName(e.starter)].filter(Boolean).join(' · ');}
   else if(e.type==='broadcast'||e.type==='radio')sb=[e.program,e.players&&e.players.join(', '),e.channel].filter(Boolean).join(' · ');
   else if(e.type==='ticket')sb=esc(ticketSiteName(e));
   else sb=[e.place].filter(Boolean).join(' · ');
   const g=['kbo','edu','futures'].includes(e.type),o=g&&openIds.has(e.id);
-  return `<div class="ev${g?' tap':''}"${g?` data-x="${esc(e.id)}"`:''}><div class="bd">${showUpcomingScheduleTime(e)?`<div class="event-start-time">${esc(e.time||'--:--')}</div>`:''}<div class="ti"><span class="tag">${TYPES[e.type]||'기타'}</span>${g?esc(gameTitleWithHeader(e)):e.title}${e.demo?' <span class="tag">DEMO</span>':''}</div>${sb?`<div class="sb">${sb}</div>`:''}${e.desc?`<div class="sb">${e.desc}</div>`:''}${g?`<div class="more">${o?'접기 ▴':'경기 상세 ▾'}</div>`:''}${o?detail(e):''}</div></div>`;
+  return `<div class="ev${g?' tap':''}"${g?` data-x="${esc(e.id)}"`:''}><div class="bd">${showUpcomingScheduleTime(e)?`<div class="event-start-time">${esc(handballInfo?.time||e.time||'--:--')}</div>`:''}<div class="ti"><span class="tag">${TYPES[e.type]||'기타'}</span>${g?esc(gameTitleWithHeader(e)):e.type==='handball'?esc(handballTitle):e.title}${e.demo?' <span class="tag">DEMO</span>':''}</div>${sb?`<div class="sb">${sb}</div>`:''}${e.desc?`<div class="sb">${e.desc}</div>`:''}${g?`<div class="more">${o?'접기 ▴':'경기 상세 ▾'}</div>`:''}${o?detail(e):''}</div></div>`;
 }
 function calendarIconSVG(symbol){
   const shapes={
