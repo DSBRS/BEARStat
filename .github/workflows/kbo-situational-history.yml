@@ -1,0 +1,54 @@
+name: Archive past-season KBO situational records
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/sync_kbo_situational.py
+      - .github/workflows/kbo-situational-history.yml
+permissions:
+  contents: write
+concurrency:
+  group: kbo-situational-history
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        year: [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011, 2010, 2009, 2008]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests beautifulsoup4
+      - run: python scripts/sync_kbo_situational.py --year ${{ matrix.year }} --output-dir collected
+      - uses: actions/upload-artifact@v4
+        with:
+          name: situational-${{ matrix.year }}
+          path: collected/kbo-situational-*.json
+          if-no-files-found: error
+  save:
+    needs: collect
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: situational-*
+          path: collected
+          merge-multiple: true
+      - name: Save completed seasons without changing existing records
+        run: |
+          cp collected/kbo-situational-*.json data/
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/kbo-situational-*.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Archive verified past-season KBO situational records'
+          git pull --rebase origin main
+          git push

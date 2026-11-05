@@ -1,6 +1,9 @@
 name: BEARStat public archive
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ['Archive past-season KBO situational records']
+    types: [completed]
   schedule:
     - cron: '17 15 * * *'
   push:
