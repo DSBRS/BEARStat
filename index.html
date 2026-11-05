@@ -1195,6 +1195,18 @@ function historyCollectionNote(){return ''; }function historicalMatchupsHTML(yea
 
 // Optional season snapshots in existing kv; never write or change existing tables.
 let KBO_SITUATIONAL_BY_YEAR={},KBO_SITUATIONAL_WARNING='';
+const KBO_SITUATIONAL_ARCHIVE_STATUS={};
+function loadArchivedSituational(year){
+  year=+year;
+  if(!Number.isInteger(year)||year<2008||year>=TODAY.getFullYear()||KBO_SITUATIONAL_BY_YEAR[year]||KBO_SITUATIONAL_ARCHIVE_STATUS[year])return;
+  KBO_SITUATIONAL_ARCHIVE_STATUS[year]='loading';
+  fetch(new URL(`data/kbo-situational-${year}.json`,new URL('.',location.href)),{cache:'no-cache',signal:AbortSignal.timeout(20000)})
+    .then(async response=>{if(!response.ok)throw Error('archive unavailable');const b=await response.json();
+      if(b?.schemaVersion!==1||b.source!=='kbo'||b.scope!=='season'||b.teamId!=='OB'||+b.season!==year||!Array.isArray(b.rows)||!b.rows.length)throw Error('invalid archive');
+      KBO_SITUATIONAL_BY_YEAR[year]=b;KBO_SITUATIONAL_ARCHIVE_STATUS[year]='ready';
+    }).catch(()=>{KBO_SITUATIONAL_ARCHIVE_STATUS[year]='unavailable';}).finally(()=>rerender());
+}
+
 async function loadKboSituational(){
   if(!SB)return;
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
@@ -1206,7 +1218,7 @@ async function loadKboSituational(){
       const m=S(x.key).match(/^kbo_situational_(\d{4})$/),b=x.body;
       if(m&&b?.schemaVersion===1&&b.source==='kbo'&&b.scope==='season'&&b.teamId==='OB'&&+b.season===+m[1]&&Array.isArray(b.rows))next[+m[1]]=b;
     }
-    KBO_SITUATIONAL_BY_YEAR=next;KBO_SITUATIONAL_WARNING='';
+    KBO_SITUATIONAL_BY_YEAR={...KBO_SITUATIONAL_BY_YEAR,...next};KBO_SITUATIONAL_WARNING='';
   }catch(e){KBO_SITUATIONAL_WARNING='상황별 기록을 갱신하지 못했습니다.'}
   finally{clearTimeout(timer)}
 }
@@ -3114,6 +3126,7 @@ function selectedRecordColumns(cols,key){
 }
 
 function situationRecords(){
+  if(recLeague==='kbo'&&recSeason==='regular')loadArchivedSituational(recYear);
   scheduleHitterInningRecords();
   const state=recSituation[recKind],options=SITUATION_OPTIONS[recKind],rows=applyRecordLimit(situationalRows(),'season',recKind);
   scheduleSituationAtBats(rows);
@@ -3137,7 +3150,7 @@ function situationRecords(){
   <div class="chips" style="margin-bottom:12px">${Object.keys(options).map(d=>`<button class="chip${state.dimension===d?' on':''}" data-sdimension="${d}">${SITUATION_LABELS[d]}</button>`).join('')}</div>
   <div class="chips" style="margin-bottom:12px">${options[state.dimension].map(v=>`<button class="chip${state.value===v?' on':''}" data-svalue="${esc(v)}">${esc(v)}</button>`).join('')}</div>
   ${hitterSplitStatus()}
-  <div class="card"><div class="recscroll record-scroll">${recordTableStart([['n','선수'],...cols],true,displayRecordRows(rows).map(r=>r.n))}<tr><th>순위</th>${heads}</tr>${body?body+hitterTotalsRow(rows,[['n','선수'],...cols],true):`<tr><td colspan="${cols.length+2}" class="empty">${KBO_SITUATIONAL_WARNING&&recLeague==='kbo'?'상황별 기록을 불러오지 못했습니다. 잠시 후 다시 확인해주세요.':'선택한 조건의 상황별 기록이 아직 없습니다.'}</td></tr>`}</table></div></div>
+  <div class="card"><div class="recscroll record-scroll">${recordTableStart([['n','선수'],...cols],true,displayRecordRows(rows).map(r=>r.n))}<tr><th>순위</th>${heads}</tr>${body?body+hitterTotalsRow(rows,[['n','선수'],...cols],true):`<tr><td colspan="${cols.length+2}" class="empty">${KBO_SITUATIONAL_ARCHIVE_STATUS[recYear]==='loading'?'이전 시즌 상황별 기록을 불러오고 있어요.':KBO_SITUATIONAL_WARNING&&recLeague==='kbo'?'상황별 기록을 불러오지 못했습니다. 잠시 후 다시 확인해주세요.':'선택한 조건의 상황별 기록이 아직 없습니다.'}</td></tr>`}</table></div></div>
   ${situationOPSNote()}${playerSheetHTML()}`;
 }
 function appearanceOuts(p){
