@@ -455,6 +455,162 @@ table th button,table td button{ text-align:center }
 </style>
 <style>.career-bears-period{display:flex;flex-direction:column;gap:5px;margin-top:7px;padding-top:12px;border-top:1px solid var(--line)}.career-bears-period>span,.career-bears-period>small{color:var(--sub);font-size:11px}.career-bears-period>b{font-size:14px;overflow-wrap:anywhere}</style>
 <style>#ticket_site_wrap[hidden],#event_venue_wrap[hidden]{display:none!important}</style>
+<style id="bearstat-desktop-ui">
+/* PC UI: A navy classic / F minimal search / E player card hub. */
+.desktop-header,.desktop-home,.desktop-section-title{display:none}
+@media(min-width:1024px){
+ :root{--acc:#c8102e}
+ body{background:var(--card)}
+ #app{max-width:1280px;padding:0 48px 48px}
+ body>nav{display:none}
+ .desktop-header{position:relative;display:flex;align-items:center;justify-content:space-between;gap:28px;height:88px;border-bottom:1px solid var(--line);margin-bottom:32px}
+ .desktop-wordmark{color:var(--ink);font-size:25px;font-weight:900;letter-spacing:-1.1px;text-decoration:none;white-space:nowrap}
+ .desktop-wordmark b{color:var(--acc)}
+ .desktop-nav{display:flex;align-items:center;gap:21px}
+ .desktop-nav a{position:relative;color:var(--sub);font-size:14px;font-weight:600;text-decoration:none;padding:32px 0}
+ .desktop-nav a[aria-current]{color:var(--ink);font-weight:800}
+ .desktop-nav a[aria-current]::after{content:'';position:absolute;left:0;right:0;bottom:20px;height:2px;background:var(--acc)}
+ .desktop-notification{font-size:14px;color:var(--sub);text-decoration:none;white-space:nowrap}
+ .desktop-home{display:block}
+ .desktop-hero{max-width:840px;margin:0 auto;padding:45px 0 38px;text-align:center}
+ .desktop-eyebrow{font-size:12px;font-weight:800;letter-spacing:1.6px;color:var(--acc);margin:0 0 20px}
+ .desktop-hero h1{font-size:clamp(40px,3.9vw,54px);font-weight:850;letter-spacing:-2.5px;line-height:1.24;margin:0 0 18px;color:var(--ink)}
+ .desktop-hero>p:not(.desktop-eyebrow){font-size:16px;line-height:1.7;color:var(--sub);margin:0}
+ .desktop-search{margin:38px auto 0;max-width:740px;text-align:left}
+ .desktop-search label{display:block;font-size:12px;font-weight:700;color:var(--sub);margin-bottom:8px}
+ .desktop-search-line{display:flex;gap:12px;align-items:center;border-bottom:2px solid var(--ink)}
+ .desktop-search-line input{width:100%;min-width:0;border:0;border-radius:0;padding:4px 0 15px;margin:0;background:transparent;color:var(--ink);font-size:36px;font-weight:700;line-height:1.4;letter-spacing:-1px;outline-offset:5px}
+ .desktop-search-line input::placeholder{color:var(--sub);opacity:.65}
+ .desktop-search-line button{flex-shrink:0;width:46px;height:46px;border:0;border-radius:50%;background:var(--ink);color:var(--card);font-size:24px;cursor:pointer}
+ .desktop-search-meta{display:flex;justify-content:space-between;gap:16px;font-size:11px;color:var(--sub);margin-top:12px}
+ .desktop-search-meta span:last-child{color:var(--acc);font-weight:700}
+ .desktop-players{background:var(--bg);border:1px solid var(--line);border-radius:18px;padding:26px 28px;margin:12px 0 40px}
+ .desktop-player-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:18px}
+ .desktop-player-heading h2{color:var(--ink);font-size:19px;letter-spacing:-.5px;margin:0 0 5px}
+ .desktop-player-heading p{font-size:12px;color:var(--sub);margin:0}
+ .desktop-filters{display:flex;gap:4px;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:9px}
+ .desktop-filters button{border:0;background:transparent;color:var(--sub);border-radius:6px;padding:8px 16px;font:inherit;font-size:12px;cursor:pointer}
+ .desktop-filters button[aria-pressed=true]{background:var(--ink);color:var(--card);font-weight:700}
+ .desktop-player-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+ .desktop-player-card{position:relative;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:0;text-align:left;border:1px solid var(--line);border-top:3px solid var(--acc);border-radius:11px;background:var(--card);color:var(--ink);padding:20px;cursor:pointer;font:inherit;transition:transform .15s,border-color .15s}
+ .desktop-player-card:hover{transform:translateY(-3px);border-color:var(--acc)}
+ .desktop-player-role{font-size:11px;color:var(--sub)}
+ .desktop-player-name{font-size:23px;font-weight:800;letter-spacing:-.6px;margin:7px 0 18px}
+ .desktop-player-value{font-size:32px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+ .desktop-player-value small{font-size:12px;font-weight:500;color:var(--sub);letter-spacing:0;margin-left:6px}
+ .desktop-player-footer{display:flex;justify-content:space-between;align-items:center;width:100%;font-size:10px;color:var(--sub);border-top:1px solid var(--line);padding-top:12px;margin-top:15px}
+ .desktop-player-footer i{font-size:17px;font-style:normal;color:var(--acc)}
+ .desktop-player-status{font-size:12px;color:var(--sub);margin-top:14px;line-height:1.6}
+ .desktop-player-grid>.empty{grid-column:1/-1;padding:24px;font-size:14px}
+ .desktop-browse{display:flex;justify-content:space-between;align-items:center;margin-top:18px;font-size:12px;color:var(--sub)}
+ .desktop-browse button{border:0;background:none;padding:4px 0;color:var(--ink);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+ .home-mobile-brand{display:none}
+ .desktop-home-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:32px;margin-top:30px;align-items:start;border-top:1px solid var(--line);padding-top:30px}
+ .desktop-section-title{display:block;font-size:18px;font-weight:800;color:var(--ink);margin:0 0 16px;letter-spacing:-.4px}
+ .desktop-day>h2:first-child{font-size:18px;color:var(--ink);letter-spacing:-.4px;margin:0 0 16px}
+ .desktop-home-grid .card{border:1px solid var(--line);box-shadow:none;border-radius:14px}
+ .desktop-calendar .d{height:54px;font-size:13px;padding-bottom:15px}
+ .desktop-calendar .calendar-legend-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body[data-r=home] #app>.foot{margin-top:35px}
+ body:not([data-r=home]) #app>.brand{padding-top:12px;padding-bottom:24px}
+ body:not([data-r=home]) #app>.brand .logo{font-size:30px;letter-spacing:-1px;color:var(--ink)}
+ body:not([data-r=home]) #app>.card{border:1px solid var(--line);box-shadow:none}
+ .player-table-search{max-width:680px;margin:0 0 24px}
+ .player-table-search input{height:56px;font-size:21px;border-radius:0;border:0;border-bottom:2px solid var(--ink);background:transparent;padding-left:0}
+ .record-menu-row{gap:10px;margin-bottom:20px}
+ .recstats td,.opp-record-table td{padding-top:15px;padding-bottom:15px}
+ .desktop-header a:focus-visible,.desktop-home button:focus-visible{outline:2px solid var(--acc);outline-offset:4px}
+ @media(prefers-reduced-motion:reduce){.desktop-player-card{transition:none}.desktop-player-card:hover{transform:none}}
+}
+@media(min-width:1024px) and (max-width:1150px){#app{padding-inline:32px}.desktop-nav{gap:16px}.desktop-nav a{font-size:12px}.desktop-header{gap:20px}.desktop-player-card{padding:16px}.desktop-player-value{font-size:28px}}
+
+@media(min-width:1024px){
+ .desktop-card-intro{padding:28px 0 34px;max-width:740px;margin:0 auto}
+ .desktop-card-intro h1{font-size:40px;font-weight:850;letter-spacing:-1.6px;margin:0 0 12px}
+ .desktop-card-intro>p:not(.desktop-eyebrow){font-size:15px;color:var(--sub);margin:0;line-height:1.7}
+ .desktop-card-intro .desktop-eyebrow{margin-bottom:14px}
+ .desktop-card-intro .desktop-search{margin-top:28px}
+ .desktop-card-page .desktop-players{margin-top:0}
+}
+
+.mobile-card-header{display:none}
+.mobile-player-link{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;margin:0 0 16px;background:var(--card);border:1px solid var(--line);border-radius:12px;font-size:13px;font-weight:700;color:var(--ink);text-decoration:none}
+@media(min-width:1024px){
+ .mobile-player-link,.mobile-today-schedule{display:none}
+ .desktop-day>h2{font-size:18px;color:var(--ink);letter-spacing:-.4px}
+ .desktop-day>h2:first-child{margin-top:0}
+}
+@media(max-width:1023px){
+ .desktop-card-page{display:block}
+ .mobile-card-header{display:flex;gap:20px;align-items:center;margin:5px 0 20px}
+ .mobile-card-header a{font-size:14px;color:var(--sub);text-decoration:none}
+ .mobile-card-header h1{margin:0;font-size:22px;letter-spacing:-.5px}
+ .desktop-card-intro>.desktop-eyebrow,.desktop-card-intro>h1,.desktop-card-intro>p{display:none}
+ .desktop-card-page .desktop-search{margin:0 0 22px}
+ .desktop-card-page .desktop-search label{display:block;font-size:12px;color:var(--sub);margin-bottom:7px}
+ .desktop-card-page .desktop-search-line{display:flex;gap:8px}
+ .desktop-card-page .desktop-search-line input{width:100%;min-width:0;height:48px;margin:0;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:16px}
+ .desktop-card-page .desktop-search-line button{flex-shrink:0;width:48px;height:48px;background:var(--ink);color:var(--card);border:0;border-radius:10px;font-size:21px}
+ .desktop-card-page .desktop-search-meta{margin-top:8px;font-size:10px;color:var(--sub)}
+ .desktop-card-page .desktop-search-meta span:last-child{display:none}
+ .desktop-card-page .desktop-player-heading{display:flex;flex-direction:column;gap:14px;margin-bottom:14px}
+ .desktop-card-page .desktop-player-heading h2{display:none}
+ .desktop-card-page .desktop-player-heading p{margin:0;font-size:13px;color:var(--sub)}
+ .desktop-card-page .desktop-filters{display:flex;gap:6px}
+ .desktop-card-page .desktop-filters button{flex:1;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--sub);font:inherit;font-size:13px}
+ .desktop-card-page .desktop-filters button[aria-pressed=true]{background:var(--ink);color:var(--card);border-color:var(--ink);font-weight:700}
+ .desktop-card-page .desktop-player-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .desktop-card-page .desktop-player-card{display:flex;flex-direction:column;align-items:flex-start;text-align:left;min-width:0;border:1px solid var(--line);border-top:3px solid var(--acc);border-radius:12px;padding:16px 13px;background:var(--card);color:var(--ink);font:inherit}
+ .desktop-card-page .desktop-player-role{font-size:10px;color:var(--sub);line-height:1.5}
+ .desktop-card-page .desktop-player-name{font-size:20px;font-weight:800;margin:8px 0 14px}
+ .desktop-card-page .desktop-player-value{font-size:28px;font-weight:800;letter-spacing:-.8px}
+ .desktop-card-page .desktop-player-value small{font-size:11px;font-weight:400;margin-left:5px;color:var(--sub);letter-spacing:0}
+ .desktop-card-page .desktop-player-footer{width:100%;display:flex;justify-content:space-between;font-size:9px;color:var(--sub);border-top:1px solid var(--line);padding-top:10px;margin-top:14px}
+ .desktop-card-page .desktop-player-footer i{font-style:normal;color:var(--acc);font-size:14px}
+ .desktop-card-page .desktop-player-status{font-size:12px;color:var(--sub);line-height:1.7;margin:16px 0}
+ .desktop-card-page .desktop-browse{display:flex;flex-direction:column;gap:14px;font-size:10px;color:var(--sub)}
+ .desktop-card-page .desktop-browse button{width:100%;padding:13px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;font-size:13px;font-weight:700}
+ .desktop-card-page .desktop-player-grid>.empty{grid-column:1/-1}
+}
+
+/* Shared controls adapt to the desktop and mobile layouts. */
+.reschedule-notice{font-size:12px;line-height:1.6;margin-top:8px;color:var(--sub)}
+.reschedule-notice a{color:var(--navy);font-weight:700;text-decoration:none;display:inline-block;padding:4px 0}
+.reschedule-dot{position:absolute;top:4px;right:5px;font-size:11px;color:var(--navy);font-weight:800}
+.reschedule-arrivals{padding:14px;margin-bottom:12px;border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:10px;background:var(--card);font-size:13px;line-height:1.6}
+.reschedule-arrivals>div{display:flex;flex-direction:column;gap:3px;margin-top:10px}
+.reschedule-arrivals a{color:var(--sub);font-size:12px;text-underline-offset:3px}
+.reschedule-editor{min-width:0;padding:14px;border:1px solid var(--line);border-radius:12px;margin:20px 0;background:var(--bg)}
+.reschedule-editor[hidden]{display:none}
+.reschedule-editor legend{font-size:14px;font-weight:800;padding:0 6px}
+.reschedule-editor-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.reschedule-editor-row>div{min-width:0}
+.award-search{margin:0 0 22px;max-width:740px}
+.award-search label{display:block;font-size:12px;color:var(--sub);font-weight:700;margin:0 0 8px}
+.award-search>div{display:flex;gap:8px}
+.award-search input{min-width:0;flex:1;width:100%;height:46px;margin:0;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px}
+.award-search button{white-space:nowrap;height:46px;padding:0 16px;border:0;border-radius:10px;background:var(--ink);color:var(--card);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.award-search button[data-award-search-clear]{background:var(--chip);color:var(--ink);padding:0 12px}
+.award-search-results h2{font-size:17px;color:var(--ink);letter-spacing:-.3px}
+@media(min-width:1024px){.award-search input{height:56px;font-size:21px;border-radius:0;border:0;border-bottom:2px solid var(--ink);background:transparent;padding-left:0}.award-search button{height:56px}.reschedule-arrivals{padding:18px}.award-search-results h2{font-size:21px}}
+
+.schedule-search-section{margin:20px 0}
+.schedule-search{margin:0 0 18px}
+.schedule-search label{display:block;font-size:14px;font-weight:800;color:var(--ink);margin-bottom:9px}
+.schedule-search>div{display:flex;gap:8px;max-width:720px}
+.schedule-search input{width:100%;min-width:0;flex:1;height:46px;margin:0;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:14px;padding:10px 12px}
+.schedule-search button{flex-shrink:0;height:46px;border:0;border-radius:10px;background:var(--ink);color:var(--card);padding:0 16px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.schedule-search button[data-schedule-search-clear]{padding:0 10px;background:var(--chip);color:var(--ink)}
+.schedule-search-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}
+.schedule-search-heading h2{margin:0;font-size:15px;color:var(--ink);letter-spacing:-.3px}
+.schedule-search-heading span{font-size:11px;color:var(--sub);white-space:nowrap}
+.schedule-search-grid{display:grid;gap:12px}
+.schedule-search-card{min-width:0;border:1px solid var(--line);box-shadow:none}
+.schedule-search-card .ev{padding-bottom:0;border-bottom:0}
+.schedule-open-date{display:flex;justify-content:space-between;align-items:center;width:100%;padding:0 0 12px;margin-bottom:3px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--navy);font:inherit;font-size:13px;font-weight:700;cursor:pointer;text-align:left}
+@media(min-width:1024px){.schedule-search-section{border-top:1px solid var(--line);padding-top:25px;margin-top:14px}.schedule-search label{font-size:17px}.schedule-search input{height:50px;font-size:15px}.schedule-search button{height:50px}.schedule-search-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.desktop-home-grid{margin-top:24px}}
+@media(min-width:1024px){.desktop-calendar .schedule-search-section{border-top:0;padding-top:0;margin:0 0 22px}.desktop-calendar .schedule-search-grid{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 <div id="app"></div>
@@ -947,6 +1103,40 @@ document.addEventListener('click',async ev=>{
  if(del){if(!confirm('이 수상 기록을 삭제할까?'))return;try{await persistManagedAwards(BEAR_MANAGED_AWARDS.filter(x=>x.id!==del.dataset.awardDelete));if(bearAwardEditId===del.dataset.awardDelete)bearAwardEditId='';bearAwardStatus='삭제했어.';route2()}catch(e){alert('삭제 실패: '+e.message)}}
 });
 let bearAwardCategory='all';
+let bearAwardSearch='';
+function awardSearchHTML(){
+ return `<form class="award-search" id="award-search" role="search" aria-label="선수별 수상 검색"><label for="award-player-search">선수 이름으로 수상 기록 찾기</label><div><input type="search" id="award-player-search" value="${esc(bearAwardSearch)}" placeholder="선수 이름을 입력하세요" autocomplete="off"><button type="submit">검색</button>${bearAwardSearch?'<button type="button" data-award-search-clear>초기화</button>':''}</div></form>`;
+}
+function awardSearchRows(query,category){
+ const normalize=value=>S(value).replace(/\s+/g,'').toLowerCase(),q=normalize(query);
+ const rows=[...BEAR_POSTSEASON_MVPS.map(item=>({...item,category:'mvp'})),...bearAllAwards()];
+ const seen=new Set();
+ return rows.filter(item=>{
+  const key=JSON.stringify([item.year,item.category,item.name,item.series||'',item.field||'',item.title||'',item.month||'']);
+  if(seen.has(key))return false;seen.add(key);
+  return normalize(item.name).includes(q)&&(category==='all'||item.category===category||(category==='etc'&&item.category==='monthly-cap'));
+ }).sort((a,b)=>(+b.year||0)-(+a.year||0)||S(a.name).localeCompare(S(b.name),'ko'));
+}
+function awardSearchResultsHTML(category){
+ const rows=awardSearchRows(bearAwardSearch,category);
+ return `<section class="award-search-results" aria-labelledby="award-search-heading"><h2 id="award-search-heading">‘${esc(bearAwardSearch)}’ 수상 기록</h2><p class="note" role="status" aria-live="polite">${rows.length}건${category==='all'?' · 전체 수상 종류':' · 선택한 수상 종류 기준'}</p>${rows.length?`<div class="award-list">${rows.map(item=>{
+ const categoryName=BEAR_AWARD_CATEGORIES.find(([id])=>id===item.category)?.[1]||'수상';
+ const label=item.series?item.series+' MVP':item.category==='title-holder'?'KBO 타이틀홀더 · '+(item.field||''):item.title||categoryName;
+ return `<article class="card award-card"><div class="award-heading"><b>${esc(String(item.year))}년${item.month?' '+esc(String(item.month))+'월':''}</b><span>${esc(label)}</span></div><div class="award-person">${esc(item.name||'')}${item.value?' · '+esc(String(item.value)):''}</div></article>`;
+ }).join('')}</div>`:'<div class="card"><div class="empty">일치하는 수상 기록이 없어요. 이름을 확인하거나 수상 종류를 ‘전체’로 바꿔주세요.</div></div>'}</section>`;
+}
+document.addEventListener('submit',event=>{
+ if(event.target.id!=='award-search')return;
+ event.preventDefault();bearAwardSearch=S(document.getElementById('award-player-search')?.value).trim();route2();
+});
+document.addEventListener('click',event=>{
+ if(!event.target.closest('[data-award-search-clear]'))return;
+ bearAwardSearch='';route2();document.getElementById('award-player-search')?.focus();
+});
+document.addEventListener('input',event=>{
+ if(event.target.id==='award-player-search'&&!event.target.value&&bearAwardSearch){bearAwardSearch='';route2();document.getElementById('award-player-search')?.focus()}
+});
+
 function awardsView(){
  const active=BEAR_AWARD_CATEGORIES.some(([id])=>id===bearAwardCategory)?bearAwardCategory:'all';
  const categories=`<div class="award-categories" role="group" aria-label="수상 분류">${BEAR_AWARD_CATEGORIES.map(([id,label])=>`<button type="button" class="award-filter${active===id?' on':''}" data-award-category="${id}" aria-pressed="${active===id}">${label}</button>`).join('')}</div>`;
@@ -971,7 +1161,7 @@ function awardsView(){
  }).join(''):'';
  const generalIndividual=active==='all'?individual.filter(item=>!separateCeremonies.includes(item.category)):individual;
  const other=active!=='championship'?`<section><h2>${active==='all'?'개인 수상':BEAR_AWARD_CATEGORIES.find(([id])=>id===active)?.[1]||'수상'} 기록</h2>${generalIndividual.length?`<div class="award-list">${generalIndividual.map(item=>`<article class="card award-card"><div class="award-heading"><b>${esc(String(item.year))}년</b><span>${esc(item.category==='title-holder'?(item.field==='세이브 포인트'?'세이브 포인트 (~2003)':item.field==='세이브'?'세이브 (2004~)':item.field||'KBO 타이틀홀더'):item.title||(item.category==='monthly-cap'?'월간 캡스플레이':BEAR_AWARD_CATEGORIES.find(([id])=>id===item.category)?.[1])||'수상')}</span></div><div class="award-person">${esc(item.name||'')}${item.month?' · '+esc(item.month)+'월':''}${item.category==='title-holder'?' · '+(item.role==='pitcher'?'투수':'타자')+(item.value?' · '+esc(item.value):''):''}</div></article>`).join('')}</div>`:'<div class="card"><div class="empty">확인된 수상 기록을 준비 중이에요.</div></div>'}</section>`:'';
- return `<div class="brand"><div class="logo">수상 기록</div>${isOwner?`<button type="button" class="chip" data-award-open>+ 수상 등록</button>`:''}</div>${categories}${isOwner&&bearAwardEditorOpen?`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button type="button" class="link" data-award-close>입력창 닫기 ×</button></div>${awardAdminHTML()}`:''}${isOwner&&bearAwardStatus&&!bearAwardEditorOpen?`<div class="note" role="status">${esc(bearAwardStatus)}</div>`:''}${wins}${other}${ceremonySections}`;
+ return `<div class="brand"><div class="logo">수상 기록</div>${isOwner?`<button type="button" class="chip" data-award-open>+ 수상 등록</button>`:''}</div>${awardSearchHTML()}${categories}${isOwner&&bearAwardEditorOpen?`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button type="button" class="link" data-award-close>입력창 닫기 ×</button></div>${awardAdminHTML()}`:''}${isOwner&&bearAwardStatus&&!bearAwardEditorOpen?`<div class="note" role="status">${esc(bearAwardStatus)}</div>`:''}${bearAwardSearch?awardSearchResultsHTML(active):wins+other+ceremonySections}`;
 }
 document.addEventListener('click',event=>{
  const button=event.target.closest('[data-award-category]');
@@ -1304,7 +1494,7 @@ function mergeEvents(manual,automatic){
   if(!indices.length){const i=rows.length;rows.push({...auto});indexRow(rows[i],i);continue}
   const index=indices[0],old=rows[index],merged=old.manualOverride?{...auto,...old}:{...old,...auto};
   if(old.manualOverride&&Array.isArray(old.pitching)&&Array.isArray(auto.pitching))merged.pitching=old.pitching.map(p=>{const base=auto.pitching.find(x=>S(x.name)===S(p.name)&&(!S(p.teamId)||S(x.teamId)===S(p.teamId)));return base?{...base,...p}:p});
-  for(const key of ['title','desc','channel','program','players','series'])if(old[key]!==undefined&&old[key]!=='')merged[key]=old[key];
+  for(const key of ['title','desc','channel','program','players','series','reschedule'])if(old[key]!==undefined&&old[key]!=='')merged[key]=old[key];
   if(old.cancellationOverride||(old.cancellationOverride===undefined&&S(old.cancelReason))){merged.cancelReason=S(old.cancelReason);merged.cancelled=isCancelled(old);merged.status=merged.cancelled?'cancelled':(auto.status==='cancelled'?(hasScore(merged)?'final':'scheduled'):auto.status)}
   merged.id=old.id;merged.kboGameId=auto.kboGameId;merged.kbo=auto.kbo;merged.manualOverride=!!old.manualOverride;
   indexRow(old,index,true);rows[index]=merged;indexRow(merged,index);
@@ -1391,7 +1581,7 @@ Repo.load=function({refreshHistory=false,refreshFuture=false,refreshMetadata=fal
  return repoLoadPending;
 };
 Repo.upsert=async function(ev){
-  requireAdmin();
+  requireAdmin();validateReschedule(ev);
   if(ev.kboGameId){ev.manualOverride=!!document.querySelector('#kbo_manual')?.checked;if(ev.manualOverride&&Array.isArray(ev.batting))ev.batting=ev.batting.map((p,i)=>{const x={...p};for(const k of ['atBats','hits','doubles','triples','homeRuns','stolenBases']){const el=document.querySelector(`[data-batter="${i}"][data-stat="${k}"]`);if(el){const n=Number(el.value);if(!Number.isInteger(n)||n<0)throw new Error('타자 기록은 0 이상의 정수로 입력해주세요');x[k]=n}}if((+x.doubles||0)+(+x.triples||0)+(+x.homeRuns||0)>(+x.hits||0))throw new Error('장타 합계가 안타 수보다 많습니다');return x})}
   if(ev.type==='edu'&&document.querySelector('#edu_editor')){captureEduInputs(true);ev.batting=eduSelectedRows('hitter');ev.pitching=eduSelectedRows('pitcher');}
   return _manualUpsert(ev);
@@ -1523,11 +1713,52 @@ const openIds=new Set();
 
 function starterDisplayName(value){const name=S(value);return /^(?:미정|선발\s*미정|미발표|미확정|TBD|TBA|-+)$/i.test(name)?'':name;}
 
+function validScheduleDate(value){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(S(value)))return false;
+ const date=new Date(value+'T00:00:00Z');
+ return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value;
+}
+function validateReschedule(event){
+ const next=event.reschedule;if(!next)return;
+ if(!isCancelled(event)||!['kbo','futures','edu'].includes(event.type))throw Error('재편성은 취소된 야구 경기에만 등록할 수 있어요.');
+ if(!validScheduleDate(next.date)||next.date<=event.date)throw Error('재편성 날짜는 원래 경기일 다음 날 이후로 입력해주세요.');
+ if(next.time&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(next.time))throw Error('재편성 시간을 확인해주세요.');
+ if(![0,1,2].includes(next.headerNo))throw Error('재편성 더블헤더 구분을 확인해주세요.');
+}
+function rescheduleLabel(event){
+ const next=event.reschedule;
+ return next&&validScheduleDate(next.date)?`${next.date.replaceAll('-','.')}로 재편성${next.time?' · '+next.time:''}${next.headerNo?' · DH'+next.headerNo:''}`:'재편성일 미정';
+}
+function rescheduleNoticeHTML(event){
+ if(!isCancelled(event)||!['kbo','futures','edu'].includes(event.type))return '';
+ const next=event.reschedule,known=next&&validScheduleDate(next.date);
+ return `<div class="reschedule-notice">${known?`<a href="#/?date=${encodeURIComponent(next.date)}" aria-label="재편성 날짜 ${esc(next.date)} 일정 보기">↻ ${esc(rescheduleLabel(event))} <span aria-hidden="true">→</span></a>`:'<span>↻ 재편성일 미정</span>'}</div>`;
+}
+function reschedulesOnDate(date){
+ return recordRenderMemo('reschedules:'+date,()=>Repo.all().filter(event=>isPublicScheduleEvent(event)&&isCancelled(event)&&event.reschedule?.date===date&&validScheduleDate(date)));
+}
+function rescheduleArrivalsHTML(date){
+ const rows=reschedulesOnDate(date);if(!rows.length)return '';
+ return `<div class="reschedule-arrivals"><b>↻ 재편성 안내</b>${rows.map(event=>`<div><span>${esc(gameTitleWithHeader({...event,headerNo:event.reschedule.headerNo||0}))}${event.reschedule.time?' · '+esc(event.reschedule.time):''}</span><a href="#/?date=${encodeURIComponent(event.date)}">${esc(event.date.replaceAll('-','.'))} 취소 경기에서 재편성</a></div>`).join('')}</div>`;
+}
+function rescheduleEditorHTML(event){
+ const next=event.reschedule||{},enabled=isCancelled(event)&&['kbo','futures','edu'].includes(event.type);
+ return `<fieldset class="reschedule-editor" id="reschedule_editor"${enabled?'':' hidden disabled'}><legend>취소 경기 재편성</legend><label for="f_rescheduledDate">재편성 날짜</label><input id="f_rescheduledDate" type="date" min="${validScheduleDate(event.date)?ymd(addDays(new Date(event.date+'T00:00:00'),1)):''}" value="${esc(next.date||'')}"><div class="reschedule-editor-row"><div><label for="f_rescheduledTime">시간 (선택)</label><input id="f_rescheduledTime" type="time" value="${esc(next.time||'')}"></div><div><label for="f_rescheduledHeaderNo">더블헤더</label><select id="f_rescheduledHeaderNo"><option value="0"${!next.headerNo?' selected':''}>일반 경기</option><option value="1"${next.headerNo===1?' selected':''}>DH1 · 1차전</option><option value="2"${next.headerNo===2?' selected':''}>DH2 · 2차전</option></select></div></div><p class="note">날짜가 확정되면 입력해주세요. 비워두면 ‘재편성일 미정’으로 표시합니다. 원래 취소 경기는 보존되고 새 날짜에 재편성 안내가 표시됩니다.</p></fieldset>`;
+}
+document.addEventListener('change',event=>{
+ if(!['f_cancelReason','f_type','f_date'].includes(event.target.id))return;
+ const editor=document.getElementById('reschedule_editor');if(!editor)return;
+ const enabled=!!document.getElementById('f_cancelReason')?.value&&['kbo','futures','edu'].includes(document.getElementById('f_type')?.value);
+ editor.hidden=!enabled;editor.disabled=!enabled;
+ const original=document.getElementById('f_date')?.value;
+ const date=document.getElementById('f_rescheduledDate');if(date&&validScheduleDate(original))date.min=ymd(addDays(new Date(original+'T00:00:00'),1));
+});
+
 function detail(e){
   if(!e||!['kbo','edu','futures'].includes(e.type))return '';
   const fin=hasScore(e),opp=S(e.opp)||'상대팀';
   if(isCancelled(e)){
-    return `<div class="dt"><div class="big2">두산베어스 vs ${esc(teamDisplayName(opp))}</div><div class="sb" style="margin-top:6px">${esc(e.venue||e.place||'')}</div><div class="note" style="margin-top:18px;font-weight:800">${cancellationMessage(e)}</div></div>`;
+    return `<div class="dt"><div class="big2">두산베어스 vs ${esc(teamDisplayName(opp))}</div><div class="sb" style="margin-top:6px">${esc(e.venue||e.place||'')}</div><div class="note" style="margin-top:18px;font-weight:800">${cancellationMessage(e)}</div>${rescheduleNoticeHTML(e)}</div>`;
   }
   const row=(l,v,hide)=>{const x=S(v);return x?`<span>${l}</span><span>${esc(x)}</span>`:(hide?'':`<span>${l}</span><span class="tbd">미정</span>`)};
   const ha=e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':S(e.homeAway);
@@ -1663,7 +1894,7 @@ function gameCard(e,kind){
   return `<div class="card"><div class="top"><span>${e.venue||''}${e.homeAway?` <span class="tag">${e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':esc(e.homeAway)}</span>`:''}</span><span>${e.stage?`<span class="badge">${sub}</span>`:'정규시즌'}${[1,2].includes(+e.headerNo)?` <span class="tag">DH${+e.headerNo}</span>`:''}${e.series?` <span class="tag" style="margin:0 0 0 4px">${e.series}</span>`:''}</span></div>
   <div class="vs"><span class="vh">vs</span><span class="t">${esc(teamDisplayName(e.opp)||'상대팀 미정')}</span></div>
   ${isCancelled(e)?`<div class="sb" style="margin-top:8px">${esc(e.venue||e.place||'')}</div><div class="note" style="margin-top:16px;font-weight:800">${cancellationMessage(e)}</div>`:(hasScore(e)?`<div class="score">${e.score.d} : ${e.score.v}<span class="res ${r}">${RL[r]||esc(e.statusText||'진행 중')}</span></div>`:(showUpcomingScheduleTime(e)?`<div class="time">${e.time||'<span class=tbd>시간 미정</span>'}</div>`:''))}
-  ${isCancelled(e)?'':`<div class="meta"><span>경기장</span><span>${e.venue||'미정'}</span>${st?`<span>두산 선발</span><span>${esc(st)}</span>`:''}${ost?`<span>${esc(teamDisplayName(e.opp)||'상대팀')} 선발</span><span>${esc(ost)}</span>`:''}</div>`}</div>`;
+  ${rescheduleNoticeHTML(e)}${isCancelled(e)?'':`<div class="meta"><span>경기장</span><span>${e.venue||'미정'}</span>${st?`<span>두산 선발</span><span>${esc(st)}</span>`:''}${ost?`<span>${esc(teamDisplayName(e.opp)||'상대팀')} 선발</span><span>${esc(ost)}</span>`:''}</div>`}</div>`;
 }
 function showUpcomingScheduleTime(e){
  if(!e||!/^\d{4}-\d{2}-\d{2}$/.test(S(e.date))||S(e.date)<TS||isCancelled(e))return false;
@@ -1684,7 +1915,7 @@ function evRow(e){
   else if(e.type==='ticket')sb=esc(ticketSiteName(e));
   else sb=[e.place].filter(Boolean).join(' · ');
   const g=['kbo','edu','futures'].includes(e.type),o=g&&openIds.has(e.id);
-  return `<div class="ev${g?' tap':''}"${g?` data-x="${esc(e.id)}"`:''}><div class="bd">${showUpcomingScheduleTime(e)?`<div class="event-start-time">${esc(handballInfo?.time||e.time||'--:--')}</div>`:''}<div class="ti"><span class="tag">${TYPES[e.type]||'기타'}</span>${g?esc(gameTitleWithHeader(e)):e.type==='handball'?esc(handballTitle):e.title}${e.demo?' <span class="tag">DEMO</span>':''}</div>${sb?`<div class="sb">${sb}</div>`:''}${e.desc?`<div class="sb">${e.desc}</div>`:''}${g?`<div class="more">${o?'접기 ▴':'경기 상세 ▾'}</div>`:''}${o?detail(e):''}</div></div>`;
+  return `<div class="ev${g?' tap':''}"${g?` data-x="${esc(e.id)}"`:''}><div class="bd">${showUpcomingScheduleTime(e)?`<div class="event-start-time">${esc(handballInfo?.time||e.time||'--:--')}</div>`:''}<div class="ti"><span class="tag">${TYPES[e.type]||'기타'}</span>${g?esc(gameTitleWithHeader(e)):e.type==='handball'?esc(handballTitle):e.title}${e.demo?' <span class="tag">DEMO</span>':''}</div>${sb?`<div class="sb">${sb}</div>`:''}${rescheduleNoticeHTML(e)}${e.desc?`<div class="sb">${e.desc}</div>`:''}${g?`<div class="more">${o?'접기 ▴':'경기 상세 ▾'}</div>`:''}${o?detail(e):''}</div></div>`;
 }
 function calendarIconSVG(symbol){
   const shapes={
@@ -1742,7 +1973,7 @@ function calendar(){
   for(let i=0;i<42;i++){
     const d=addDays(start,i),ds=ymd(d);
     const dot=calendarMarks(eventsOnDate(ds).filter(isPublicScheduleEvent));
-    cells+=`<button class="d${d.getMonth()!==m?' o':''}${d.getDay()===0?' sun':''}${ds===TS?' today':''}${ds===sel?' sel':''}" data-d="${ds}">${d.getDate()}${dot}</button>`;
+    cells+=`<button class="d${d.getMonth()!==m?' o':''}${d.getDay()===0?' sun':''}${ds===TS?' today':''}${ds===sel?' sel':''}" data-d="${ds}"${reschedulesOnDate(ds).length?' aria-label="'+ds+' 재편성 경기 안내"':''}>${d.getDate()}${dot}${reschedulesOnDate(ds).length?'<span class="reschedule-dot" aria-hidden="true">↻</span>':''}</button>`;
   }
   return `<div class="card"><div class="calhead"><button class="ib" data-m="-1">‹</button><div class="calendar-period"><label class="calendar-period-select"><select id="calendar_jump_year" aria-label="캘린더 연도">${Array.from({length:Math.max(y,TODAY.getFullYear()+1)-Math.min(1982,y)+1},(_,i)=>Math.max(y,TODAY.getFullYear()+1)-i).map(v=>`<option value="${v}"${v===y?' selected':''}>${v}년</option>`).join('')}</select><span aria-hidden="true">⌄</span></label><span class="calendar-period-divider" aria-hidden="true"></span><label class="calendar-period-select"><select id="calendar_jump_month" aria-label="캘린더 월">${Array.from({length:12},(_,i)=>`<option value="${i+1}"${i===m?' selected':''}>${i+1}월</option>`).join('')}</select><span aria-hidden="true">⌄</span></label></div><span><button class="ib" data-m="0">오늘</button> <button class="ib" data-m="1">›</button></span></div>
   <div class="grid">${'일월화수목금토'.split('').map(x=>`<div class="dow">${x}</div>`).join('')}${cells}</div></div>`;
@@ -1750,11 +1981,11 @@ function calendar(){
 let adminSecretTaps=0,adminSecretLastTap=0;
 document.addEventListener('input',ev=>{if(ev.target.matches('[data-careerinput]'))updateCareerRates()});
 document.addEventListener('click',ev=>{
-  if(!ev.target.closest('#admin_secret'))return;
+  if(!ev.target.closest('#admin_secret,#desktop_admin_secret'))return;
   const now=Date.now();
   adminSecretTaps=now-adminSecretLastTap<=3000?adminSecretTaps+1:1;
   adminSecretLastTap=now;
-  if(adminSecretTaps>=3){adminSecretTaps=0;adminSecretLastTap=0;location.hash='#/admin';}
+  if(adminSecretTaps>=3){ev.preventDefault();adminSecretTaps=0;adminSecretLastTap=0;location.hash='#/admin';}
 });
 let calendarLegendOpen=false;
 function calendarLegendIcon(symbol){return `<span class="calendar-legend-icon" aria-hidden="true">${symbol==='♥'?symbol:calendarIconSVG(symbol)||symbol}</span>`;}
@@ -1898,16 +2129,50 @@ async function savePushReminderSettings(){
  finally{s.busy=false;refreshPushSettings()}
 }
 document.addEventListener('click',ev=>{if(ev.target.closest('[data-push-save-time]'))void savePushReminderSettings();});
+let scheduleSearch='',scheduleSearchDraft='',scheduleSearchLimit=30;
+function scheduleSearchRows(query,events=Repo.all()){
+ const normalize=value=>S(value).toLowerCase().replace(/[.\/]/g,'-').replace(/\s+/g,' ').trim();
+ const tokens=normalize(query).split(' ').filter(Boolean);
+ if(!tokens.length)return [];
+ return events.filter(event=>{
+  if(!isPublicScheduleEvent(event))return false;
+  const fields=[event.date,event.date?.replaceAll('-',''),event.time,event.title,event.opp,teamDisplayName(event.opp),event.venue,event.place,TYPES[event.type],event.program,event.channel,event.desc,...(event.players||[]),event.cancelReason,isCancelled(event)?'취소':'',event.reschedule?.date,event.reschedule?'재편성':''];
+  const text=normalize(fields.filter(Boolean).join(' '));
+  return tokens.every(token=>text.includes(token));
+ }).slice().sort((a,b)=>S(b.date).localeCompare(S(a.date))||S(a.time).localeCompare(S(b.time)));
+}
+function scheduleSearchHTML(){
+ const rows=scheduleSearch?scheduleSearchRows(scheduleSearch):[];
+ return `<section class="schedule-search-section" aria-label="일정 검색"><form id="schedule-search" class="schedule-search"><label for="schedule-search-query">일정 검색</label><div><input id="schedule-search-query" type="search" placeholder="날짜 · 상대팀 · 장소 · 일정 이름" value="${esc(scheduleSearchDraft)}" autocomplete="off" aria-controls="schedule-search-results"><button type="submit">검색</button>${scheduleSearch?'<button type="button" data-schedule-search-clear>초기화</button>':''}</div></form><div id="schedule-search-results"${scheduleSearch?'':' hidden'}>${scheduleSearch?`<div class="schedule-search-heading"><h2>‘${esc(scheduleSearch)}’ 검색 결과</h2><span role="status" aria-live="polite">${rows.length}건 · 전체 일정 기준</span></div>${rows.length?`<div class="schedule-search-grid">${rows.slice(0,scheduleSearchLimit).map(event=>`<article class="card schedule-search-card"><button type="button" class="schedule-open-date" data-schedule-open="${esc(event.date)}" data-schedule-event="${esc(event.id)}">${esc(event.date.replaceAll('-','.'))} 일정 보기 <span aria-hidden="true">→</span></button>${evRow(event)}</article>`).join('')}</div>${rows.length>scheduleSearchLimit?`<button type="button" class="btn g" data-schedule-search-more>일정 더 보기 (${Math.min(scheduleSearchLimit,rows.length)} / ${rows.length})</button>`:''}`:'<div class="card"><div class="empty">일치하는 일정이 없어요. 날짜는 2026-07 또는 07-01처럼 검색할 수 있어요.</div></div>'}`:''}</div></section>`;
+}
+document.addEventListener('submit',event=>{
+ if(event.target.id!=='schedule-search')return;
+ event.preventDefault();scheduleSearchDraft=S(document.getElementById('schedule-search-query')?.value);scheduleSearch=scheduleSearchDraft.trim();scheduleSearchLimit=30;route2();
+});
+document.addEventListener('input',event=>{
+ if(event.target.id!=='schedule-search-query')return;
+ scheduleSearchDraft=event.target.value;
+ if(!scheduleSearchDraft&&scheduleSearch){scheduleSearch='';scheduleSearchLimit=30;route2();document.getElementById('schedule-search-query')?.focus()}
+});
+document.addEventListener('click',event=>{
+ if(event.target.closest('[data-schedule-search-clear]')){scheduleSearch='';scheduleSearchDraft='';scheduleSearchLimit=30;route2();document.getElementById('schedule-search-query')?.focus();return;}
+ if(event.target.closest('[data-schedule-search-more]')){scheduleSearchLimit+=30;route2();return;}
+ const target=event.target.closest('[data-schedule-open]');if(!target)return;
+ const date=target.dataset.scheduleOpen;if(!validScheduleDate(date))return;
+ sel=date;view=new Date(date.slice(0,7)+'-01T00:00:00');if(target.dataset.scheduleEvent)openIds.add(target.dataset.scheduleEvent);
+ scheduleSearch='';scheduleSearchDraft='';scheduleSearchLimit=30;route2();document.querySelector('.desktop-home-grid')?.scrollIntoView({block:'start'});
+});
+
 function home(){
   const t=byDate(TS),kbo=t.find(e=>e.type==='kbo');
   const evs=byDate(sel),sd=new Date(sel+'T00:00:00');
-  return `<div class="brand"><button class="logo admin-secret" id="admin_secret" type="button">BEARS<b>tat</b></button><button type="button" class="ib" data-open-push aria-label="일정 알림 설정"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button></div>
-  ${homeTodayScheduleHTML()}
-  ${calendarLegendHTML()}
-  ${calendar()}
+  return `${desktopHomeHTML()}<div class="brand home-mobile-brand"><button class="logo admin-secret" id="admin_secret" type="button">BEARS<b>tat</b></button><button type="button" class="ib" data-open-push aria-label="일정 알림 설정"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button></div>
+  <a class="mobile-player-link" href="#/player-cards">선수 카드 보기 <span aria-hidden="true">→</span></a><div class="mobile-today-schedule">${desktopMedia.matches?'':homeTodayScheduleHTML()}</div>
+  <div class="desktop-home-grid"><section class="desktop-calendar"><h2 class="desktop-section-title">베어스 일정</h2>${scheduleSearchHTML()}${calendarLegendHTML()}
+  ${calendar()}</section><section class="desktop-day">${desktopMedia.matches?homeTodayScheduleHTML():''}
   <h2>${sd.getMonth()+1}월 ${sd.getDate()}일 (${'일월화수목금토'[sd.getDay()]}) 일정</h2>
-  <div class="card">${evs.length?evs.map(evRow).join(''):'<div class="empty">일정이 없습니다.</div>'}</div>
-  ${homeNearMilestonesHTML()}
+  ${rescheduleArrivalsHTML(sel)}<div class="card">${evs.length?evs.map(evRow).join(''):'<div class="empty">일정이 없습니다.</div>'}</div>
+  ${homeNearMilestonesHTML()}</section></div>
   <div class="foot">${isOwner?'<a href="#/admin">관리자</a> · <a href="#/players">선수 관리</a>':''}</div>${gameBatterSheetHTML()}`;
 }
 
@@ -3609,7 +3874,7 @@ function h2hView(){
       </div>`;}).join('');
 
     const row=e=>{const r=result(e);return `<div class="ev"><div class="tm" style="flex-shrink:0">${h2hPeriod==='career'?`<span style="display:block;font-size:11px;color:var(--sub)">${esc(e.date.slice(0,4))}</span>`:''}${esc(e.date.slice(5).replace('-','.'))}</div><div class="bd"><div class="ti">${hasScore(e)?`${e.score.d}:${e.score.v} <span class="res ${r}" style="margin:0">${RL[r]||esc(e.statusText||'진행 중')}</span>`:(e.time||'시간 미정')}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place,e.date))}${e.stage?' · '+e.stage:''}${h2hVenueGameLabel(e)?' · '+esc(h2hVenueGameLabel(e)):''}</div></div></div>`};
-    const cancelRow=e=>`<div class="ev"><div class="tm" style="flex-shrink:0">${h2hPeriod==='career'?`<span style="display:block;font-size:11px;color:var(--sub)">${esc(e.date.slice(0,4))}</span>`:''}${esc(e.date.slice(5).replace('-','.'))}</div><div class="bd"><div class="ti">${e.cancelReason?`${esc(e.cancelReason)}취소`:'경기취소'}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place,e.date))}</div></div></div>`;
+    const cancelRow=e=>`<div class="ev"><div class="tm" style="flex-shrink:0">${h2hPeriod==='career'?`<span style="display:block;font-size:11px;color:var(--sub)">${esc(e.date.slice(0,4))}</span>`:''}${esc(e.date.slice(5).replace('-','.'))}</div><div class="bd"><div class="ti">${e.cancelReason?`${esc(e.cancelReason)}취소`:'경기취소'}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place,e.date))}</div>${rescheduleNoticeHTML(e)}</div></div>`;
     body=`<div class="card" style="margin-top:14px">
       <div class="top"><span>${h2hPeriod==='career'?'통산':h2hYear+' 시즌'} 상대전적 · 두산베어스 vs ${esc(teamDisplayName(h2hOpponent))}</span></div>
       <div class="big">${career&&!career.years.length?'공식 집계 미확인':h2hCountText(c)} <span class="sb" style="font-size:16px;font-weight:800">· 승률 ${career&&!career.years.length?'—':winPct(c)}</span></div>
@@ -4255,7 +4520,7 @@ function adminEditSteps(e){
   return [1,...(e.kboGameId?[]:[2]),3,4,...(e.type==='edu'?[5,6]:[]),7];
 }
 function adminEditActions(e){
-  return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${adminEditSteps(e).map(step=>`<button type="button" class="chip" data-edit="${esc(e.id)}" data-edit-step="${step}">${ADMIN_STEP_LABELS[step-1]}</button>`).join('')}</div>`;
+  return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${isCancelled(e)&&['kbo','futures','edu'].includes(e.type)?`<button type="button" class="chip" data-edit="${esc(e.id)}" data-edit-step="3">재편성 입력</button>`:''}${adminEditSteps(e).map(step=>`<button type="button" class="chip" data-edit="${esc(e.id)}" data-edit-step="${step}">${ADMIN_STEP_LABELS[step-1]}</button>`).join('')}</div>`;
 }
 function adminStepTabs(e){
   return `<div id="admin_step_tabs" style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">${adminEditSteps(e).map(step=>`<button type="button" class="chip${adminFormStep===step?' on':''}" data-admin-jump="${step}" aria-pressed="${adminFormStep===step}">${ADMIN_STEP_LABELS[step-1]}</button>`).join('')}</div>`;
@@ -4412,7 +4677,7 @@ function admin(){
       <div class="bd">
         <div class="ti">${esc(gameTitleWithHeader(x))}</div>
         <div class="sb">${TYPES[x.type]}${isCancelled(x)?' · '+(x.cancelReason?esc(x.cancelReason)+'취소':'경기취소'):''}${x.kboGameId?' · KBO 자동연동':''}${x.type==='ticket'?(ticketSiteName(x)?' · '+esc(ticketSiteName(x)):''):(x.venue?' · '+esc(x.venue):'')}</div>
-        ${x.source==='handball-auto'?'<div class="sb" style="margin-top:8px">한국핸드볼연맹 공식 일정 · 자동 등록</div>':adminEditActions(x)}${x.source==='handball-auto'?'':`<div style="display:flex;justify-content:flex-start;margin-top:20px;padding-top:12px;border-top:1px solid var(--line)">${x.kboGameId?`<button type="button" class="link" style="margin:0;padding:8px 12px" data-hide-auto="${esc(x.kboGameId)}">일정 숨기기</button>`:`<button type="button" class="link" style="margin:0;padding:8px 12px" data-del="${x.id}">삭제</button>`}</div>`}
+        ${rescheduleNoticeHTML(x)}${x.source==='handball-auto'?'<div class="sb" style="margin-top:8px">한국핸드볼연맹 공식 일정 · 자동 등록</div>':adminEditActions(x)}${x.source==='handball-auto'?'':`<div style="display:flex;justify-content:flex-start;margin-top:20px;padding-top:12px;border-top:1px solid var(--line)">${x.kboGameId?`<button type="button" class="link" style="margin:0;padding:8px 12px" data-hide-auto="${esc(x.kboGameId)}">일정 숨기기</button>`:`<button type="button" class="link" style="margin:0;padding:8px 12px" data-del="${x.id}">삭제</button>`}</div>`}
       </div>
     </div>`).join(''):'<div class="empty">해당 일정이 없습니다.</div>'}
     ${list.length>adminListLimit?`<button type="button" class="btn g" data-admin-more>일정 더 보기 (${adminListLimit} / ${list.length})</button>`:''}
@@ -4445,6 +4710,7 @@ function admin(){
   <section data-admin-step="3" style="${adminFormStep===3?'':'display:none'}">
   <label for="f_cancelReason">경기 취소</label><select id="f_cancelReason"><option value="__custom__"${cancelCustom?' selected':''}>✎ 직접 입력</option><option value=""${!isCancelled(e)?' selected':''}>정상 경기</option><option value="__cancelled__"${isCancelled(e)&&!cancelReason?' selected':''}>⊘ 경기 취소 (사유 미지정)</option>${['우천','그라운드 사정','폭염','폭설','강풍','미세먼지','황사'].map(x=>`<option value="${x}"${cancelReason===x?' selected':''}>${CANCEL_ICONS[x]} ${x}</option>`).join('')}</select>
   <input id="f_cancelReason_custom" value="${cancelCustom?esc(cancelReason):''}" placeholder="✎ 취소 사유 직접 입력" style="margin-top:8px;${cancelCustom?'':'display:none'}">
+  ${rescheduleEditorHTML(e)}
   <div id="event_venue_wrap"${e.type==='ticket'?' hidden':''}>
   <label>장소</label><select id="f_place"><option value="__custom__"${placeCustom?' selected':''}>✎ 직접 입력</option>${venueOptionsHTML(e.place)}</select>
   <input id="f_place_custom" value="${placeCustom?esc(e.place):''}" placeholder="✎ 장소를 직접 입력" style="margin-top:8px;${placeCustom?'':'display:none'}">
@@ -5460,7 +5726,7 @@ document.addEventListener('input',event=>{
  playerTableSearch[route]=input.value;applyPlayerTableSearch();
 });
 function recordMenuLayout(html,route){
- if(['admin','players','home','info'].includes(route))return html;
+ if(['admin','players','home','info','player-cards'].includes(route))return html;
  if(Object.hasOwn(playerTableSearch,route)){html=html.replace(/(<div class="brand">[\s\S]*?<\/div><\/div>)/,brand=>brand+playerSearchHTML(route));requestAnimationFrame(applyPlayerTableSearch)}
  html=html.replace(/<div class="chips"[^>]*>([\s\S]*?)<\/div>/g,(whole,inside)=>{
   if(!inside.includes('class="chip')||inside.includes('data-recordscope=')||inside.includes('data-milescope='))return whole;
@@ -5766,6 +6032,85 @@ const recordUncachedEvents=Repo.all.bind(Repo);
 Repo.all=function(){return recordRenderMemo('events',recordUncachedEvents)};
 
 function recordTabs(){return personalKindTabs()+recordScopeTabs()+recordSeasonTabsHTML()+recordLimitMenu('season',recKind)+recordLimitNote('season',recKind)+(recPeriod==='season'?'':`<div class="record-limit-note">${esc(recordPeriodLabel())} · 저장된 ${recordFilterGames('season').length}경기 기준${recPeriod==='week'?' · 월요일~일요일':['firsthalf','secondhalf'].includes(recPeriod)?' · 올스타전 전후 정규시즌 기준':''}</div>`)}
+/* PC presentation only; records retain the existing calculations and detail views. */
+const desktopMedia=matchMedia('(min-width:1024px)');
+let desktopQuery='',desktopRole='all',desktopRecordIntent=null;
+function desktopHeaderHTML(r){
+ if(!desktopMedia.matches)return '';
+ const links=[['home','홈'],['player-cards','선수 카드'],['standings','순위'],['h2h','맞대결'],['opponent','상대전적'],['records','개인기록'],['milestones','달성 기록'],['awards','수상 기록']];
+ if(isOwner)links.push(['info','정보 입력']);
+ return `<header class="desktop-header"><a class="desktop-wordmark" id="desktop_admin_secret" href="#/" aria-label="BEARStat 홈">BEAR<b>Stat</b></a><div class="desktop-nav" role="navigation" aria-label="주요 메뉴">${links.map(([key,label])=>`<a href="#/${key==='home'?'':key}"${r===key?' aria-current="page"':''}>${label}</a>`).join('')}</div><a href="#/notifications" class="desktop-notification" aria-label="일정 알림 설정">알림 ↗</a></header>`;
+}
+function desktopCareerRows(){
+ return recordRenderMemo('desktop-career-cards',()=>{
+  const previous=[recScope,recSeason,recKind,recLeague];
+  try{
+   recScope='bears';recSeason='regular';recLeague='kbo';
+   return ['hitter','pitcher'].flatMap(role=>{recKind=role;return displayRecordRows(personalCareerRows(role)).map(row=>({...row,role}))});
+  }finally{[recScope,recSeason,recKind,recLeague]=previous}
+ });
+}
+function desktopPlayerCardsHTML(){
+ const query=desktopQuery.trim().replace(/\s+/g,'').toLowerCase();
+ const all=desktopCareerRows().filter(row=>desktopRole==='all'||row.role===desktopRole);
+ const matches=all.filter(row=>!query||row.n.replace(/\s+/g,'').toLowerCase().includes(query));
+ const featured=['hitter:김재환','pitcher:곽빈','pitcher:김강률','hitter:고영민'];
+ const sorted=query?matches.slice().sort((a,b)=>a.n.localeCompare(b.n,'ko')):matches.slice().sort((a,b)=>{
+  const order=row=>{const key=row.role+':'+row.n;return featured.includes(key)?featured.indexOf(key):featured.length};
+  return order(a)-order(b)||a.n.localeCompare(b.n,'ko');
+ });
+ const shown=sorted.slice(0,query?12:4);
+ return `<div class="desktop-player-grid">${shown.length?shown.map(row=>{
+  const key=row.role==='hitter'?(row.n==='고영민'?'sb':'hr'):(row.n==='김강률'?'s':'w'),label={hr:'홈런',sb:'도루',w:'승',s:'세이브'}[key];
+  const period=careerActivityPeriod(row.n,row.role,'bears').text;
+  return `<button type="button" class="desktop-player-card" data-desktop-player="${esc(row.n)}" data-desktop-player-role="${row.role}" aria-label="${esc(row.n)} 베어스통산 기록 보기"><span class="desktop-player-role">${row.role==='hitter'?'타자':'투수'} · ${esc(period||'OB·두산')}</span><span class="desktop-player-name">${esc(row.n)}</span><span class="desktop-player-value">${personalCareerDisplay(row,key)}<small>${label}</small></span><span class="desktop-player-footer"><span>OB·두산 소속 기록</span><i aria-hidden="true">↗</i></span></button>`;
+ }).join(''):'<div class="empty">일치하는 선수가 없어요. 이름이나 타자·투수 조건을 확인해 주세요.</div>'}</div><div class="desktop-player-status" role="status" aria-live="polite">${query?`${matches.length}명 검색${matches.length>shown.length?' · 먼저 '+shown.length+'명 표시':''}`:'베어스 유니폼과 함께한 선수들의 기록을 만나보세요.'}</div><div class="desktop-browse"><span>정규시즌 · 기존 베어스통산 집계 기준</span><button type="button" data-desktop-browse>전체 기록 보기 →</button></div>`;
+}
+function desktopHomeHTML(){
+ if(!desktopMedia.matches)return '';
+ return `<div class="desktop-home"><section class="desktop-hero" aria-labelledby="desktop-home-title"><p class="desktop-eyebrow">OB · DOOSAN BEARS / 1982–${TODAY.getFullYear()}</p><h1 id="desktop-home-title">베어스 유니폼을 입은<br>순간만 모아 보는 기록</h1><p>이름 하나로 만나는, 우리가 기억하는 베어스.</p><form class="desktop-search" id="desktop-search"><label for="desktop-player-search">두산 베어스 선수 기록</label><div class="desktop-search-line"><input id="desktop-player-search" type="search" placeholder="선수 이름을 입력하세요" autocomplete="off" value="${esc(desktopQuery)}"><button type="submit" aria-label="선수 검색">↗</button></div><div class="desktop-search-meta"><span>OB·두산 소속 기간의 누적 기록</span><span>Enter ↵</span></div></form></section></div>`;
+}
+function desktopCardsPageHTML(){
+ return `<div class="desktop-home desktop-card-page"><div class="mobile-card-header"><a href="#/">‹ 홈</a><h1>선수 카드</h1></div><section class="desktop-card-intro"><p class="desktop-eyebrow">BEARS PLAYER ARCHIVE</p><h1>선수 카드</h1><p>이름으로 찾고, 카드로 만나는 베어스의 기록.</p><form class="desktop-search" id="desktop-search"><label for="desktop-player-search">두산 베어스 선수 기록</label><div class="desktop-search-line"><input id="desktop-player-search" type="search" placeholder="선수 이름을 입력하세요" autocomplete="off" value="${esc(desktopQuery)}" aria-controls="desktop-player-results"><button type="submit" aria-label="선수 검색">↗</button></div><div class="desktop-search-meta"><span>OB·두산 소속 기간의 누적 기록</span><span>Enter ↵</span></div></form></section><section class="desktop-players" aria-labelledby="desktop-players-title"><div class="desktop-player-heading"><div><h2 id="desktop-players-title">선수 카드</h2><p>기록 속 이름, 한눈에.</p></div><div class="desktop-filters" role="group" aria-label="선수 역할 필터">${[['all','전체'],['hitter','타자'],['pitcher','투수']].map(([key,label])=>`<button type="button" data-desktop-role="${key}" aria-pressed="${desktopRole===key}">${label}</button>`).join('')}</div></div><div id="desktop-player-results">${desktopPlayerCardsHTML()}</div></section></div>`;
+}
+function refreshDesktopPlayers(){
+ const slot=document.getElementById('desktop-player-results');if(!slot)return;
+ const previous=recordRenderCache;recordRenderCache=new Map();
+ try{slot.innerHTML=desktopPlayerCardsHTML()}finally{recordRenderCache=previous}
+ document.querySelectorAll('[data-desktop-role]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.desktopRole===desktopRole)));
+}
+function desktopOpenRecords(name,role){
+ desktopRecordIntent={name,role};
+ if(location.hash==='#/records')route();else location.hash='#/records';
+}
+function applyDesktopRecordIntent(r){
+ if(r!=='records'||!desktopRecordIntent)return;
+ const {name,role}=desktopRecordIntent;desktopRecordIntent=null;
+ recKind=role==='pitcher'?'pitcher':'hitter';recScope='bears';recSeason='regular';recLeague='kbo';recSort=null;recBatTab='main';recPitchTab='pitching';
+ playerSheet=name||null;playerHistoryStat=null;pitcherHistoryStat=null;playerOrderHistory=null;playerMilestoneScope='bears';
+ playerTableSearch.records=name||desktopQuery.trim();
+}
+document.addEventListener('submit',event=>{
+ if(event.target.id!=='desktop-search')return;
+ event.preventDefault();desktopQuery=document.getElementById('desktop-player-search').value;
+ if(document.body.dataset.r!=='player-cards'){location.hash='#/player-cards';return;}
+ refreshDesktopPlayers();
+ document.getElementById('desktop-players-title')?.scrollIntoView({block:'nearest'});
+});
+document.addEventListener('input',event=>{
+ if(event.target.id!=='desktop-player-search')return;
+ desktopQuery=event.target.value;
+ if(!desktopQuery)refreshDesktopPlayers();
+});
+document.addEventListener('click',event=>{
+ const filter=event.target.closest('[data-desktop-role]');
+ if(filter){desktopRole=filter.dataset.desktopRole;desktopQuery=document.getElementById('desktop-player-search')?.value||'';refreshDesktopPlayers();return;}
+ const card=event.target.closest('[data-desktop-player]');
+ if(card){desktopOpenRecords(card.dataset.desktopPlayer,card.dataset.desktopPlayerRole);return;}
+ if(event.target.closest('[data-desktop-browse]'))desktopOpenRecords('',desktopRole);
+});
+desktopMedia.addEventListener('change',()=>route2());
+
 function route(){
   const r=location.hash.replace('#/','').split('?')[0]||'home';
   const alertDate=new URLSearchParams(location.hash.split('?')[1]||'').get('date');if(r==='home'&&/^\d{4}-\d{2}-\d{2}$/.test(alertDate||'')){sel=alertDate;view=new Date(alertDate.slice(0,7)+'-01T00:00:00');}
@@ -5773,7 +6118,8 @@ function route(){
     if(r==='records'){recKind='hitter';recBatTab='main';recSort={k:'avg',dir:'desc'};playerSheet=null;}
     if(r==='opponent'){opponentPlayerTarget=null;opponentMatchupJob=null;opponentMatchupSort=null;opponentKind='hitter';oppSort='avg';oppSortDir='desc';oppHistorySheet=null;}
   }
-  $('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='awards'?awardsView():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));
+  applyDesktopRecordIntent(r);
+  $('#app').innerHTML=desktopHeaderHTML(r)+renderWithRecordCache(()=>recordMenuLayout(r==='player-cards'?desktopCardsPageHTML():r==='standings'?standings():r==='awards'?awardsView():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));
   updateNavigation(r);
   document.body.dataset.r=r;window.scrollTo(0,0);
 }
@@ -6003,11 +6349,14 @@ if(!v('date')){
     const sd=v('sd'),so=v('so'),gn=v('gno'),id=editing?editing.id:'c'+Date.now();
     const hrEntries=[...document.querySelectorAll('.hr-row')].map(row=>({player:S(row.querySelector('.hr-player')?.value),inning:+(row.querySelector('.hr-inning')?.value||0),runs:+(row.querySelector('.hr-runs')?.value||0)})).filter(x=>x.player&&x.inning&&x.runs);
     const homeRuns=hrEntries.map(x=>`${x.player} ${x.inning}회 ${x.runs}점`).join('\n');
+    if(cancelled&&!v('rescheduledDate')&&(v('rescheduledTime')||Number(v('rescheduledHeaderNo')))){alert('재편성 날짜를 먼저 입력해주세요.');showAdminStep(3);$('#f_rescheduledDate')?.focus();return;}
+    const reschedule=cancelled&&['kbo','futures','edu'].includes(type)&&v('rescheduledDate')?{date:v('rescheduledDate'),time:v('rescheduledTime'),headerNo:Number(v('rescheduledHeaderNo'))||0}:null;
+    try{validateReschedule({type,date:v('date'),cancelled,reschedule})}catch(error){alert(error.message);showAdminStep(3);$('#f_rescheduledDate')?.focus();return;}
     const old=editing||{},f=k=>$('#f_'+k)?v(k):S(old[k]);
     const cancellationOverride=!!old.cancellationOverride||cancelled!==isCancelled(old)||cancelReason!==S(old.cancelReason);
     const status=cancelled?'cancelled':(old.status==='cancelled'||!old.status?((sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?'final':'scheduled'):old.status);
     if(t.disabled)return;t.disabled=true;t.textContent='저장 중…';
-    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,ticketSite:type==='ticket'?v('ticketSite'):'',place:type==='ticket'?v('ticketSite'):customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:editing?.kboGameId?(old.players||[]):v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp,cancelReason,cancelled,status,cancellationOverride,venue:type==='ticket'?v('ticketSite'):customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),headerNo:Number(v('headerNo'))||0,gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>{t.disabled=false;t.textContent=editing?'일정 수정':'일정 추가';alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다'))});
+    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,ticketSite:type==='ticket'?v('ticketSite'):'',place:type==='ticket'?v('ticketSite'):customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:editing?.kboGameId?(old.players||[]):v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp,cancelReason,cancelled,status,cancellationOverride,reschedule,venue:type==='ticket'?v('ticketSite'):customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),headerNo:Number(v('headerNo'))||0,gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>{t.disabled=false;t.textContent=editing?'일정 수정':'일정 추가';alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다'))});
   }
   else if(t.id==='cancel'){editing=null;adminView='manage';keep()}
   else if(t.dataset.hideAuto){if(confirm('이 자동연동 일정을 숨길까요?\n숨긴 뒤에도 자동연동으로 다시 나타나지 않습니다.'))Repo.hideAuto(t.dataset.hideAuto).then(()=>keep()).catch(e=>alert('숨기지 못했습니다: '+(e.message||'')))}
@@ -6045,7 +6394,7 @@ function route2(){
  const scrollGroups=['.sheet','.historybox','.opp-scroll,.record-scroll','.recscroll'];
  const positions=scrollGroups.map(selector=>[selector,[...document.querySelectorAll(selector)].map(el=>({top:el.scrollTop,left:el.scrollLeft}))]);
  updateNavigation(r);
- $('#app').innerHTML=renderWithRecordCache(()=>recordMenuLayout(r==='standings'?standings():r==='awards'?awardsView():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));
+ $('#app').innerHTML=desktopHeaderHTML(r)+renderWithRecordCache(()=>recordMenuLayout(r==='player-cards'?desktopCardsPageHTML():r==='standings'?standings():r==='awards'?awardsView():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));
  for(const [selector,saved] of positions)document.querySelectorAll(selector).forEach((el,i)=>{if(saved[i]){el.scrollTop=saved[i].top;el.scrollLeft=saved[i].left;}});
  window.scrollTo({left:x,top:y,behavior:'instant'});
 }
