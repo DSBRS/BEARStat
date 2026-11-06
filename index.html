@@ -6266,7 +6266,21 @@ function jerseySVG(number,name,gold=false){
  return `<svg class="jersey-icon" viewBox="0 0 220 230" aria-hidden="true" focusable="false"><path class="jersey-ground" d="M58 216Q110 226 162 216" fill="none" stroke="currentColor" opacity=".08" stroke-width="5" stroke-linecap="round"/><path d="M54 29L86 20Q110 31 134 20L166 29L214 54L198 92L170 79V204Q110 220 50 204V79L22 92L6 54Z" fill="#fbfbfa" stroke="#d3d5dc" stroke-width="1.7" stroke-linejoin="round"/><path d="M86 20Q110 32 134 20L130 29Q110 39 90 29Z" fill="#eeeff0" stroke="#c6c8d0" stroke-width="1.1"/><path d="M13 69L24 88M207 69L196 88" stroke="#17182b" stroke-width="5"/><path d="M17 73L26 88M203 73L194 88" stroke="#fff" stroke-width="1.5"/><path d="M54 29L50 79M166 29L170 79M58 87V197M162 87V197" stroke="#e8e9ed" fill="none" stroke-width="1"/><path d="M53 198Q110 213 167 198" stroke="#e0e2e7" fill="none" stroke-width="1.2"/>${jerseyNameSVG(name,gold)}${jerseyNumberSVG(number)}</svg>`;
 }
 function jerseyAssignments(number,season=jerseySeason){
- return jerseyData().records.filter(row=>row.number===number&&(season==='current'?row.current:Number(row.start.slice(0,4))<=Number(season)&&(!row.end||Number(row.end.slice(0,4))>=Number(season))));
+ return jerseyData().records.filter(row=>{
+  if(row.number!==number) return false;
+
+  // '현재'는 지금 실제 사용 중인 선수만
+  if(season==='current') return !!row.current;
+
+  // 연도를 선택하면 그 해에 한 번이라도 사용한 선수는 전부 표시
+  const year=Number(season);
+  const startYear=Number(String(row.start).slice(0,4));
+  const endYear=row.end
+   ? Number(String(row.end).slice(0,4))
+   : (row.current ? new Date().getFullYear() : startYear);
+
+  return startYear<=year && year<=endYear;
+ });
 }
 function jerseyRetirement(number,season=jerseySeason){const record=jerseyData().retired[number];return record&&(season==='current'||Number(season)>=record.since)?record:null}
 function jerseyPeriod(row){const start=row.start.replaceAll('-','.');return row.end===row.start?start: start+'–'+(row.end?row.end.replaceAll('-','.'):'현재')}
@@ -6306,7 +6320,7 @@ function jerseyModalHTML(){
 }
 function jerseyView(){
  const data=jerseyData();
- return `<div class="jersey-page"><div class="jersey-page-heading"><div><p>BEARS / NUMBER ARCHIVE</p><h1>등번호</h1><span>하나의 번호, 그 뒤에 남은 이름들.</span></div><div class="jersey-years">OB · 두산 베어스<br><b>1982–${data.maxYear}</b></div></div><div class="jersey-toolbar"><label class="jersey-year-control" for="jersey-season"><span>시즌 선택</span><select id="jersey-season"><option value="current"${jerseySeason==='current'?' selected':''}>현재 · 자료 기준</option>${Array.from({length:data.maxYear-data.minYear+1},(_,i)=>data.maxYear-i).map(year=>`<option value="${year}"${String(year)===jerseySeason?' selected':''}>${year}년 ${year<1999?'OB':'두산'}</option>`).join('')}</select></label><label class="jersey-search-control" for="jersey-search"><span>등번호 · 역대 사용자 검색</span><input type="search" id="jersey-search" placeholder="예: 31, 정수빈" value="${esc(jerseyQuery)}" autocomplete="off" aria-controls="jersey-grid"></label></div><div class="jersey-range" role="group" aria-label="등번호 범위">${[['all','전체'],['low','1–49'],['mid','50–99'],['high','100번대'],['retired','영구결번'],['extra','0·00번대']].map(([key,label])=>`<button type="button" data-jersey-range="${key}" aria-pressed="${jerseyRange===key}">${label}</button>`).join('')}</div><div class="jersey-section-head"><h2>${jerseySeason==='current'?'현재 등번호 배정':jerseySeason+'년 등번호 배정'}</h2><span id="jersey-result-count" role="status" aria-live="polite">${jerseySelectedNumbers().length}개 번호</span></div><p class="jersey-view-note">${jerseySeason==='current'?'현재 이름은 '+data.asOf.replaceAll('-','.')+' 자료 기준':'시즌 중 변경된 번호는 상세에서 모든 사용자를 확인할 수 있어요.'} · 이름이 없는 번호는 배정 자료 미확인</p><div class="jersey-grid" id="jersey-grid">${jerseyGridHTML()}</div>${jerseySourcesHTML()}</div>${jerseyModalHTML()}`;
+ return `<div class="jersey-page"><div class="jersey-page-heading"><div><p>BEARS / NUMBER ARCHIVE</p><h1>등번호</h1><span>하나의 번호, 그 뒤에 남은 이름들.</span></div><div class="jersey-years">OB · 두산 베어스<br><b>1982–${data.maxYear}</b></div></div><div class="jersey-toolbar"><label class="jersey-year-control" for="jersey-season"><span>시즌 선택</span><select id="jersey-season"><option value="current"${jerseySeason==='current'?' selected':''}>현재 · 자료 기준</option>${Array.from({length:data.maxYear-data.minYear+1},(_,i)=>data.maxYear-i).map(year=>`<option value="${year}"${String(year)===jerseySeason?' selected':''}>${year}년 ${year<1999?'OB':'두산'}</option>`).join('')}</select></label><label class="jersey-search-control" for="jersey-search"><span>등번호 · 역대 사용자 검색</span><input type="search" id="jersey-search" placeholder="예: 37, 박건우, 김동주" value="${esc(jerseyQuery)}" autocomplete="off" aria-controls="jersey-grid"></label></div><div class="jersey-range" role="group" aria-label="등번호 범위">${[['all','전체'],['low','1–49'],['mid','50–99'],['high','100번대'],['retired','영구결번'],['extra','0·00번대']].map(([key,label])=>`<button type="button" data-jersey-range="${key}" aria-pressed="${jerseyRange===key}">${label}</button>`).join('')}</div><div class="jersey-section-head"><h2>${jerseySeason==='current'?'현재 등번호 배정':jerseySeason+'년 등번호 배정'}</h2><span id="jersey-result-count" role="status" aria-live="polite">${jerseySelectedNumbers().length}개 번호</span></div><p class="jersey-view-note">${jerseySeason==='current'?'현재 이름은 '+data.asOf.replaceAll('-','.')+' 자료 기준':'시즌 중 변경된 번호는 상세에서 모든 사용자를 확인할 수 있어요.'} · 이름이 없는 번호는 배정 자료 미확인</p><div class="jersey-grid" id="jersey-grid">${jerseyGridHTML()}</div>${jerseySourcesHTML()}</div>${jerseyModalHTML()}`;
 }
 function refreshJerseyGrid(){const grid=document.getElementById('jersey-grid');if(grid){grid.innerHTML=jerseyGridHTML();document.getElementById('jersey-result-count').textContent=jerseySelectedNumbers().length+'개 번호'}}
 function closeJerseyModal(){const number=jerseyOpen;jerseyOpen=null;route2();requestAnimationFrame(()=>document.querySelector(`[data-jersey-open="${number}"]`)?.focus())}
