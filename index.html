@@ -1998,7 +1998,7 @@ function careerStandingsHTML(throughYear){
  const count=value=>value.toLocaleString('ko-KR');
  const system=careerStandingsSystem==='all'?'전체 체제':`${careerStandingsSystem}개 구단 체제`;
  const scope=careerStandingsScope==='current'?'현재 10개 구단':'전체 구단';
- const team=name=>name==='두산'?'두산베어스 (OB 포함)':teamDisplayName(name);
+ const team=name=>name==='두산'?'두산(OB)베어스':teamDisplayName(name);
  const filters=`<div class="chips" role="group" aria-label="통산 순위 표시 구단">${[['current','현재 10개 구단'],['all','전체 구단']].map(([value,label])=>`<button class="chip${careerStandingsScope===value?' on':''}" type="button" data-career-scope="${value}" aria-pressed="${careerStandingsScope===value}">${label}</button>`).join('')}</div>
  <div class="chips" role="group" aria-label="통산 순위 구단 체제" style="margin:10px 0 16px">${['all','6','7','8','9','10'].map(value=>`<button class="chip${careerStandingsSystem===value?' on':''}" type="button" data-career-system="${value}" aria-pressed="${careerStandingsSystem===value}">${value==='all'?'전체 체제':value+'개 구단 체제'}</button>`).join('')}</div>`;
  return `<h2>통산 전적 · 통산 순위</h2>${filters}
