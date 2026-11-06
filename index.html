@@ -1949,6 +1949,58 @@ function standingsDisplayData(year){
     ? {rows:remote,baseline:false}
     : {rows:baseline,baseline:true};
 }
+// Final placements include postseason results. KBO's franchise history also
+// resolves the overall order for the 1999–2000 split-league seasons.
+// Source: https://www.koreabaseball.com/Kbo/League/TeamHistory.aspx (1982–2024),
+// KBO official annual final standings (2025). Regular-season wins stay separate.
+const CAREER_FINAL_STANDINGS={"1982":{"삼성":2,"KIA":4,"롯데":5,"현대":6,"LG":3,"두산":1},"1983":{"삼성":4,"KIA":1,"롯데":6,"현대":3,"LG":2,"두산":5},"1984":{"삼성":2,"KIA":5,"롯데":1,"현대":6,"LG":4,"두산":3},"1985":{"삼성":1,"KIA":3,"롯데":2,"현대":6,"LG":5,"두산":4},"1986":{"삼성":2,"KIA":1,"롯데":5,"현대":6,"LG":3,"두산":4,"한화":7},"1987":{"삼성":2,"KIA":1,"롯데":3,"현대":7,"LG":5,"두산":4,"한화":6},"1988":{"삼성":4,"KIA":1,"롯데":3,"현대":7,"LG":6,"두산":5,"한화":2},"1989":{"삼성":4,"KIA":1,"롯데":7,"현대":3,"LG":6,"두산":5,"한화":2},"1990":{"삼성":2,"KIA":3,"롯데":6,"현대":5,"LG":1,"두산":7,"한화":4},"1991":{"삼성":3,"KIA":1,"롯데":4,"현대":5,"LG":6,"두산":8,"한화":2,"쌍방울":6},"1992":{"삼성":4,"KIA":3,"롯데":1,"현대":6,"LG":7,"두산":5,"한화":2,"쌍방울":8},"1993":{"삼성":2,"KIA":1,"롯데":6,"현대":8,"LG":4,"두산":3,"한화":5,"쌍방울":7},"1994":{"삼성":5,"KIA":4,"롯데":6,"현대":2,"LG":1,"두산":7,"한화":3,"쌍방울":8},"1995":{"삼성":5,"KIA":4,"롯데":2,"현대":7,"LG":3,"두산":1,"한화":6,"쌍방울":8},"1996":{"삼성":6,"KIA":1,"롯데":5,"현대":2,"LG":7,"두산":8,"한화":4,"쌍방울":3},"1997":{"삼성":4,"KIA":1,"롯데":8,"현대":6,"LG":2,"두산":5,"한화":7,"쌍방울":3},"1998":{"삼성":3,"KIA":5,"롯데":8,"현대":1,"LG":2,"두산":4,"한화":7,"쌍방울":6},"1999":{"삼성":4,"KIA":7,"롯데":2,"현대":5,"LG":6,"두산":3,"한화":1,"쌍방울":8},"2000":{"삼성":3,"KIA":6,"롯데":5,"현대":1,"LG":4,"두산":2,"한화":7,"SSG":8},"2001":{"삼성":2,"KIA":5,"롯데":8,"현대":3,"LG":6,"두산":1,"한화":4,"SSG":7},"2002":{"삼성":1,"KIA":3,"롯데":8,"현대":4,"LG":2,"두산":5,"한화":7,"SSG":6},"2003":{"삼성":4,"KIA":3,"롯데":8,"현대":1,"LG":6,"두산":7,"한화":5,"SSG":2},"2004":{"삼성":2,"KIA":4,"롯데":8,"현대":1,"LG":6,"두산":3,"한화":7,"SSG":5},"2005":{"삼성":1,"KIA":8,"롯데":5,"현대":7,"LG":6,"두산":2,"한화":4,"SSG":3},"2006":{"삼성":1,"KIA":4,"롯데":7,"현대":3,"LG":8,"두산":5,"한화":2,"SSG":6},"2007":{"삼성":4,"KIA":8,"롯데":7,"현대":6,"LG":5,"두산":2,"한화":3,"SSG":1},"2008":{"삼성":4,"KIA":6,"롯데":3,"LG":8,"두산":2,"한화":5,"SSG":1,"키움":7},"2009":{"삼성":5,"KIA":1,"롯데":4,"LG":7,"두산":3,"한화":8,"SSG":2,"키움":6},"2010":{"삼성":2,"KIA":5,"롯데":4,"LG":6,"두산":3,"한화":8,"SSG":1,"키움":7},"2011":{"삼성":1,"KIA":4,"롯데":3,"LG":6,"두산":5,"한화":6,"SSG":2,"키움":8},"2012":{"삼성":1,"KIA":5,"롯데":4,"LG":7,"두산":3,"한화":8,"SSG":2,"키움":6},"2013":{"삼성":1,"KIA":8,"롯데":5,"LG":3,"두산":2,"한화":9,"SSG":6,"키움":4,"NC":7},"2014":{"삼성":1,"KIA":8,"롯데":7,"LG":4,"두산":6,"한화":9,"SSG":5,"키움":2,"NC":3},"2015":{"삼성":2,"KIA":7,"롯데":8,"LG":9,"두산":1,"한화":6,"SSG":5,"키움":4,"NC":3,"KT":10},"2016":{"삼성":9,"KIA":5,"롯데":8,"LG":4,"두산":1,"한화":7,"SSG":6,"키움":3,"NC":2,"KT":10},"2017":{"삼성":9,"KIA":1,"롯데":3,"LG":6,"두산":2,"한화":8,"SSG":5,"키움":7,"NC":4,"KT":10},"2018":{"삼성":6,"KIA":5,"롯데":7,"LG":8,"두산":2,"한화":3,"SSG":1,"키움":4,"NC":10,"KT":9},"2019":{"삼성":8,"KIA":7,"롯데":10,"LG":4,"두산":1,"한화":9,"SSG":3,"키움":2,"NC":5,"KT":6},"2020":{"삼성":8,"KIA":6,"롯데":7,"LG":4,"두산":2,"한화":10,"SSG":9,"키움":5,"NC":1,"KT":3},"2021":{"삼성":3,"KIA":9,"롯데":8,"LG":4,"두산":2,"한화":10,"SSG":6,"키움":5,"NC":7,"KT":1},"2022":{"삼성":7,"KIA":5,"롯데":8,"LG":3,"두산":9,"한화":10,"SSG":1,"키움":2,"NC":6,"KT":4},"2023":{"삼성":8,"KIA":6,"롯데":7,"LG":1,"두산":5,"한화":9,"SSG":3,"키움":10,"NC":4,"KT":2},"2024":{"삼성":2,"KIA":1,"롯데":7,"LG":3,"두산":4,"한화":8,"SSG":6,"키움":10,"NC":9,"KT":5},"2025":{"LG":1,"한화":2,"SSG":3,"삼성":4,"NC":5,"KT":6,"롯데":7,"KIA":8,"두산":9,"키움":10}};
+function careerStandingsTeam(name){
+ return ({OB:'두산',오비:'두산',MBC:'LG',해태:'KIA',빙그레:'한화',SK:'SSG',우리:'키움',넥센:'키움',히어로즈:'키움',삼미:'현대',청보:'현대',태평양:'현대'})[name]||name;
+}
+function careerStandingsData(throughYear){
+ const teams=new Map(),years=[];
+ for(const year of Object.keys(KBO_OFFICIAL_RANK_BY_YEAR).map(Number).filter(y=>y>=1982&&y<=throughYear&&y<=TODAY.getFullYear()).sort((a,b)=>a-b)){
+  const snapshot=KBO_OFFICIAL_RANK_BY_YEAR[year];
+  if(snapshot?.source!=='kbo'||snapshot.scope!=='regular-season'||+snapshot.season!==year||!Array.isArray(snapshot.rows)||snapshot.rows.length<6)continue;
+  const names=new Set();
+  const valid=snapshot.rows.every(raw=>{
+   const name=careerStandingsTeam(S(raw.n||raw.team));
+   if(!name||names.has(name))return false;names.add(name);
+   return ['g','w','d','l'].every(k=>Number.isInteger(+raw[k])&&+raw[k]>=0)&&+raw.g===+raw.w + +raw.d + +raw.l;
+  });
+  if(!valid)continue;
+  years.push(year);
+  for(const raw of snapshot.rows){
+   const name=careerStandingsTeam(S(raw.n||raw.team));
+   if(!teams.has(name))teams.set(name,{n:name,g:0,w:0,d:0,l:0,seasons:0,rankTotal:0,rankYears:[]});
+   const row=teams.get(name);for(const k of ['g','w','d','l'])row[k]+=+raw[k];
+   // Never use an unfinished season's current or regular-season rank as final.
+   const rank=CAREER_FINAL_STANDINGS[year]?.[name];
+   if(Number.isInteger(rank)&&rank>0){row.seasons++;row.rankTotal+=rank;row.rankYears.push(year);}
+  }
+ }
+ const rows=[...teams.values()].map(r=>({...r,p:r.w+r.l?r.w/(r.w+r.l):0,average:r.seasons?r.rankTotal/r.seasons:null}));
+ rows.sort((a,b)=>a.average===null?(b.average===null?a.n.localeCompare(b.n,'ko'):1):b.average===null?-1:(a.rankTotal*b.seasons-b.rankTotal*a.seasons)||a.n.localeCompare(b.n,'ko'));
+ let previous=null,rank=0;
+ rows.forEach((r,index)=>{if(r.average===null){r.rank=null;return;}if(!previous||r.rankTotal*previous.seasons!==previous.rankTotal*r.seasons)rank=index+1;r.rank=rank;previous=r;});
+ return {rows,years,own:rows.find(r=>r.n==='두산'),rankYears:[...new Set(rows.flatMap(r=>r.rankYears))].sort((a,b)=>a-b)};
+}
+function careerStandingsHTML(throughYear){
+ const data=careerStandingsData(throughYear),own=data.own;
+ if(!own||!data.years.length)return '';
+ const range=years=>years.length===1?`${years[0]}년`:`${years[0]}~${years.at(-1)}년`;
+ const pct=value=>value===1?'1.000':value.toFixed(3).replace(/^0/,'');
+ const count=value=>value.toLocaleString('ko-KR');
+ const team=name=>name==='두산'?'두산베어스 (OB 포함)':name==='현대'?'현대유니콘스 계열':teamDisplayName(name);
+ return `<h2>통산 전적</h2>
+ <div class="card"><div class="meta"><span>OB·두산</span><span>${count(own.g)}경기 · ${count(own.w)}승 ${count(own.d)}무 ${count(own.l)}패</span><span>통산 승률</span><span>${pct(own.p)}</span></div><div class="foot">${range(data.years)} 정규리그 · 선택한 연도까지 합산</div></div>
+ <h2>통산 순위</h2>
+ <div class="card"><div class="recscroll record-scroll"><table style="min-width:620px"><tr><th>순위</th><th>구단</th><th>평균 최종 순위</th><th>시즌</th><th>승</th><th>무</th><th>패</th><th>승률</th></tr>
+ ${data.rows.map(r=>`<tr class="${r.n==='두산'?'me':''}"><td>${r.rank??'—'}</td><td>${esc(team(r.n))}</td><td>${r.average===null?'—':r.average.toFixed(3)+'위'}</td><td>${r.seasons}</td><td>${count(r.w)}</td><td>${count(r.d)}</td><td>${count(r.l)}</td><td>${pct(r.p)}</td></tr>`).join('')}</table></div>
+ <div class="foot">${data.rankYears.length?range(data.rankYears)+' 확정 최종 순위 기준 · ':''}평균이 낮을수록 상위예요. 포스트시즌 결과를 반영한 최종 순위의 합 ÷ 참가 시즌 수로 계산하며, 진행 중인 시즌은 평균에서 제외해요. 승·무·패는 ${range(data.years)} 정규리그 합계예요.</div>
+ <div class="foot">구단명 변경 전 기록 포함 · 현대는 삼미·청보·태평양 포함 · 현대와 키움, 쌍방울과 SSG는 별도 구단</div></div>`;
+}
+
 function standings(){
   const yr=String(stYear);
   const calc=games=>{
@@ -2019,6 +2071,7 @@ function standings(){
       </div>
     </div>
     ${historicalMatchupsHTML(stYear)}
+    ${careerStandingsHTML(stYear)}
 
   `;
 }
