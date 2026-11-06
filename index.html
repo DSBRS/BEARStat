@@ -12,6 +12,11 @@
 <title>BEARStat</title>
 <link rel="icon" type="image/png" href="./favicon.png">
 <link rel="apple-touch-icon" href="./favicon.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap" rel="stylesheet">
+
 <style>
 :root{box-sizing:border-box;--bg:#f4f5f9;--card:#fff;--ink:#14142b;--sub:#6b6f85;--line:#e6e8ef;--navy:#131230;--acc:#e5322d;--win:#1a7f4b;--lose:#c0392b;--chip:#eceefa;padding-top:env(safe-area-inset-top,0px)}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d0d1a;--card:#181829;--ink:#f1f2fa;--sub:#9a9eb6;--line:#2a2b40;--navy:#8f95ff;--chip:#24253d}}
@@ -6227,14 +6232,27 @@ const JERSEY_DIGITS={
 };
 function jerseyNameSVG(name,gold=false){
  if(!name)return '';
- const {glyphs,units}=jerseyGlyphs(),letters=[...name],advance=letters.reduce((sum,c)=>sum+(glyphs[c]?.w||units),0),gap=units*.13;
- const scale=Math.min(.026,104/(advance+Math.max(0,letters.length-1)*gap)),width=(advance+Math.max(0,letters.length-1)*gap)*scale;
- let x=110-width/2;
- return `<g fill="${gold?'#b48b3c':'#111321'}" stroke="${gold?'#866222':'#111321'}" stroke-width="${gold?'5':'3'}" paint-order="stroke fill">${letters.map((c,i)=>{
-  const glyph=glyphs[c],w=(glyph?.w||units)*scale,center=(i-(letters.length-1)/2),y=75-3*(1-Math.min(1,Math.abs(center)/Math.max(1,letters.length/2)));
-  const part=glyph?.d?`<path d="${glyph.d}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${scale.toFixed(5)} ${(-scale).toFixed(5)})"/>`:'';
-  x+=w+gap*scale;return part;
- }).join('')}</g>`;
+
+ const markName=jerseyMarkingName(name);
+
+ const size =
+  markName.length >= 6 ? 14 :
+  markName.length >= 5 ? 16 :
+  markName.length >= 4 ? 18 : 21;
+
+ return `<text
+  x="110"
+  y="76"
+  text-anchor="middle"
+  fill="${gold?'#b48b3c':'#111321'}"
+  stroke="${gold?'#866222':'#111321'}"
+  stroke-width="${gold?'1.2':'0.65'}"
+  paint-order="stroke fill"
+  font-family="'Black Han Sans', sans-serif"
+  font-size="${size}"
+  font-weight="400"
+  letter-spacing="1.2"
+ >${markName}</text>`;
 }
 function jerseyNumberSVG(number){
  const chars=[...String(number)],scaleX=chars.length===1?.80:chars.length===2?.59:.39,scaleY=.70,step=65,width=(chars.length*58+(chars.length-1)*7)*scaleX,start=110-width/2;
