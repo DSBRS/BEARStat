@@ -709,6 +709,17 @@ table th button,table td button{ text-align:center }
 @media(prefers-reduced-motion:reduce){.jersey-item{transition:none}.jersey-item:hover{transform:none}}
 
 </style>
+
+<style id="bearstat-mobile-primary-nav">
+@media(max-width:1023px){
+ body>nav>div{overflow:visible!important;justify-content:stretch!important;padding-inline:0!important}
+ body>nav a,body>nav a:last-child{flex:1 1 20%!important;min-width:0!important;padding:12px 2px!important;font-size:12px!important;white-space:nowrap!important}
+ .mobile-section-brand{align-items:flex-start;gap:14px}
+ .mobile-section-links{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:7px;padding-top:2px}
+ .mobile-section-links a{color:var(--sub);font-size:13px;font-weight:700;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+}
+@media(min-width:1024px){.mobile-section-links{display:none!important}}
+</style>
 </head>
 <body>
 <div id="app"></div>
@@ -1272,10 +1283,10 @@ document.addEventListener('click',event=>{
  route2();
 });
 function updateNavigation(r){
- const links=[['home','홈'],['standings','순위'],['h2h','맞대결'],['opponent','상대전적'],['records','개인기록'],['numbers','등번호'],['milestones','달성 기록'],['awards','수상 기록']];
- if(isOwner)links.push(['info','정보 입력']);
+ // Mobile bottom navigation intentionally stays limited to the five primary destinations.
+ const links=[['home','홈'],['standings','순위'],['h2h','맞대결'],['records','개인기록'],['numbers','등번호']];
  const nav=document.getElementById('nav');
- nav.dataset.owner=isOwner?'true':'false';
+ nav.dataset.owner='false';
  nav.innerHTML=links.map(([key,label])=>`<a href="#/${key==='home'?'':key}" class="${r===key?'on':''}"${r===key?' aria-current="page"':''}>${label}</a>`).join('');
 }
 
@@ -5828,6 +5839,9 @@ document.addEventListener('input',event=>{
 function recordMenuLayout(html,route){
  if(['admin','players','home','info','player-cards','numbers'].includes(route))return html;
  if(Object.hasOwn(playerTableSearch,route)){html=html.replace(/(<div class="brand">[\s\S]*?<\/div><\/div>)/,brand=>brand+playerSearchHTML(route));requestAnimationFrame(applyPlayerTableSearch)}
+ // Secondary mobile destinations live beside the page title instead of crowding the bottom bar.
+ if(route==='h2h')html=html.replace('<div class="brand"><div class="logo">맞대결</div></div>','<div class="brand mobile-section-brand"><div class="logo">맞대결</div><div class="mobile-section-links"><a href="#/opponent">상대전적 ›</a></div></div>');
+ if(route==='records')html=html.replace('<div class="brand"><div class="logo">개인기록</div></div>','<div class="brand mobile-section-brand"><div class="logo">개인기록</div><div class="mobile-section-links"><a href="#/milestones">달성기록 ›</a><a href="#/awards">수상기록 ›</a></div></div>');
  html=html.replace(/<div class="chips"[^>]*>([\s\S]*?)<\/div>/g,(whole,inside)=>{
   if(!inside.includes('class="chip')||inside.includes('data-recordscope=')||inside.includes('data-milescope='))return whole;
   const buttons=[...inside.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)];if(!buttons.length)return whole;
@@ -6153,21 +6167,57 @@ function desktopCareerRows(){
   }finally{[recScope,recSeason,recKind,recLeague]=previous}
  });
 }
+function desktopCurrentPlayerNameSet(){
+ return new Set((homeEntry?.players||HOME_ENTRY_SEED.players||[]).flatMap(player=>{
+  const name=S(player.n),names=[name];
+  if(name==='잭로그')names.push('잭 로그');
+  if(name==='타카다')names.push('타카다 타쿠토');
+  if(name==='벤자민')names.push('웨스 벤자민');
+  if(name==='세베리노')names.push('유니오 세베리노');
+  return names;
+ }));
+}
+function desktopPlayerPeriod(name,role,currentNames){
+ const normal=careerActivityPeriod(name,role,'bears').text;
+ if(!currentNames.has(name))return normal;
+ const candidates=careerCatalog().players.filter(p=>p.role===role&&(p.name===name||(p.aliases||[]).includes(name))&&!p.ambiguous);
+ const starts=[];
+ for(const entry of candidates){
+  for(const [a,b] of entry.bearsMembershipRanges||[])if(b===9999||b>=TODAY.getFullYear())starts.push(Number(a));
+  for(const match of String(entry.clubCareer||'').matchAll(/(?:OB\s*(?:-\s*두산\s*)?|두산\s*)베어스\s*\((\d{4})\s*~\s*\)/g))starts.push(Number(match[1]));
+  for(const year of entry.bearsSeasons||[])starts.push(Number(year));
+ }
+ const start=starts.filter(Number.isFinite).sort((a,b)=>a-b)[0];
+ if(start)return start+'년~';
+ const match=String(normal).match(/(\d{4})/);return match?match[1]+'년~':normal;
+}
+function desktopPlayerMetric(row){
+ if(row.role==='pitcher'){
+  const stats=row.stats||{},w=Number(stats.w)||0,saves=Number(stats.s)||0,holds=Number(stats.h)||0;
+  // Saves/holds identify bullpen roles; otherwise use wins for starters and swingmen.
+  if(saves>=Math.max(w,holds)&&saves>0)return ['s','세이브'];
+  if(holds>Math.max(w,saves)&&holds>0)return ['h','홀드'];
+  return ['w','승'];
+ }
+ const preferred={정수빈:['sb','도루'],조수행:['sb','도루'],김재환:['hr','홈런'],양의지:['hr','홈런'],양석환:['hr','홈런']};
+ return preferred[row.n]||['hit','안타'];
+}
 function desktopPlayerCardsHTML(){
  const query=desktopQuery.trim().replace(/\s+/g,'').toLowerCase();
  const all=desktopCareerRows().filter(row=>desktopRole==='all'||row.role===desktopRole);
  const matches=all.filter(row=>!query||row.n.replace(/\s+/g,'').toLowerCase().includes(query));
- const featured=['hitter:김재환','pitcher:곽빈','pitcher:김강률','hitter:고영민'];
+ const currentNames=desktopCurrentPlayerNameSet();
+ const featured=['pitcher:곽빈','pitcher:김택연','hitter:정수빈','hitter:박준순'];
  const sorted=query?matches.slice().sort((a,b)=>a.n.localeCompare(b.n,'ko')):matches.slice().sort((a,b)=>{
   const order=row=>{const key=row.role+':'+row.n;return featured.includes(key)?featured.indexOf(key):featured.length};
-  return order(a)-order(b)||a.n.localeCompare(b.n,'ko');
+  return order(a)-order(b)||Number(currentNames.has(b.n))-Number(currentNames.has(a.n))||a.n.localeCompare(b.n,'ko');
  });
  const shown=sorted.slice(0,query?12:4);
  return `<div class="desktop-player-grid">${shown.length?shown.map(row=>{
-  const key=row.role==='hitter'?(row.n==='고영민'?'sb':'hr'):(row.n==='김강률'?'s':'w'),label={hr:'홈런',sb:'도루',w:'승',s:'세이브'}[key];
-  const period=careerActivityPeriod(row.n,row.role,'bears').text;
+  const [key,label]=desktopPlayerMetric(row);
+  const period=desktopPlayerPeriod(row.n,row.role,currentNames);
   return `<button type="button" class="desktop-player-card" data-desktop-player="${esc(row.n)}" data-desktop-player-role="${row.role}" aria-label="${esc(row.n)} 베어스통산 기록 보기"><span class="desktop-player-role">${row.role==='hitter'?'타자':'투수'} · ${esc(period||'OB·두산')}</span><span class="desktop-player-name">${esc(row.n)}</span><span class="desktop-player-value">${personalCareerDisplay(row,key)}<small>${label}</small></span><span class="desktop-player-footer"><span>OB·두산 소속 기록</span><i aria-hidden="true">↗</i></span></button>`;
- }).join(''):'<div class="empty">일치하는 선수가 없어요. 이름이나 타자·투수 조건을 확인해 주세요.</div>'}</div><div class="desktop-player-status" role="status" aria-live="polite">${query?`${matches.length}명 검색${matches.length>shown.length?' · 먼저 '+shown.length+'명 표시':''}`:'베어스 유니폼과 함께한 선수들의 기록을 만나보세요.'}</div><div class="desktop-browse"><span>정규시즌 · 기존 베어스통산 집계 기준</span><button type="button" data-desktop-browse>전체 기록 보기 →</button></div>`;
+ }).join(''):'<div class="empty">일치하는 선수가 없어요. 이름이나 타자·투수 조건을 확인해 주세요.</div>'}</div><div class="desktop-player-status" role="status" aria-live="polite">${query?`${matches.length}명 검색${matches.length>shown.length?' · 먼저 '+shown.length+'명 표시':''}`:'현재 두산 선수부터 만나보세요.'}</div><div class="desktop-browse"><span>정규시즌 · 기존 베어스통산 집계 기준</span><button type="button" data-desktop-browse>전체 기록 보기 →</button></div>`;
 }
 function desktopHomeHTML(){
  if(!desktopMedia.matches)return '';
@@ -6236,9 +6286,9 @@ function jerseyNameSVG(name,gold=false){
  const markName=jerseyMarkingName(name);
 
  const size =
-  markName.length >= 6 ? 14 :
-  markName.length >= 5 ? 16 :
-  markName.length >= 4 ? 18 : 21;
+  markName.length >= 6 ? 16 :
+  markName.length >= 5 ? 18 :
+  markName.length >= 4 ? 20 : 23;
 
  return `<text
   x="110"
@@ -6646,3 +6696,5 @@ try{
 </script>
 </body>
 </html>
+
+
