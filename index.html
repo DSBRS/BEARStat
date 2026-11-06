@@ -6227,13 +6227,20 @@ const JERSEY_DIGITS={
 };
 function jerseyNameSVG(name,gold=false){
  if(!name)return '';
- const {glyphs,units}=jerseyGlyphs(),letters=[...name],advance=letters.reduce((sum,c)=>sum+(glyphs[c]?.w||units),0),gap=units*.13;
- const scale=Math.min(.026,104/(advance+Math.max(0,letters.length-1)*gap)),width=(advance+Math.max(0,letters.length-1)*gap)*scale;
+ const {glyphs,units}=jerseyGlyphs(),letters=[...name];
+ const gap=units*.16;
+ const advance=letters.reduce((sum,c)=>sum+(glyphs[c]?.w||units),0);
+ const total=advance+Math.max(0,letters.length-1)*gap;
+ const scale=Math.min(.026,104/total);
+ const width=total*scale;
  let x=110-width/2;
- return `<g fill="${gold?'#b48b3c':'#111321'}" stroke="${gold?'#866222':'#111321'}" stroke-width="${gold?'5':'3'}" paint-order="stroke fill">${letters.map((c,i)=>{
-  const glyph=glyphs[c],w=(glyph?.w||units)*scale,center=(i-(letters.length-1)/2),y=75-3*(1-Math.min(1,Math.abs(center)/Math.max(1,letters.length/2)));
-  const part=glyph?.d?`<path d="${glyph.d}" transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${scale.toFixed(5)} ${(-scale).toFixed(5)})"/>`:'';
-  x+=w+gap*scale;return part;
+ const y=73;
+
+ return `<g fill="${gold?'#b48b3c':'#111321'}" stroke="${gold?'#866222':'#111321'}" stroke-width="${gold?'5':'3'}" paint-order="stroke fill">${letters.map(c=>{
+  const glyph=glyphs[c],w=(glyph?.w||units)*scale;
+  const part=glyph?.d?`<path d="${glyph.d}" transform="translate(${x.toFixed(2)} ${y}) scale(${scale.toFixed(5)} ${(-scale).toFixed(5)})"/>`:'';
+  x+=w+gap*scale;
+  return part;
  }).join('')}</g>`;
 }
 function jerseyNumberSVG(number){
