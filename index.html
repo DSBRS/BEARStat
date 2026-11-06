@@ -409,6 +409,12 @@ select{border:1px solid var(--line,#dedee8);border-radius:10px;background-color:
 .record-opponent-pitcher{flex:0 1 auto;color:var(--sub);font-size:12px;font-weight:500;text-align:right;overflow-wrap:anywhere}.record-game-header>b .tag{display:inline-block;margin-left:4px;vertical-align:middle}
 table th,table td{ text-align:center!important;vertical-align:middle }
 table th button,table td button{ text-align:center }
+/* 구단명별 통산 순위: 가로 스크롤 시 순위·구단 열 고정 */
+.rank-table{border-collapse:separate;border-spacing:0}
+.rank-table th:nth-child(1),.rank-table td:nth-child(1){position:sticky;left:0;z-index:2;width:44px;min-width:44px;max-width:44px;background:var(--card)}
+.rank-table th:nth-child(2),.rank-table td:nth-child(2){position:sticky;left:44px;z-index:2;min-width:96px;white-space:nowrap;background:var(--card);box-shadow:6px 0 6px -6px rgba(0,0,0,.18)}
+.rank-table th:nth-child(1),.rank-table th:nth-child(2){z-index:3}
+.rank-table tr.me td:nth-child(1),.rank-table tr.me td:nth-child(2){background:var(--chip)}
 
 .personal-kind-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
 .matchup-play-row{width:100%;min-width:0}
@@ -2004,7 +2010,7 @@ function careerStandingsHTML(throughYear){
  return `<h2>통산 전적 · 통산 순위</h2>${filters}
  ${own?`<div class="card"><div class="meta"><span>OB·두산</span><span>${count(own.g)}경기 · ${count(own.w)}승 ${count(own.d)}무 ${count(own.l)}패</span><span>통산 승률</span><span>${pct(own.p)}</span></div><div class="foot">${range(data.years)} 정규리그 · ${system} · 선택한 연도까지 합산</div></div>`:''}
  <h2>구단명별 통산 순위 · ${scope} · ${system}</h2>
- <div class="card"><div class="recscroll record-scroll"><table style="min-width:620px"><tr><th>순위</th><th>구단</th><th>평균 최종 순위</th><th>시즌</th><th>승</th><th>무</th><th>패</th><th>승률</th></tr>
+ <div class="card"><div class="recscroll record-scroll"><table class="rank-table" style="min-width:620px"><tr><th>순위</th><th>구단</th><th>평균 최종 순위</th><th>시즌</th><th>승</th><th>무</th><th>패</th><th>승률</th></tr>
  ${data.rows.length?data.rows.map(r=>`<tr class="${r.n==='두산'?'me':''}"><td>${r.rank??'—'}</td><td>${esc(team(r.n))}</td><td>${r.average===null?'—':Math.round(r.average)+'위'}</td><td>${r.seasons}</td><td>${count(r.w)}</td><td>${count(r.d)}</td><td>${count(r.l)}</td><td>${pct(r.p)}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">선택한 조건에 해당하는 구단 기록이 없습니다.</td></tr>'}</table></div>
  <div class="foot">${data.rankYears.length?range(data.rankYears)+' 확정 최종 순위 기준 · ':''}평균 최종 순위는 반올림해 정수로 표시하고, 정렬은 반올림 전 평균을 기준으로 해요. 포스트시즌 결과를 반영한 최종 순위의 합 ÷ 참가 시즌 수로 계산하며, 진행 중인 시즌은 평균에서 제외해요. 승·무·패는 ${range(data.years)} 정규리그 합계예요.</div>
  <div class="foot">시즌 최종 구단명별 집계 · OB·두산만 합산 · 해태/KIA, MBC/LG, SK/SSG 등 이름 변경 전후 기록은 별도예요. 전체 구단을 선택하면 과거 이름의 구단도 볼 수 있어요.</div></div>`;
