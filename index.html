@@ -3253,7 +3253,7 @@ function playerSheetBaseHTML(){
     const r=pitcherDetail(playerSheet,pitcherHistoryRole);
     const boxes=recPitchTab==='result'
       ? [['games','경기수',r.g],['w','승',r.w],['l','패',r.l],['s','세이브',r.s],['h','홀드',r.h]]
-      : [['ip','이닝',r.ip],['era','평균자책점',r.era],['hits','피안타',r.hits],['homeRuns','피홈런',r.homeRuns],['strikeouts','탈삼진',r.strikeouts],...(recLeague==='futures'?[['fourBalls','4사구',r.fourBalls]]:[['walks','볼넷',r.walks],['hitByPitch','사구',r.hitByPitch]]),['runs','실점',r.runs],['earnedRuns','자책',r.earnedRuns]];
+      : [['w','승리',r.w],['l','패전',r.l],['h','홀드',r.h],['s','세이브',r.s],['ip','이닝',r.ip],['era','평균자책점',r.era],['hits','피안타',r.hits],['homeRuns','피홈런',r.homeRuns],['strikeouts','탈삼진',r.strikeouts],...(recLeague==='futures'?[['fourBalls','4사구',r.fourBalls]]:[['walks','볼넷',r.walks],['hitByPitch','사구',r.hitByPitch]]),['runs','실점',r.runs],['earnedRuns','자책',r.earnedRuns]];
     return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div>
       <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 ${recordLeagueLabel()}${recordSeasonLabel()?' · '+recordSeasonLabel():''} · ${recPitchTab==='result'?'승패 기록':'투구 기록'}${recPeriod==='season'?'':' · '+esc(recordPeriodLabel())}</div></div><button class="sheetclose" data-sheetclose>×</button></div>
       <div class="chips" style="margin-top:14px;margin-bottom:12px">${[['all','전체'],['start','선발'],['relief','구원']].map(([key,label])=>`<button type="button" class="chip${pitcherHistoryRole===key?' on':''}" data-prole="${key}" aria-pressed="${pitcherHistoryRole===key}">${label}</button>`).join('')}</div>
@@ -6223,7 +6223,7 @@ function isCareerScope(){return recScope==='career'||recScope==='bears'}
 function careerScopeLabel(){return recScope==='bears'?'베어스통산':'통산'}
 const CAREER_GAME_FIELDS={
  hitter:{pa:['plateAppearances','pa'],ab:['atBats','ab'],hit:['hits','hit'],d2:['doubles','d2'],d3:['triples','d3'],hr:['homeRuns','hr'],tb:['totalBases','tb'],rbi:['rbi'],runs:['runs'],sb:['stolenBases','sb'],cs:['caughtStealing','cs'],bb:['walks','bb'],hbp:['hitByPitch','hbp'],strikeouts:['strikeouts','strikeOuts','so'],gdp:['groundedIntoDoublePlay','gdp'],errors:['errors'],sf:['sacrificeFlies','sf']},
- pitcher:{cg:['completeGames','cg'],sho:['shutouts','sho'],tbf:['battersFaced','tbf','batters'],hits:['hits','hit'],homeRuns:['homeRuns','hr'],bb:['walks','bb'],hbp:['hitByPitch','hbp'],strikeouts:['strikeouts','strikeOuts','so'],runs:['runs'],er:['earnedRuns','er']}
+ pitcher:{cg:['completeGames','cg'],sho:['shutouts','sho'],tbf:['battersFaced','tbf','batters'],hits:['hits','hit'],homeRuns:['homeRuns','hr'],bb:['walks','bb'],hbp:['hitByPitch','hitBatters','hbp'],strikeouts:['strikeouts','strikeOuts','so'],runs:['runs'],er:['earnedRuns','er']}
 };
 function catalogCareerBaseline(role,name,scope='bears'){
  const candidates=careerCatalog().players.filter(p=>p.role===role&&(p.name===name||(p.aliases||[]).includes(name))&&!p.ambiguous);
