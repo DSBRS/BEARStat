@@ -6905,5 +6905,50 @@ try{
 
 }catch(e){}
 </script>
+<!-- Random Doosan bear decorations: display only -->
+<style id="doosan-bear-style">
+.doosan-bear-name{white-space:nowrap}
+.doosan-bear-icon{display:inline-block;width:27px;height:27px;margin-left:4px;vertical-align:-7px;line-height:1;pointer-events:none}
+.doosan-bear-icon svg{display:block;width:100%;height:100%;overflow:visible}
+</style>
+<script id="doosan-bear-decorator">
+(()=>{
+ const TARGET='두산베어스';
+ const VARIANTS=['A','C','D','F'];
+ const pick=()=>VARIANTS[Math.floor(Math.random()*VARIANTS.length)];
+ const svg=(v)=>{
+  if(v==='C')return `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="17" cy="22" r="9" fill="#F4C98A"/><circle cx="39" cy="22" r="9" fill="#F4C98A"/><circle cx="28" cy="35" r="21" fill="#F8D9A6"/><path d="M10 25c5-14 30-18 38-3l-4 6H13z" fill="#131E45"/><path d="M19 19c8-4 18-4 25 0" fill="none" stroke="#E31B23" stroke-width="3"/><text x="28" y="25" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="900" fill="#fff">D</text><circle cx="21" cy="36" r="2.2"/><circle cx="35" cy="36" r="2.2"/><ellipse cx="17" cy="42" rx="4" ry="2.4" fill="#F39AA8" opacity=".75"/><ellipse cx="39" cy="42" rx="4" ry="2.4" fill="#F39AA8" opacity=".75"/><path d="M25 42q3 4 6 0" fill="none" stroke="#5B3A29" stroke-width="2" stroke-linecap="round"/><path d="M48 18v37" stroke="#5B3A29" stroke-width="2.5"/><path d="M49 20h13l-3 7 3 7H49z" fill="#131E45"/><path d="M49 27h13" stroke="#E31B23" stroke-width="3"/><text x="55" y="26" text-anchor="middle" font-family="Arial,sans-serif" font-size="7" font-weight="900" fill="#fff">D</text><path d="M11 52q7-9 13 0M32 52q7-9 13 0" fill="#F4C98A"/></svg>`;
+  if(v==='D')return `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="18" cy="20" r="10" fill="#F4C98A"/><circle cx="46" cy="20" r="10" fill="#F4C98A"/><circle cx="32" cy="35" r="23" fill="#F8D9A6"/><path d="M13 24c6-14 31-16 39-2l-4 7H16z" fill="#131E45"/><text x="33" y="25" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="900" fill="#fff">D</text><circle cx="24" cy="37" r="2.2"/><circle cx="40" cy="37" r="2.2"/><ellipse cx="21" cy="44" rx="5" ry="3" fill="#F39AA8" opacity=".8"/><ellipse cx="43" cy="44" rx="5" ry="3" fill="#F39AA8" opacity=".8"/><path d="M29 43q3 4 6 0" fill="none" stroke="#5B3A29" stroke-width="2" stroke-linecap="round"/><ellipse cx="19" cy="55" rx="9" ry="6" fill="#F4C98A"/><ellipse cx="45" cy="55" rx="9" ry="6" fill="#F4C98A"/><path d="M54 13c3-5 8-1 5 3l-5 5-5-5c-3-4 2-8 5-3z" fill="#E31B23"/><path d="M8 30c2-4 6-1 4 2l-4 4-4-4c-2-3 2-6 4-2z" fill="#F39AA8"/></svg>`;
+  if(v==='F')return `<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="17" cy="20" r="9" fill="#F4C98A"/><circle cx="43" cy="20" r="9" fill="#F4C98A"/><circle cx="30" cy="34" r="21" fill="#F8D9A6"/><path d="M11 23c6-13 29-16 37-2l-4 7H14z" fill="#131E45"/><text x="30" y="24" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="900" fill="#fff">D</text><circle cx="23" cy="35" r="2.2"/><circle cx="37" cy="35" r="2.2"/><ellipse cx="20" cy="42" rx="4" ry="2.5" fill="#F39AA8" opacity=".75"/><ellipse cx="40" cy="42" rx="4" ry="2.5" fill="#F39AA8" opacity=".75"/><path d="M27 41q3 4 6 0" fill="none" stroke="#5B3A29" stroke-width="2" stroke-linecap="round"/><circle cx="48" cy="47" r="13" fill="#fff" stroke="#D8D8D8"/><path d="M41 37q5 4 2 9M55 39q-5 4-3 9M41 54q5-4 2-9M55 55q-5-4-3-9" fill="none" stroke="#E31B23" stroke-width="1.7" stroke-linecap="round"/><ellipse cx="37" cy="54" rx="6" ry="5" fill="#F4C98A"/></svg>`;
+  return `<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M7 18l-5-4M8 10L5 4M55 17l6-4M54 9l3-6" stroke="#E31B23" stroke-width="2.5" stroke-linecap="round"/><circle cx="18" cy="21" r="10" fill="#F4C98A"/><circle cx="46" cy="21" r="10" fill="#F4C98A"/><circle cx="32" cy="36" r="23" fill="#F8D9A6"/><circle cx="18" cy="21" r="5" fill="#E9A978"/><circle cx="46" cy="21" r="5" fill="#E9A978"/><path d="M12 25c6-15 32-18 40-3l-4 7H15z" fill="#131E45"/><path d="M20 18c8-4 18-4 25 0" fill="none" stroke="#E31B23" stroke-width="3"/><text x="32" y="25" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="900" fill="#fff">D</text><circle cx="24" cy="38" r="2.4"/><circle cx="40" cy="38" r="2.4"/><ellipse cx="20" cy="45" rx="5" ry="3" fill="#F39AA8" opacity=".8"/><ellipse cx="44" cy="45" rx="5" ry="3" fill="#F39AA8" opacity=".8"/><ellipse cx="32" cy="43" rx="3" ry="2.2" fill="#5B3A29"/><path d="M32 45q-4 5-8 1M32 45q4 5 8 1" fill="none" stroke="#5B3A29" stroke-width="2" stroke-linecap="round"/></svg>`;
+ };
+ function allowed(node){
+  const p=node&&node.parentElement;
+  return !!p&&!p.closest('script,style,textarea,select,option,input,[contenteditable="true"],.doosan-bear-name');
+ }
+ function decorateText(node){
+  if(!node||node.nodeType!==Node.TEXT_NODE||!node.nodeValue.includes(TARGET)||!allowed(node))return;
+  const parts=node.nodeValue.split(TARGET),frag=document.createDocumentFragment();
+  parts.forEach((part,i)=>{
+   if(i){const wrap=document.createElement('span');wrap.className='doosan-bear-name';wrap.append(document.createTextNode(TARGET));const icon=document.createElement('span');icon.className='doosan-bear-icon';icon.setAttribute('aria-hidden','true');icon.innerHTML=svg(pick());wrap.append(icon);frag.append(wrap)}
+   if(part)frag.append(document.createTextNode(part));
+  });
+  node.replaceWith(frag);
+ }
+ function decorateRoot(root){
+  if(!root)return;
+  if(root.nodeType===Node.TEXT_NODE){decorateText(root);return}
+  if(root.nodeType!==Node.ELEMENT_NODE||root.closest('.doosan-bear-name'))return;
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.nodeValue.includes(TARGET)&&allowed(n)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT});
+  const nodes=[];while(w.nextNode())nodes.push(w.currentNode);nodes.forEach(decorateText);
+ }
+ function start(){
+  decorateRoot(document.body);
+  const observer=new MutationObserver(records=>{for(const r of records)for(const n of r.addedNodes)decorateRoot(n)});
+  observer.observe(document.body,{childList:true,subtree:true});
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
+</script>
 </body>
 </html>
