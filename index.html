@@ -272,12 +272,12 @@ nav a:last-child{flex:1.35}
 #push_settings_slot .push-ticket-toggle span{flex:1;min-width:0}
 .notification-page-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
 .notification-page-heading h1{font-size:clamp(21px,5vw,28px)!important;white-space:nowrap;flex:0 1 auto;min-width:0}
-.notification-page-heading>a.btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:auto!important;max-width:none!important;margin:0!important;padding:11px 18px;white-space:nowrap}
+.notification-page-heading>a.btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:44px!important;height:44px!important;max-width:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:15px!important;background:#f0f1f3!important;color:#15191d!important;box-shadow:none!important;white-space:nowrap}
 @media(max-width:420px){
  #push_settings_slot .push-reminder-row{grid-template-columns:minmax(0,1fr) auto;gap:9px}
  #push_settings_slot .push-reminder-row .push-reminder-save{grid-column:1/-1;width:100%;margin:0}
  #push_settings_slot .push-reminder-panel{padding:13px}
- .notification-page-heading>a.btn{padding:9px 13px}
+ .notification-page-heading>a.btn{width:42px!important;height:42px!important;padding:0!important;border-radius:14px!important}
 }
 
 /* Independent notification controls */
@@ -2225,8 +2225,8 @@ function rememberPushEnabled(enabled){try{if(enabled)localStorage.setItem('bears
 function knownPushEnabled(){try{return 'Notification' in window&&Notification.permission==='granted'&&localStorage.getItem('bearstat-push-enabled-v1')==='1'}catch{return false}}
 const PUSH_CATEGORY_GROUPS=[
  ['베어스탯 소식', [['features','기능 추가 알림','새 기능과 개선 소식을 알려드려요.'],['records','기록 업데이트 알림','공개 경기 기록이 추가·수정되면 알려드려요.']]],
- ['경기 알림', [['kbo','야구 알림','두산 1군 경기 시작 전'],['futures','퓨처스 알림','퓨처스리그 경기 시작 전'],['edu','교육리그 알림','교육리그·연습경기 시작 전'],['handball','핸드볼 알림','두산 핸드볼 경기 시작 전'],['national','국가대표 알림','국가대표 경기와 대표팀 일정 시작 전']]],
- ['예매·행사·방송', [['ticket','티켓팅 알림','예매 시작 전 · 선택 시 정각에도 알림'],['club','구단 행사 알림','구단 공식 행사 시작 전'],['fan','팬 행사 알림','팬 행사·이벤트 시작 전'],['broadcast','방송 알림','방송 시작 전'],['radio','라디오·유튜브 알림','라디오·유튜브 일정 시작 전'],['etc','기타 일정 알림','그 밖의 등록된 일정 시작 전']]]
+ ['경기 알림', [['kbo','야구 알림','두산 1군 경기 시작 전·정각'],['futures','퓨처스 알림','퓨처스리그 경기 시작 전·정각'],['edu','교육리그 알림','교육리그·연습경기 시작 전·정각'],['handball','핸드볼 알림','두산 핸드볼 경기 시작 전·정각'],['national','국가대표 알림','국가대표 경기와 대표팀 일정 시작 전·정각']]],
+ ['예매·행사·방송', [['ticket','티켓팅 알림','예매 시작 전 · 시작 정각에도 알림'],['club','구단 행사 알림','구단 공식 행사 시작 전·정각'],['fan','팬 행사 알림','팬 행사·이벤트 시작 전·정각'],['broadcast','방송 알림','방송 시작 전·정각'],['radio','라디오·유튜브 알림','라디오·유튜브 일정 시작 전·정각'],['etc','기타 일정 알림','그 밖의 등록된 일정 시작 전·정각']]]
 ];
 const PUSH_CATEGORY_KEYS=PUSH_CATEGORY_GROUPS.flatMap(([,rows])=>rows.map(([key])=>key));
 function normalizePushCategories(value={},recordUpdates=true){return Object.fromEntries(PUSH_CATEGORY_KEYS.map(key=>[key,typeof value?.[key]==='boolean'?value[key]:key==='features'?false:key==='records'?recordUpdates!==false:true]));}
@@ -2248,7 +2248,7 @@ function pushSettingsHTML(){
  ${s.enabled?'<button type="button" class="btn g" data-push-test>이 기기로 테스트 알림 보내기</button>':''}
  ${s.enabled&&s.legacySubscription?'<p class="note">테스트 알림이 도착했다면 이전 알림 연결을 정리해주세요.</p><button type="button" class="btn g" data-push-stop-legacy>이전 서버 알림 정리</button>':''}
  ${pushCategorySettingsHTML()}
- <div class="push-reminder-panel"><div class="push-reminder-heading"><b>일정 시작 전 알림</b><span>선택한 경기·행사·방송·예매에 공통으로 적용해요.</span></div><div class="push-reminder-row"><input id="push-reminder-minutes" type="number" min="0" max="10080" step="1" inputmode="numeric" aria-label="알림 시간(분)" value="${s.reminderMinutes}"${disabled}><span class="push-reminder-unit">분 전</span></div><div class="push-reminder-hint">0분은 사전 알림 끄기 · 1분 단위, 최대 7일 전</div><label class="push-ticket-toggle"><input type="checkbox" data-push-ticket-start${s.ticketAtStart?' checked':''}${disabled}><span><b>티켓 예매 정각에도 알림</b><small>티켓팅 알림이 켜져 있을 때만 보내요.</small></span></label></div>
+ <div class="push-reminder-panel"><div class="push-reminder-heading"><b>일정 시작 전 알림</b><span>선택한 경기·행사·방송·예매에 공통으로 적용해요.</span></div><div class="push-reminder-row"><input id="push-reminder-minutes" type="number" min="0" max="10080" step="1" inputmode="numeric" aria-label="알림 시간(분)" value="${s.reminderMinutes}"${disabled}><span class="push-reminder-unit">분 전</span></div><div class="push-reminder-hint">0분은 사전 알림 끄기 · 1분 단위, 최대 7일 전</div><label class="push-ticket-toggle"><input type="checkbox" data-push-ticket-start${s.ticketAtStart?' checked':''}${disabled}><span><b>시작 정각에도 알림</b><small>선택한 경기·행사·방송·예매가 시작되는 시각에도 한 번 더 보내요.</small></span></label></div>
  <div class="push-preference-footer"><button type="button" class="btn" data-push-save-preferences${disabled}>${s.busy?'저장 중…':'선택한 알림 설정 저장'}</button><p class="note">${s.dirty?'변경한 설정을 저장해주세요.':!s.enabled?'선택을 저장한 뒤 이 기기 알림을 켜주세요.':'저장한 항목만 알림을 받아요.'}</p></div>
  <div class="note" role="status" aria-live="polite">${esc(s.message||(!s.ready&&s.supported?'알림 서버 연결을 확인하고 있어요.':''))}</div>
  <p class="note">지난 일정과 진행·종료·취소된 경기는 알리지 않아요. 기기와 네트워크 상태에 따라 도착이 늦어질 수 있어요.</p>
@@ -2336,7 +2336,7 @@ setTimeout(()=>void preparePush(),0);
 
 function notificationSettingsPage(){
  pushState.open=true;
- return `<div class="brand notification-page-heading"><h1 style="margin:0">알림 설정</h1><a class="btn g" href="#/">홈으로</a></div>${pushSettingsHTML()}`;
+ return `<div class="brand notification-page-heading"><h1 style="margin:0">알림 설정</h1><a class="btn g" href="#/" aria-label="홈으로"><svg width="25" height="25" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3.35 10.72 11.1 4.5a1.42 1.42 0 0 1 1.8 0l7.75 6.22a1 1 0 0 1-.63 1.78h-.77v6.08A2.42 2.42 0 0 1 16.83 21h-2.75v-5.05a2.08 2.08 0 0 0-4.16 0V21H7.17a2.42 2.42 0 0 1-2.42-2.42V12.5h-.77a1 1 0 0 1-.63-1.78Z"/></svg></a></div>${pushSettingsHTML()}`;
 }
 function capturePushPreferenceDraft(){
  const s=pushState,input=document.getElementById('push-reminder-minutes');
