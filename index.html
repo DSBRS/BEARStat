@@ -1868,19 +1868,25 @@ function validateReschedule(event){
 }
 // Confirmed KBO makeup dates. Keep the cancelled source game intact and only resolve its display/link.
 const CONFIRMED_RESCHEDULES=Object.freeze({
- '2026-07-22|KT':Object.freeze({date:'2026-09-19',time:'17:00',headerNo:0}),
- '2026-07-23|KT':Object.freeze({date:'2026-09-20',time:'14:00',headerNo:0})
+ '2026-04-09':Object.freeze({date:'2026-09-18'}),
+ '2026-05-20':Object.freeze({date:'2026-09-13'}),
+ '2026-07-22':Object.freeze({date:'2026-09-19'}),
+ '2026-07-23':Object.freeze({date:'2026-09-20'}),
+ '2026-08-04':Object.freeze({date:'2026-09-29'}),
+ '2026-08-05':Object.freeze({date:'2026-09-30'}),
+ '2026-08-06':Object.freeze({date:'2026-10-01'}),
+ '2026-08-07':Object.freeze({date:'2026-10-03'}),
+ '2026-08-08':Object.freeze({date:'2026-10-04'}),
+ '2026-08-09':Object.freeze({date:'2026-10-05'}),
+ '2026-08-22':Object.freeze({date:'2026-09-25'}),
+ '2026-08-28':Object.freeze({date:'2026-09-10'}),
+ '2026-09-25':Object.freeze({date:'2026-10-12'})
 });
-function rescheduleOpponentKey(value){
- const compact=S(value).replace(/\s+/g,'').toUpperCase();
- if(['KT','KT위즈','케이티','케이티위즈'].includes(compact))return 'KT';
- return compact;
-}
 function resolvedReschedule(event){
  const manual=event?.reschedule;
  if(manual&&validScheduleDate(manual.date))return manual;
  if(!event||event.type!=='kbo'||!isCancelled(event))return null;
- return CONFIRMED_RESCHEDULES[`${S(event.date)}|${rescheduleOpponentKey(event.opp)}`]||null;
+ return CONFIRMED_RESCHEDULES[S(event.date)]||null;
 }
 function rescheduleLabel(event){
  const next=resolvedReschedule(event);
