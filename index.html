@@ -272,12 +272,12 @@ nav a:last-child{flex:1.35}
 #push_settings_slot .push-ticket-toggle span{flex:1;min-width:0}
 .notification-page-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
 .notification-page-heading h1{font-size:clamp(21px,5vw,28px)!important;white-space:nowrap;flex:0 1 auto;min-width:0}
-.notification-page-heading>a.btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:44px!important;height:44px!important;max-width:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:15px!important;background:#f0f1f3!important;color:#15191d!important;box-shadow:none!important;white-space:nowrap}
+.notification-page-heading>a.btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:auto!important;max-width:none!important;margin:0!important;padding:11px 18px;white-space:nowrap}
 @media(max-width:420px){
  #push_settings_slot .push-reminder-row{grid-template-columns:minmax(0,1fr) auto;gap:9px}
  #push_settings_slot .push-reminder-row .push-reminder-save{grid-column:1/-1;width:100%;margin:0}
  #push_settings_slot .push-reminder-panel{padding:13px}
- .notification-page-heading>a.btn{width:42px!important;height:42px!important;padding:0!important;border-radius:14px!important}
+ .notification-page-heading>a.btn{padding:9px 13px}
 }
 
 /* Independent notification controls */
@@ -2177,7 +2177,7 @@ function calendar(){
   for(let i=0;i<42;i++){
     const d=addDays(start,i),ds=ymd(d);
     const dot=calendarMarks(eventsOnDate(ds).filter(isPublicScheduleEvent));
-    cells+=`<button class="d${d.getMonth()!==m?' o':''}${d.getDay()===0?' sun':''}${ds===TS?' today':''}${ds===sel?' sel':''}" data-d="${ds}">${d.getDate()}${dot}</button>`;
+    cells+=`<button class="d${d.getMonth()!==m?' o':''}${d.getDay()===0?' sun':''}${ds===TS?' today':''}${ds===sel?' sel':''}" data-d="${ds}"${reschedulesOnDate(ds).length?' aria-label="'+ds+' 재편성 경기 안내"':''}>${d.getDate()}${dot}${reschedulesOnDate(ds).length?'<span class="reschedule-dot" aria-hidden="true">↻</span>':''}</button>`;
   }
   return `<div class="card"><div class="calhead"><button class="ib" data-m="-1">‹</button><div class="calendar-period"><label class="calendar-period-select"><select id="calendar_jump_year" aria-label="캘린더 연도">${Array.from({length:Math.max(y,TODAY.getFullYear()+1)-Math.min(1982,y)+1},(_,i)=>Math.max(y,TODAY.getFullYear()+1)-i).map(v=>`<option value="${v}"${v===y?' selected':''}>${v}년</option>`).join('')}</select><span aria-hidden="true">⌄</span></label><span class="calendar-period-divider" aria-hidden="true"></span><label class="calendar-period-select"><select id="calendar_jump_month" aria-label="캘린더 월">${Array.from({length:12},(_,i)=>`<option value="${i+1}"${i===m?' selected':''}>${i+1}월</option>`).join('')}</select><span aria-hidden="true">⌄</span></label></div><span><button class="ib" data-m="0">오늘</button> <button class="ib" data-m="1">›</button></span></div>
   <div class="grid">${'일월화수목금토'.split('').map(x=>`<div class="dow">${x}</div>`).join('')}${cells}</div></div>`;
@@ -2225,8 +2225,8 @@ function rememberPushEnabled(enabled){try{if(enabled)localStorage.setItem('bears
 function knownPushEnabled(){try{return 'Notification' in window&&Notification.permission==='granted'&&localStorage.getItem('bearstat-push-enabled-v1')==='1'}catch{return false}}
 const PUSH_CATEGORY_GROUPS=[
  ['베어스탯 소식', [['features','기능 추가 알림','새 기능과 개선 소식을 알려드려요.'],['records','기록 업데이트 알림','공개 경기 기록이 추가·수정되면 알려드려요.']]],
- ['경기 알림', [['kbo','야구 알림','두산 1군 경기 시작 전·정각'],['futures','퓨처스 알림','퓨처스리그 경기 시작 전·정각'],['edu','교육리그 알림','교육리그·연습경기 시작 전·정각'],['handball','핸드볼 알림','두산 핸드볼 경기 시작 전·정각'],['national','국가대표 알림','국가대표 경기와 대표팀 일정 시작 전·정각']]],
- ['예매·행사·방송', [['ticket','티켓팅 알림','예매 시작 전 · 시작 정각에도 알림'],['club','구단 행사 알림','구단 공식 행사 시작 전·정각'],['fan','팬 행사 알림','팬 행사·이벤트 시작 전·정각'],['broadcast','방송 알림','방송 시작 전·정각'],['radio','라디오·유튜브 알림','라디오·유튜브 일정 시작 전·정각'],['etc','기타 일정 알림','그 밖의 등록된 일정 시작 전·정각']]]
+ ['경기 알림', [['kbo','야구 알림','두산 1군 경기 시작 전'],['futures','퓨처스 알림','퓨처스리그 경기 시작 전'],['edu','교육리그 알림','교육리그·연습경기 시작 전'],['handball','핸드볼 알림','두산 핸드볼 경기 시작 전'],['national','국가대표 알림','국가대표 경기와 대표팀 일정 시작 전']]],
+ ['예매·행사·방송', [['ticket','티켓팅 알림','예매 시작 전 · 선택 시 정각에도 알림'],['club','구단 행사 알림','구단 공식 행사 시작 전'],['fan','팬 행사 알림','팬 행사·이벤트 시작 전'],['broadcast','방송 알림','방송 시작 전'],['radio','라디오·유튜브 알림','라디오·유튜브 일정 시작 전'],['etc','기타 일정 알림','그 밖의 등록된 일정 시작 전']]]
 ];
 const PUSH_CATEGORY_KEYS=PUSH_CATEGORY_GROUPS.flatMap(([,rows])=>rows.map(([key])=>key));
 function normalizePushCategories(value={},recordUpdates=true){return Object.fromEntries(PUSH_CATEGORY_KEYS.map(key=>[key,typeof value?.[key]==='boolean'?value[key]:key==='features'?false:key==='records'?recordUpdates!==false:true]));}
@@ -2248,7 +2248,7 @@ function pushSettingsHTML(){
  ${s.enabled?'<button type="button" class="btn g" data-push-test>이 기기로 테스트 알림 보내기</button>':''}
  ${s.enabled&&s.legacySubscription?'<p class="note">테스트 알림이 도착했다면 이전 알림 연결을 정리해주세요.</p><button type="button" class="btn g" data-push-stop-legacy>이전 서버 알림 정리</button>':''}
  ${pushCategorySettingsHTML()}
- <div class="push-reminder-panel"><div class="push-reminder-heading"><b>일정 시작 전 알림</b><span>선택한 경기·행사·방송·예매에 공통으로 적용해요.</span></div><div class="push-reminder-row"><input id="push-reminder-minutes" type="number" min="0" max="10080" step="1" inputmode="numeric" aria-label="알림 시간(분)" value="${s.reminderMinutes}"${disabled}><span class="push-reminder-unit">분 전</span></div><div class="push-reminder-hint">0분은 사전 알림 끄기 · 1분 단위, 최대 7일 전</div><label class="push-ticket-toggle"><input type="checkbox" data-push-ticket-start${s.ticketAtStart?' checked':''}${disabled}><span><b>시작 정각에도 알림</b><small>선택한 경기·행사·방송·예매가 시작되는 시각에도 한 번 더 보내요.</small></span></label></div>
+ <div class="push-reminder-panel"><div class="push-reminder-heading"><b>일정 시작 전 알림</b><span>선택한 경기·행사·방송·예매에 공통으로 적용해요.</span></div><div class="push-reminder-row"><input id="push-reminder-minutes" type="number" min="0" max="10080" step="1" inputmode="numeric" aria-label="알림 시간(분)" value="${s.reminderMinutes}"${disabled}><span class="push-reminder-unit">분 전</span></div><div class="push-reminder-hint">0분은 사전 알림 끄기 · 1분 단위, 최대 7일 전</div><label class="push-ticket-toggle"><input type="checkbox" data-push-ticket-start${s.ticketAtStart?' checked':''}${disabled}><span><b>티켓 예매 정각에도 알림</b><small>티켓팅 알림이 켜져 있을 때만 보내요.</small></span></label></div>
  <div class="push-preference-footer"><button type="button" class="btn" data-push-save-preferences${disabled}>${s.busy?'저장 중…':'선택한 알림 설정 저장'}</button><p class="note">${s.dirty?'변경한 설정을 저장해주세요.':!s.enabled?'선택을 저장한 뒤 이 기기 알림을 켜주세요.':'저장한 항목만 알림을 받아요.'}</p></div>
  <div class="note" role="status" aria-live="polite">${esc(s.message||(!s.ready&&s.supported?'알림 서버 연결을 확인하고 있어요.':''))}</div>
  <p class="note">지난 일정과 진행·종료·취소된 경기는 알리지 않아요. 기기와 네트워크 상태에 따라 도착이 늦어질 수 있어요.</p>
@@ -2336,7 +2336,7 @@ setTimeout(()=>void preparePush(),0);
 
 function notificationSettingsPage(){
  pushState.open=true;
- return `<div class="brand notification-page-heading"><h1 style="margin:0">알림 설정</h1><a class="btn g" href="#/" aria-label="홈으로"><svg width="25" height="25" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3.35 10.72 11.1 4.5a1.42 1.42 0 0 1 1.8 0l7.75 6.22a1 1 0 0 1-.63 1.78h-.77v6.08A2.42 2.42 0 0 1 16.83 21h-2.75v-5.05a2.08 2.08 0 0 0-4.16 0V21H7.17a2.42 2.42 0 0 1-2.42-2.42V12.5h-.77a1 1 0 0 1-.63-1.78Z"/></svg></a></div>${pushSettingsHTML()}`;
+ return `<div class="brand notification-page-heading"><h1 style="margin:0">알림 설정</h1><a class="btn g" href="#/">홈으로</a></div>${pushSettingsHTML()}`;
 }
 function capturePushPreferenceDraft(){
  const s=pushState,input=document.getElementById('push-reminder-minutes');
@@ -2425,7 +2425,7 @@ function home(){
   <div class="desktop-home-grid"><section class="desktop-calendar"><h2 class="desktop-section-title">베어스 일정</h2>${scheduleSearchHTML()}${calendarLegendHTML()}
   ${calendar()}</section><section class="desktop-day">${desktopMedia.matches?homeTodayScheduleHTML():''}
   <h2>${sd.getMonth()+1}월 ${sd.getDate()}일 (${'일월화수목금토'[sd.getDay()]}) 일정</h2>
-  <div class="card">${evs.length?evs.map(evRow).join(''):'<div class="empty">일정이 없습니다.</div>'}</div>
+  ${rescheduleArrivalsHTML(sel)}<div class="card">${evs.length?evs.map(evRow).join(''):'<div class="empty">일정이 없습니다.</div>'}</div>
   ${homeNearMilestonesHTML()}</section></div>
   <div class="foot">${isOwner?'<a href="#/admin">관리자</a> · <a href="#/players">선수 관리</a>':''}</div>${gameBatterSheetHTML()}`;
 }
@@ -3471,25 +3471,6 @@ function situationRelayCandidates(name,stat){
  })).sort((a,b)=>b.date.localeCompare(a.date));
 }
 const RELAY_PLAYER_CACHE=new Map();
-const PERSISTED_RELAY_KEY='bearstat-relay-cache-v1';
-function restorePersistedRelays(){
- try{
-  const saved=JSON.parse(localStorage.getItem(PERSISTED_RELAY_KEY)||'{}');
-  for(const [id,relay] of Object.entries(saved.games||{}))if(relay?.schemaVersion===1&&Array.isArray(relay.plays))SITUATION_RELAY_CACHE.set(id,relay);
-  for(const [key,relay] of Object.entries(saved.players||{}))if(relay?.schemaVersion===1&&Array.isArray(relay.plays))RELAY_PLAYER_CACHE.set(key,relay);
- }catch{}
-}
-let persistRelayTimer=null;
-function persistRelaysSoon(){
- clearTimeout(persistRelayTimer);persistRelayTimer=setTimeout(()=>{
-  try{
-   const games=Object.fromEntries([...SITUATION_RELAY_CACHE].filter(([,relay])=>relay?.schemaVersion===1&&Array.isArray(relay.plays)));
-   const players=Object.fromEntries([...RELAY_PLAYER_CACHE].filter(([,relay])=>relay?.schemaVersion===1&&Array.isArray(relay.plays)));
-   localStorage.setItem(PERSISTED_RELAY_KEY,JSON.stringify({savedAt:Date.now(),games,players}));
-  }catch(error){console.warn('Relay cache save skipped:',error);}
- },250);
-}
-restorePersistedRelays();
 const STATIC_RELAY_YEARS=new Map();
 const STATIC_RELAY_INFLIGHT=new Map();
 
@@ -3523,7 +3504,7 @@ async function loadStaticRelayYear(year){
       /^\d{8}[A-Z0-9]+$/.test(String(relay.gameId||'')) &&
       Array.isArray(relay.plays)
      ){
-      SITUATION_RELAY_CACHE.set(relay.gameId,relay);persistRelaysSoon();
+      SITUATION_RELAY_CACHE.set(relay.gameId,relay);
      }
     }
 
@@ -3618,9 +3599,7 @@ function pumpRelayRequests(){
   });
  }
 }
-function isKboOffseason(){const month=TODAY.getMonth()+1;return month===11||month===12||month===1||month===2;}
 async function relayJSON(url,timeout,priority='interactive',requestKey=''){
- if(priority==='background'&&isKboOffseason())throw Error('비시즌에는 저장된 기록을 우선 사용합니다.');
  return relayRequest(async()=>{
   for(let attempt=0;attempt<2;attempt++){
    try{
@@ -3652,7 +3631,7 @@ async function primePlayerRelay(ids,name,role,priority='interactive'){
   if(!pending){
    pending=(async()=>{
     const b=await relayJSON(SUPABASE_URL+'/functions/v1/kbo-relay?'+query,20000,priority,key);
-    for(const game of b.games||[])if(chunk.includes(game.gameId)&&game.schemaVersion===1&&Array.isArray(game.plays))RELAY_PLAYER_CACHE.set(relayPlayerKey(game.gameId,name,role),game);persistRelaysSoon();
+    for(const game of b.games||[])if(chunk.includes(game.gameId)&&game.schemaVersion===1&&Array.isArray(game.plays))RELAY_PLAYER_CACHE.set(relayPlayerKey(game.gameId,name,role),game);
    })();
    RELAY_BATCH_INFLIGHT.set(key,pending);
   }
@@ -3673,7 +3652,7 @@ async function fetchSituationRelay(id,name,role,priority='interactive',force=fal
  const existing=cachedPlayerRelay(id,name,role);if(!force&&existing&&(SITUATION_RELAY_CACHE.has(id)||!((situationHistoryStat==='rbi'||playerHistoryStat==='rbi')&&(existing.validationVersion||0)<5)))return existing;
  const b=await relayJSON(SUPABASE_URL+'/functions/v1/kbo-relay?gameId='+encodeURIComponent(id),90000,priority,'game:'+id);
  if(b.schemaVersion!==1||b.gameId!==id||!Array.isArray(b.plays))throw Error('응답 기록 형식 또는 경기 ID 불일치');
- SITUATION_RELAY_CACHE.set(id,b);persistRelaysSoon();return b;
+ SITUATION_RELAY_CACHE.set(id,b);return b;
 }
 function relayPlayerAvailable(relay,id,name,role){
  const ourSide=id.slice(8,10)==='OB'?'away':'home',side=role==='hitter'?ourSide:(ourSide==='away'?'home':'away');
@@ -6379,7 +6358,7 @@ function careerActivityPeriod(name,role,scope,appearancesOnly=false){
  const entry=entries[0],years=new Set(scope==='bears'?entry?.bearsSeasons||[]:[...(entry?.careerSeasons||[]),...(entry?.bearsSeasons||[])]);
  const membership=(entry?.bearsMembershipRanges||[]).filter(([a,b])=>a<=TODAY.getFullYear()&&b>=a);
  if(scope==='bears'&&!appearancesOnly&&membership.length)return {text:membership.map(([a,b])=>b===9999?a+'년~':a===b?a+'년':a+'~'+Math.min(b,TODAY.getFullYear())+'년').join(' · '),basis:'OB·두산 소속 경력 기준'};
- if(scope!=='bears'&&!appearancesOnly&&entry?.active&&membership.some(([,b])=>b===9999))return {text:Math.min(...membership.map(([a])=>a))+'년~',basis:'KBO 소속 경력 기준'};
+ if(scope!=='bears'&&!appearancesOnly&&entry?.active&&membership.some(([,b])=>b===9999))return {text:Math.min(...membership.map(([a])=>a))+'년~현재',basis:'KBO 소속 경력 기준'};
  if(scope!=='bears')for(const [a,b] of membership){years.add(a);years.add(b)}
  const allNames=new Set([name,...entries.flatMap(p=>[p.name,...(p.aliases||[])])]);
  for(const event of Repo.all()){
@@ -6390,8 +6369,8 @@ function careerActivityPeriod(name,role,scope,appearancesOnly=false){
  }
  if(scope==='bears'&&!appearancesOnly&&entry?.clubCareer){
   const stints=[...entry.clubCareer.matchAll(/(?:OB\s*(?:-\s*두산\s*)?|두산\s*)베어스\s*\((\d{4})(?:\s*~\s*(\d{4})?)?\)/g)].map(match=>{
-   const a=Number(match[1]),open=match[0].includes('~')&&!match[2],b=match[0].includes('~')?Number(match[2]||TODAY.getFullYear()):a;
-   return open?a+'년~':a===b?a+'년':a+'~'+Math.min(b,TODAY.getFullYear())+'년';
+   const a=Number(match[1]),b=match[0].includes('~')?Number(match[2]||TODAY.getFullYear()):a;
+   return a===b?a+'년':a+'~'+Math.min(b,TODAY.getFullYear())+'년';
   });
   if(stints.length)return {text:stints.join(' · '),basis:'OB·두산 소속 경력 기준'};
  }
@@ -6481,18 +6460,6 @@ function desktopCareerRows(){
   }finally{[recScope,recSeason,recKind,recLeague]=previous}
  });
 }
-function desktopRepresentativeStat(row){
- const candidates=row.role==='hitter'
-  ?[['hit','안타'],['hr','홈런'],['sb','도루']]
-  :[['w','승'],['h','홀드'],['s','세이브']];
- // Candidate order is also the tie-break order requested for equal totals.
- let best=candidates[0],bestValue=-Infinity;
- for(const candidate of candidates){
-  const value=Number(row[candidate[0]]??0);
-  if(Number.isFinite(value)&&value>bestValue){best=candidate;bestValue=value;}
- }
- return {key:best[0],label:best[1]};
-}
 function desktopPlayerCardsHTML(){
  const query=desktopQuery.trim().replace(/\s+/g,'').toLowerCase();
  const all=desktopCareerRows().filter(row=>desktopRole==='all'||row.role===desktopRole);
@@ -6509,7 +6476,8 @@ function desktopPlayerCardsHTML(){
  });
  const shown=sorted.slice(0,query?12:4);
  return `<div class="desktop-player-grid">${shown.length?shown.map(row=>{
-  const representative=desktopRepresentativeStat(row),key=representative.key,label=representative.label;
+  const candidates=row.role==='hitter'?[['hit','안타'],['hr','홈런'],['sb','도루']]:[['w','승'],['h','홀드'],['s','세이브']];
+  const [key,label]=candidates.reduce((best,item)=>{const value=Number(personalCareerValue(row,item[0]));const bestValue=Number(personalCareerValue(row,best[0]));return Number.isFinite(value)&&(!Number.isFinite(bestValue)||value>bestValue)?item:best},candidates[0]);
   const period=careerActivityPeriod(row.n,row.role,'bears').text;
   return `<button type="button" class="desktop-player-card" data-desktop-player="${esc(row.n)}" data-desktop-player-role="${row.role}" aria-label="${esc(row.n)} 베어스통산 기록 보기"><span class="desktop-player-role">${row.role==='hitter'?'타자':'투수'} · ${esc(period||'OB·두산')}</span><span class="desktop-player-name">${esc(row.n)}</span><span class="desktop-player-value">${personalCareerDisplay(row,key)}<small>${label}</small></span><span class="desktop-player-footer"><span>OB·두산 소속 기록</span><i aria-hidden="true">↗</i></span></button>`;
  }).join(''):'<div class="empty">일치하는 선수가 없어요. 이름이나 타자·투수 조건을 확인해 주세요.</div>'}</div><div class="desktop-player-status" role="status" aria-live="polite">${query?`${matches.length}명 검색${matches.length>shown.length?' · 먼저 '+shown.length+'명 표시':''}`:'베어스 유니폼과 함께한 선수들의 기록을 만나보세요.'}</div><div class="desktop-browse"><span>정규시즌 · 기존 베어스통산 집계 기준</span><button type="button" data-desktop-browse>전체 기록 보기 →</button></div>`;
@@ -7003,10 +6971,10 @@ try{
 </script>
 <!-- doosan-approved-bear-decorator -->
 <style>
-.doosan-bear-name{white-space:nowrap;display:inline-block;overflow:visible;padding-right:0}
-.doosan-bear-icon{display:inline-block;width:38px;height:38px;margin-left:4px;margin-right:0;vertical-align:-11px;pointer-events:none;user-select:none;overflow:visible}
+.doosan-bear-name{white-space:nowrap;display:inline-block;overflow:visible;padding-right:8px}
+.doosan-bear-icon{display:inline-block;width:44px;height:38px;margin-left:5px;margin-right:4px;vertical-align:-11px;pointer-events:none;user-select:none;overflow:visible}
 .doosan-bear-icon img{display:block;width:38px;height:38px;object-fit:contain;overflow:visible}
-@media (max-width:640px){.doosan-bear-name{padding-right:0}.doosan-bear-icon{width:32px;height:32px;margin-left:3px;margin-right:0;vertical-align:-10px}.doosan-bear-icon img{width:32px;height:32px}}
+@media (max-width:640px){.doosan-bear-name{padding-right:5px}.doosan-bear-icon{width:38px;height:32px;margin-left:4px;margin-right:2px;vertical-align:-10px}.doosan-bear-icon img{width:32px;height:32px}}
 </style>
 <script>
 (()=>{
