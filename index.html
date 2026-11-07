@@ -703,6 +703,8 @@ table th button,table td button{ text-align:center }
 .jersey-history-row small{font-size:10px;color:var(--sub);font-weight:400}
 .jersey-history-row.selected{background:var(--chip);border-left:3px solid var(--acc);padding-left:7px}
 .jersey-season-badge{display:inline-block;font-size:9px;font-weight:700;color:var(--navy);padding:3px 6px;border-radius:4px;background:var(--card);white-space:nowrap}
+.jersey-coach-badge{display:inline-block;font-size:8px;font-weight:650;color:var(--sub);padding:2px 5px;border-radius:5px;background:color-mix(in srgb,var(--line) 42%,transparent);white-space:nowrap;vertical-align:1px}
+.jersey-person-button{appearance:none;border:0;background:none;padding:0;color:inherit;font:inherit;font-weight:inherit;cursor:pointer;text-align:left}.jersey-person-button:hover{text-decoration:underline;text-underline-offset:3px}.jersey-person-history{margin:14px 0 20px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}.jersey-person-history h4{margin:0 0 9px;font-size:14px}.jersey-person-history p{margin:0;font-size:12px;line-height:1.8;color:var(--sub)}
 .jersey-no-history{font-size:13px;line-height:1.8;color:var(--sub);margin:20px 0}
 .jersey-detail-source{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:22px;font-size:10px;color:var(--sub);line-height:1.8}
 @media(min-width:1024px){
@@ -6231,7 +6233,14 @@ function catalogCareerBaseline(role,name,scope='bears'){
  return {schemaVersion:2,scope,name,role,baselineYear:careerCatalog().baselineYear,baseline};
 }
 function resolvedCareerBaseline(role,name,scope){
- return CAREER_BASELINES[baselineKey(role,name,scope)]||catalogCareerBaseline(role,name,scope);
+ const saved=CAREER_BASELINES[baselineKey(role,name,scope)],catalog=catalogCareerBaseline(role,name,scope);
+ if(!saved)return catalog;
+ if(!catalog)return saved;
+ // Keep manually saved values, but backfill fields that older saved baselines never stored.
+ // This prevents CS/SO/GDP/E/SF and derived OBP/OPS from becoming — just because an old KV row is incomplete.
+ const baseline={...catalog.baseline};
+ for(const [key,value] of Object.entries(saved.baseline||{}))if(value!==null&&value!==undefined&&value!=='')baseline[key]=value;
+ return {...catalog,...saved,baselineYear:Math.max(Number(catalog.baselineYear)||0,Number(saved.baselineYear)||0),baseline};
 }
 function personalRegularCareerRows(role=recKind,post=false){
  const games=Repo.all().filter(e=>!e.demo&&e.type==='kbo'&&!isCancelled(e)&&!isExhibition(e)&&hasScore(e)&&S(e.date)<=TS&&(post?(isPostseasonRecord(e)&&recordPostStageMatches(e)):(!isPostseasonRecord(e)&&recordRegularGame(e))));
@@ -6591,7 +6600,7 @@ function jerseyNumberSVG(number){
  }).join('')}</g>`;
 }
 function jerseySVG(number,name,gold=false){
- return `<svg class="jersey-icon" viewBox="0 0 220 230" aria-hidden="true" focusable="false"><path class="jersey-ground" d="M58 216Q110 226 162 216" fill="none" stroke="currentColor" opacity=".08" stroke-width="5" stroke-linecap="round"/><path d="M54 29L86 20Q110 31 134 20L166 29L214 54L198 92L170 79V204Q110 220 50 204V79L22 92L6 54Z" fill="#fbfbfa" stroke="#d3d5dc" stroke-width="1.7" stroke-linejoin="round"/><path d="M86 20Q110 32 134 20L130 29Q110 39 90 29Z" fill="#eeeff0" stroke="#c6c8d0" stroke-width="1.1"/><path d="M13 69L24 88M207 69L196 88" stroke="#17182b" stroke-width="5"/><path d="M17 73L26 88M203 73L194 88" stroke="#fff" stroke-width="1.5"/><path d="M54 29L50 79M166 29L170 79M58 87V197M162 87V197" stroke="#e8e9ed" fill="none" stroke-width="1"/><path d="M53 198Q110 213 167 198" stroke="#e0e2e7" fill="none" stroke-width="1.2"/>${jerseyNameSVG(name,gold)}${jerseyNumberSVG(number)}</svg>`;
+ return `<svg class="jersey-icon" viewBox="0 0 220 230" aria-hidden="true" focusable="false"><path class="jersey-ground" d="M58 216Q110 226 162 216" fill="none" stroke="currentColor" opacity=".08" stroke-width="5" stroke-linecap="round"/><path d="M42 31L82 20Q110 31 138 20L178 31L216 49L204 91L174 82V191Q174 213 154 222Q110 238 66 222Q46 213 46 191V82L16 91L4 49Z" fill="#fbfbfa" stroke="#d3d5dc" stroke-width="1.7" stroke-linejoin="round"/><path d="M86 20Q110 32 134 20L130 29Q110 39 90 29Z" fill="#eeeff0" stroke="#c6c8d0" stroke-width="1.1"/><path d="M13 69L24 88M207 69L196 88" stroke="#17182b" stroke-width="5"/><path d="M17 73L26 88M203 73L194 88" stroke="#fff" stroke-width="1.5"/><path d="M42 31L46 82M178 31L174 82M52 88V190M168 88V190" stroke="#e8e9ed" fill="none" stroke-width="1"/><path d="M48 192Q52 218 110 228Q168 218 172 192" stroke="#e0e2e7" fill="none" stroke-width="1.2"/>${jerseyNameSVG(name,gold)}${jerseyNumberSVG(number)}</svg>`;
 }
 function jerseyAssignments(number,season=jerseySeason){
  return jerseyData().records.filter(row=>{
@@ -6613,11 +6622,19 @@ function jerseyAssignments(number,season=jerseySeason){
 function jerseyRetirement(number,season=jerseySeason){const record=jerseyData().retired[number];return record&&(season==='current'||Number(season)>=record.since)?record:null}
 function jerseyDisplayName(row){
  if(!row)return '';
- return row.name+(['코치','감독'].includes(row.role)?` · ${row.role}`:'');
+ return row.name;
 }
 function jerseyPeriod(row){const start=row.start.replaceAll('-','.');return row.end===row.start?start: start+'–'+(row.end?row.end.replaceAll('-','.'):'현재')}
 function jerseyRecentFirst(rows){const order=new Map(jerseyData().records.map((row,i)=>[row,i]));return rows.slice().sort((a,b)=>Number(b.start.slice(0,4))-Number(a.start.slice(0,4))||order.get(b)-order.get(a))}
 function jerseyHistory(number){return jerseyRecentFirst(jerseyData().records.filter(row=>row.number===number))}
+let jerseyPersonOpen='';
+function jerseyPersonHistory(name){return jerseyRecentFirst(jerseyData().records.filter(row=>row.name===name))}
+function jerseyRoleBadge(row){return row&&['코치','감독'].includes(row.role)?`<span class="jersey-coach-badge">${esc(row.role)}</span>`:''}
+function jerseyPersonHistoryHTML(){
+ if(!jerseyPersonOpen)return '';
+ const rows=jerseyPersonHistory(jerseyPersonOpen);
+ return `<div class="jersey-person-history"><h4>${esc(jerseyPersonOpen)} · 사용 등번호</h4><p>${rows.length?rows.map(row=>`No. ${esc(row.number)} · ${esc(jerseyPeriod(row))}${row.role?` · ${esc(row.role)}`:''}`).join('<br>'):'확인된 등번호 이력이 없어요.'}</p></div>`;
+}
 function jerseyNumbers(){return ['0',...Array.from({length:199},(_,i)=>String(i+1)),...Array.from({length:10},(_,i)=>'0'+i)]}
 function jerseySelectedNumbers(){
  const query=jerseyQuery.trim().replace(/\s/g,'').toLowerCase();
@@ -6648,18 +6665,19 @@ function jerseyModalHTML(){
  if(jerseyOpen===null)return '';
  const number=jerseyOpen,rows=jerseyHistory(number),assigned=jerseyAssignments(number),retired=jerseyRetirement(number),current=jerseyAssignments(number,'current'),head=retired?.name||jerseyRecentFirst(assigned)[0]?.name||'';
  const official=jerseyData().officialChecks?.find(check=>check.number===number);
- return `<div class="sheetback jersey-modal" data-jersey-back><section class="sheet jersey-sheet" role="dialog" aria-modal="true" aria-labelledby="jersey-dialog-title" tabindex="-1"><div class="jersey-sheet-top"><div><p>NUMBER ARCHIVE</p><h2 id="jersey-dialog-title">${number}번의 역사</h2></div><button type="button" class="jersey-close" data-jersey-close aria-label="등번호 상세 닫기">×</button></div><div class="jersey-sheet-profile">${jerseySVG(number,jerseyMarkingName(head),!!retired)}<div>${retired?`<span class="jersey-gold-label">영구결번 · ${retired.since}년 지정</span><h3>${esc(retired.name)}</h3><a class="jersey-small-link" href="${esc(retired.source)}" target="_blank" rel="noopener noreferrer">지정 기록 ↗</a>`:`<p>${jerseySeason==='current'?'현재 사용자 · 자료 기준':jerseySeason+' 시즌 사용자'}</p>${assigned.length?assigned.map(row=>`<div class="jersey-assignment"><b>${esc(jerseyDisplayName(row))}</b><span>${esc(jerseyPeriod(row))}</span></div>`).join(''):'<h3>확인된 배정 없음</h3>'}`}${jerseySeason!=='current'&&!retired?`<div class="jersey-present-note">현재 · ${current.length?current.map(r=>esc(jerseyDisplayName(r))).join(', '):jerseyData().retired[number]?'영구결번':'확인된 배정 없음'}</div>`:''}</div></div><div class="jersey-history-heading"><h3>확인된 역대 사용자</h3><span>${new Set(rows.map(r=>r.name)).size}명 · ${rows.length}개 기간</span></div><div class="jersey-history-list">${rows.length?rows.map(row=>{const selected=assigned.includes(row);return `<article class="jersey-history-row${selected?' selected':''}"><div><b>${esc(jerseyDisplayName(row))}</b>${row.role&&!['코치','감독'].includes(row.role)?`<small>${esc(row.role)}</small>`:''}${selected?`<span class="jersey-season-badge">${jerseySeason==='current'?'현재':jerseySeason+' 시즌'}</span>`:''}</div><span>${esc(jerseyPeriod(row))}</span></article>`}).join(''):'<p class="jersey-no-history">이 번호의 확인된 사용 기록이 없어요. 사용자가 없었다는 뜻은 아니에요.</p>'}</div><footer class="jersey-detail-source"><span>자료 기준 ${jerseyData().asOf.replaceAll('-','.')}</span><a href="${esc(jerseyData().source)}" target="_blank" rel="noopener noreferrer">전체 이력 출처 ↗</a>${official?`<a href="${esc(official.source)}" target="_blank" rel="noopener noreferrer">${esc(official.name)} KBO 대조 ↗</a>`:''}</footer></section></div>`;
+ return `<div class="sheetback jersey-modal" data-jersey-back><section class="sheet jersey-sheet" role="dialog" aria-modal="true" aria-labelledby="jersey-dialog-title" tabindex="-1"><div class="jersey-sheet-top"><div><p>NUMBER ARCHIVE</p><h2 id="jersey-dialog-title">${number}번의 역사</h2></div><button type="button" class="jersey-close" data-jersey-close aria-label="등번호 상세 닫기">×</button></div><div class="jersey-sheet-profile">${jerseySVG(number,jerseyMarkingName(head),!!retired)}<div>${retired?`<span class="jersey-gold-label">영구결번 · ${retired.since}년 지정</span><h3>${esc(retired.name)}</h3><a class="jersey-small-link" href="${esc(retired.source)}" target="_blank" rel="noopener noreferrer">지정 기록 ↗</a>`:`<p>${jerseySeason==='current'?'현재 사용자 · 자료 기준':jerseySeason+' 시즌 사용자'}</p>${assigned.length?assigned.map(row=>`<div class="jersey-assignment"><b><button type="button" class="jersey-person-button" data-jersey-person="${encodeURIComponent(row.name)}">${esc(jerseyDisplayName(row))}</button> ${jerseyRoleBadge(row)}</b><span>${esc(jerseyPeriod(row))}</span></div>`).join(''):'<h3>확인된 배정 없음</h3>'}`}${jerseySeason!=='current'&&!retired?`<div class="jersey-present-note">현재 · ${current.length?current.map(r=>esc(jerseyDisplayName(r))).join(', '):jerseyData().retired[number]?'영구결번':'확인된 배정 없음'}</div>`:''}</div></div>${jerseyPersonHistoryHTML()}<div class="jersey-history-heading"><h3>확인된 역대 사용자</h3><span>${new Set(rows.map(r=>r.name)).size}명 · ${rows.length}개 기간</span></div><div class="jersey-history-list">${rows.length?rows.map(row=>{const selected=assigned.includes(row);return `<article class="jersey-history-row${selected?' selected':''}"><div><b><button type="button" class="jersey-person-button" data-jersey-person="${encodeURIComponent(row.name)}">${esc(jerseyDisplayName(row))}</button></b>${jerseyRoleBadge(row)}${row.role&&!['코치','감독'].includes(row.role)?`<small>${esc(row.role)}</small>`:''}${selected?`<span class="jersey-season-badge">${jerseySeason==='current'?'현재':jerseySeason+' 시즌'}</span>`:''}</div><span>${esc(jerseyPeriod(row))}</span></article>`}).join(''):'<p class="jersey-no-history">이 번호의 확인된 사용 기록이 없어요. 사용자가 없었다는 뜻은 아니에요.</p>'}</div><footer class="jersey-detail-source"><span>자료 기준 ${jerseyData().asOf.replaceAll('-','.')}</span><a href="${esc(jerseyData().source)}" target="_blank" rel="noopener noreferrer">전체 이력 출처 ↗</a>${official?`<a href="${esc(official.source)}" target="_blank" rel="noopener noreferrer">${esc(official.name)} KBO 대조 ↗</a>`:''}</footer></section></div>`;
 }
 function jerseyView(){
  const data=jerseyData();
  return `<div class="jersey-page"><div class="jersey-page-heading"><div><p>BEARS / NUMBER ARCHIVE</p><h1>등번호</h1><span>하나의 번호, 그 뒤에 남은 이름들.</span></div><div class="jersey-years">OB · 두산 베어스<br><b>1982–${data.maxYear}</b></div></div><div class="jersey-toolbar"><label class="jersey-year-control" for="jersey-season"><span>시즌 선택</span><select id="jersey-season"><option value="current"${jerseySeason==='current'?' selected':''}>현재 · 자료 기준</option>${Array.from({length:data.maxYear-data.minYear+1},(_,i)=>data.maxYear-i).map(year=>`<option value="${year}"${String(year)===jerseySeason?' selected':''}>${year}년 ${year<1999?'OB':'두산'}</option>`).join('')}</select></label><label class="jersey-search-control" for="jersey-search"><span>등번호 · 역대 사용자 검색</span><input type="search" id="jersey-search" placeholder="예: 31, 정수빈" value="${esc(jerseyQuery)}" autocomplete="off" aria-controls="jersey-grid"></label></div><div class="jersey-range" role="group" aria-label="등번호 범위">${[['all','전체'],['low','1–49'],['mid','50–99'],['high','100번대'],['retired','영구결번'],['extra','0·00번대']].map(([key,label])=>`<button type="button" data-jersey-range="${key}" aria-pressed="${jerseyRange===key}">${label}</button>`).join('')}</div><div class="jersey-section-head"><h2>${jerseySeason==='current'?'현재 등번호 배정':jerseySeason+'년 등번호 배정'}</h2><span id="jersey-result-count" role="status" aria-live="polite">${jerseySelectedNumbers().length}개 번호</span></div><p class="jersey-view-note">${jerseySeason==='current'?'현재 이름은 '+data.asOf.replaceAll('-','.')+' 자료 기준':'시즌 중 변경된 번호는 상세에서 모든 사용자를 확인할 수 있어요.'} · 이름이 없는 번호는 배정 자료 미확인</p><div class="jersey-grid" id="jersey-grid">${jerseyGridHTML()}</div>${jerseySourcesHTML()}</div>${jerseyModalHTML()}`;
 }
 function refreshJerseyGrid(){const grid=document.getElementById('jersey-grid');if(grid){grid.innerHTML=jerseyGridHTML();document.getElementById('jersey-result-count').textContent=jerseySelectedNumbers().length+'개 번호'}}
-function closeJerseyModal(){const number=jerseyOpen;jerseyOpen=null;route2();requestAnimationFrame(()=>document.querySelector(`[data-jersey-open="${number}"]`)?.focus())}
+function closeJerseyModal(){const number=jerseyOpen;jerseyOpen=null;jerseyPersonOpen='';route2();requestAnimationFrame(()=>document.querySelector(`[data-jersey-open="${number}"]`)?.focus())}
 document.addEventListener('input',event=>{if(event.target.id==='jersey-search'){jerseyQuery=event.target.value;refreshJerseyGrid()}});
-document.addEventListener('change',event=>{if(event.target.id==='jersey-season'){jerseySeason=event.target.value;jerseyOpen=null;route2()}});
+document.addEventListener('change',event=>{if(event.target.id==='jersey-season'){jerseySeason=event.target.value;jerseyOpen=null;jerseyPersonOpen='';route2()}});
 document.addEventListener('click',event=>{
- const item=event.target.closest('[data-jersey-open]');if(item){jerseyOpen=item.dataset.jerseyOpen;route2();requestAnimationFrame(()=>document.querySelector('[data-jersey-close]')?.focus());return;}
+ const person=event.target.closest('[data-jersey-person]');if(person){event.preventDefault();event.stopPropagation();jerseyPersonOpen=decodeURIComponent(person.dataset.jerseyPerson);route2();return;}
+ const item=event.target.closest('[data-jersey-open]');if(item){jerseyPersonOpen='';jerseyOpen=item.dataset.jerseyOpen;route2();requestAnimationFrame(()=>document.querySelector('[data-jersey-close]')?.focus());return;}
  if(event.target.closest('[data-jersey-close]')||event.target.matches('[data-jersey-back]')){closeJerseyModal();return;}
  const range=event.target.closest('[data-jersey-range]');if(range){jerseyRange=range.dataset.jerseyRange;route2();}
 });
