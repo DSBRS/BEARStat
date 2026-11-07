@@ -1,64 +1,3 @@
-
-이전 메시지 불러오는 중…
-ㅇㅇ 미정인거 뭐잇냐고 니가 못찾은거 없으면 ㅇ텍파 내놔
-응. 못 찾은 재편성일 없어. 2026 두산 취소 경기 목록 전부 대조했고, 네가 알려준 9/25 → 10/12까지 일치해. 
-
-텍파에 전부 반영했어. 기존 분리된 곰 A/C/D/F 수정도 그대로 유지했고, 재편성은 상대팀 하드코딩이 아니라 취소 날짜 기준 전체 매핑으로 바꿨어.
-
-특히 8/22 → 9/25, 9/25 → 10/12는 각각 따로 들어가 있어.
-
-
-bearstat-reschedules-complete.txt
-문서
-킁 왜 안뜨지
-아 원인 하나 찾았어. 재편성 매핑은 들어가 있었는데, 불러온 일정의 날짜/종류 형식이 조금만 달라도 매핑을 못 타는 구조였어. 그래서 날짜를 정규화해서 매칭하도록 바꿨고, 확정 매핑이 있으면 일정 타입 표현이 달라도 표시되게 수정했어.
-
-특히:
-
-8/22 → 9/25
-9/25 → 10/12
-기존 확정 재편성일 전부 유지
-곰 A/C/D/F 분리본도 그대로 유지
-이번 파일은 내가 실제 코드 블록까지 다시 열어서 매핑 함수가 들어간 거 확인했어.
-
-
-bearstat-reschedules-display-fixed.txt
-문서
-아니 내 말은 그게 아니라 폰에서 생성 한 파일이 노트북에 안떠잉
-아아아 ㅋㅋㅋㅋ 내가 완전 다른 얘기 알아들었네 😭
-
-폰에서 내가 생성해준 파일/대화가 노트북 ChatGPT에 아직 안 뜬다는 말이구나.
-
-같은 계정인데도 방금 폰에서 생성한 파일이 노트북에 바로 안 보이는 거면 대화 동기화가 늦는 경우일 가능성이 커. 노트북에서 이 채팅을 한 번 나갔다가 다시 들어오거나, 앱을 새로고침/재실행해봐.
-
-그래도 안 뜨면 굳이 기다릴 필요 없어. 지금 이 노트북 쪽 대화에서 파일 다시 첨부해서 줄 수 있어. ㅋㅋㅋ
-
-줄래? 파일 이름은 bearstat-national-history-medals 래
-웅 찾았다!! 폰에서 만든 그 파일 맞아 ㅋㅋㅋ 노트북에서 바로 받을 수 있게 다시 가져왔어.
-
-
-bearstat-national-history-medals.txt
-문서
-국대는 홈 원정 상관 없이 달력에 태극기 그려 넣읍시다
-그리고 여러 국대 일정이 같은 날 있어도 태극기는 1개만 뜨게 하면 깔끔해. 🇰🇷
-국대 = 무조건 태극기, 홈/원정 조건은 아예 안 타게 적용하면 됨.
-
-얍얍 만드러조 워크는... 지금.... 주간 한도가... 9% 남아써...
-얍얍 만들었어 ㅋㅋㅋ 🇰🇷
-
-국가대표 일정이면 홈/원정 상관없이 태극기
-같은 날 국대 경기가 여러 개여도 태극기 1개만
-type: national뿐 아니라 notificationCategory: national로 지정한 일정도 적용
-관리자 달력에서 국대가 회색 기타 일정 점으로 중복 표시되는 것도 막음
-기존 국대 역사/메달 + 곰 수정 내용 그대로 유지
-워크 9%는 아껴두자 ㅋㅋㅋ 이 정도 수정은 여기서 해치우면 됨.
-
-
-bearstat-national-calendar-flag.txt
-문서
-
-
-
 <!-- retry pages deployment -->
 <!DOCTYPE html>
 <html lang="ko">
@@ -124,7 +63,7 @@ h2{font-size:12px;letter-spacing:1.2px;color:var(--sub);margin:20px 2px 8px;font
 .cal-mark.handball svg{width:10px;height:10px}
 .cal-mark.sparkle svg{width:10.4px;height:10.4px}
 .cal-mark.heart{font-size:13px}
-.cal-mark.national-flag{width:14px;font-size:12px;line-height:1}
+.cal-mark.national-flag{width:16px;height:12px;line-height:1}.cal-mark.national-flag svg{width:16px;height:11px;overflow:visible}
 .cal-mark.cancellation svg{width:10px;height:10px}
 .cal-mark.cancellation[data-icon="☁︎"] svg{width:9.5px;height:9.5px}
 .cal-mark.cancellation[data-icon="༄"] svg{width:10px;height:10px}
@@ -1229,7 +1168,7 @@ function informationPage(){
  return `<div class="brand"><div class="logo">정보 입력</div></div>${adminCareerInputHTML()}${adminRecordVisibilityHTML()}`;
 }
 // Awards are kept separate from game records. Add verified entries here as they become available.
-const BEAR_AWARD_CATEGORIES=[['all','전체'],['championship','우승'],['mvp','KBO MVP'],['golden','골든글러브'],['defense','KBO 수비상'],['rookie','KBO 신인상'],['title-holder','KBO 타이틀홀더'],['real-glove','리얼글러브 어워드'],['ilgoo','일구상'],['joa','조아제약 프로야구대상'],['choi-dongwon','최동원상'],['monthly-mvp','월간 MVP'],['medal','메달'],['etc','기타']];
+const BEAR_AWARD_CATEGORIES=[['all','전체'],['championship','우승'],['mvp','KBO MVP'],['golden','골든글러브'],['defense','KBO 수비상'],['rookie','KBO 신인상'],['title-holder','KBO 타이틀홀더'],['real-glove','리얼글러브 어워드'],['ilgoo','일구상'],['joa','조아제약 프로야구대상'],['choi-dongwon','최동원상'],['monthly-mvp','월간 MVP'],['medal','국가대표 메달'],['etc','기타']];
 const BEAR_TITLE_HOLDER_FIELDS={hitter:['타율','안타','홈런','타점','득점','도루','출루율','장타율'],pitcher:['다승','평균자책점','탈삼진','세이브','홀드','승률','세이브 포인트']};
 function bearTitleHolderOptions(role,year){return (BEAR_TITLE_HOLDER_FIELDS[role]||[]).filter(v=>v!=='세이브 포인트'&&v!=='세이브'||(v==='세이브 포인트'?year<=2003:year>=2004)).map(v=>({value:v,label:v==='세이브 포인트'?'세이브 포인트 (~2003)':v==='세이브'?'세이브 (2004~)':v}));}
 function bearTitleHolderFieldsHTML(current={}){const role=current.role==='pitcher'?'pitcher':'hitter',year=Number(current.year)||new Date().getFullYear();return `<div id="award-title-holder-fields" style="${current.category==='title-holder'?'':'display:none'}"><label>타이틀홀더 구분</label><select name="awardRole"><option value="hitter" ${role==='hitter'?'selected':''}>타자</option><option value="pitcher" ${role==='pitcher'?'selected':''}>투수</option></select><label>타이틀홀더 부문</label><select name="awardField">${bearTitleHolderOptions(role,year).map(x=>`<option value="${x.value}" ${current.field===x.value?'selected':''}>${x.label}</option>`).join('')}</select><label>기록 수치 (선택)</label><input name="awardValue" maxlength="50" placeholder="예: .345 / 30홈런 / 18승" value="${esc(current.value||'')}"><div class="note">세이브 포인트 (~2003) / 세이브 (2004~)는 선택한 연도에 따라 자동으로 구분돼요.</div></div>`;}
@@ -1399,7 +1338,7 @@ function awardsView(){
   return `<section><h2>${label}</h2>${rows.length?`<div class="award-list">${rows.map(item=>`<article class="card award-card"><div class="award-heading"><b>${esc(String(item.year))}년</b><span>${esc(item.title||label)}</span></div><div class="award-person">${esc(item.name||'')}</div></article>`).join('')}</div>`:'<div class="card"><div class="empty">아직 등록된 수상 기록이 없어요.</div></div>'}</section>`;
  }).join(''):'';
  const medalRows=BEAR_NATIONAL_MEDALS.slice().sort((a,b)=>b.year-a.year||a.name.localeCompare(b.name,'ko'));
- const medals=(active==='all'||active==='medal')?`<section><h2>국가대표 메달</h2><div class="award-list">${medalRows.map(item=>`<article class="card award-card"><div class="award-heading"><b>${esc(String(item.year))}년</b><span>${item.medal==='금메달'?'🥇':item.medal==='은메달'?'🥈':'🥉'} ${esc(item.medal)} · ${esc(item.title)}</span></div><div class="award-person"><b>${esc(item.name)}</b> · 당시 두산(OB) 소속</div></article>`).join('')}</div></section>`:'';
+ const medals=(active==='all'||active==='medal')?`<section><h2>국가대표 메달</h2><div class="award-list">${medalRows.map(item=>`<article class="card award-card"><div class="award-heading"><b>${esc(String(item.year))}년</b><span>${item.medal==='금메달'?'🥇':item.medal==='은메달'?'🥈':'🥉'} ${esc(item.medal)} · ${esc(item.title)}</span></div><div class="award-person"><b>${esc(item.name)}</b></div></article>`).join('')}</div></section>`:'';
  const generalIndividual=active==='all'?individual.filter(item=>!separateCeremonies.includes(item.category)&&item.category!=='medal'):individual.filter(item=>item.category!=='medal');
  const other=active!=='championship'?`<section><h2>${active==='all'?'개인 수상':BEAR_AWARD_CATEGORIES.find(([id])=>id===active)?.[1]||'수상'} 기록</h2>${generalIndividual.length?`<div class="award-list">${generalIndividual.map(item=>`<article class="card award-card"><div class="award-heading"><b>${esc(String(item.year))}년</b><span>${esc(item.category==='title-holder'?(item.field==='세이브 포인트'?'세이브 포인트 (~2003)':item.field==='세이브'?'세이브 (2004~)':item.field||'KBO 타이틀홀더'):item.title||(item.category==='monthly-cap'?'월간 캡스플레이':BEAR_AWARD_CATEGORIES.find(([id])=>id===item.category)?.[1])||'수상')}</span></div><div class="award-person">${esc(item.name||'')}${item.month?' · '+esc(item.month)+'월':''}${item.category==='title-holder'?' · '+(item.role==='pitcher'?'투수':'타자')+(item.value?' · '+esc(item.value):''):''}</div></article>`).join('')}</div>`:'<div class="card"><div class="empty">확인된 수상 기록을 준비 중이에요.</div></div>'}</section>`:'';
  return `<div class="brand"><div class="logo">수상 기록</div>${isOwner?`<button type="button" class="chip" data-award-open>+ 수상 등록</button>`:''}</div>${awardSearchHTML()}${categories}${isOwner&&bearAwardEditorOpen?`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button type="button" class="link" data-award-close>입력창 닫기 ×</button></div>${awardAdminHTML()}`:''}${isOwner&&bearAwardStatus&&!bearAwardEditorOpen?`<div class="note" role="status">${esc(bearAwardStatus)}</div>`:''}${bearAwardSearch?awardSearchResultsHTML(active):wins+medals+other+ceremonySections}`;
@@ -2216,7 +2155,7 @@ function cancellationLeagueIcon(symbol,type){
 
 function calendarMarks(events,includeOther=false){
   const marks=[];
-  if(events.some(e=>e.type==='national'||e.notificationCategory==='national'))marks.push('<span class="cal-mark national-flag" title="국가대표 일정" aria-label="국가대표 일정">🇰🇷</span>');
+  if(events.some(e=>e.type==='national'||e.notificationCategory==='national'))marks.push(`<span class="cal-mark national-flag" title="국가대표 일정" aria-label="국가대표 일정"><svg viewBox="0 0 36 24" role="img" aria-hidden="true" focusable="false"><rect x=".5" y=".5" width="35" height="23" rx="1.5" fill="#fff" stroke="rgba(15,23,42,.18)"/><g transform="translate(18 12) rotate(-33)"><path d="M0-5a5 5 0 1 1 0 10 2.5 2.5 0 1 0 0-5 2.5 2.5 0 1 1 0-5z" fill="#cd2e3a"/><path d="M0 5a5 5 0 1 1 0-10 2.5 2.5 0 1 0 0 5 2.5 2.5 0 1 1 0 5z" fill="#0047a0"/></g><g fill="#111"><g transform="translate(7 5) rotate(-33)"><rect x="-4" y="-2.8" width="8" height="1.1"/><rect x="-4" y="-.55" width="8" height="1.1"/><rect x="-4" y="1.7" width="8" height="1.1"/></g><g transform="translate(29 19) rotate(-33)"><rect x="-4" y="-2.8" width="8" height="1.1"/><rect x="-4" y="-.55" width="3.2" height="1.1"/><rect x=".8" y="-.55" width="3.2" height="1.1"/><rect x="-4" y="1.7" width="8" height="1.1"/></g><g transform="translate(29 5) rotate(33)"><rect x="-4" y="-2.8" width="3.2" height="1.1"/><rect x=".8" y="-2.8" width="3.2" height="1.1"/><rect x="-4" y="-.55" width="8" height="1.1"/><rect x="-4" y="1.7" width="3.2" height="1.1"/><rect x=".8" y="1.7" width="3.2" height="1.1"/></g><g transform="translate(7 19) rotate(33)"><rect x="-4" y="-2.8" width="3.2" height="1.1"/><rect x=".8" y="-2.8" width="3.2" height="1.1"/><rect x="-4" y="-.55" width="3.2" height="1.1"/><rect x=".8" y="-.55" width="3.2" height="1.1"/><rect x="-4" y="1.7" width="3.2" height="1.1"/><rect x=".8" y="1.7" width="3.2" height="1.1"/></g></g></svg></span>`);
   for(const [type,symbol,label] of [['kbo','baseball','KBO'],['futures','✦','퓨처스리그'],['edu','♥','교육리그'],['handball','handball','핸드볼']]){
     const games=events.filter(e=>e.type===type),groups=new Map();
     for(const game of games){
