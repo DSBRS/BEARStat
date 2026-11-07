@@ -38,7 +38,8 @@ self.addEventListener('push',event=>{
  event.waitUntil((async()=>{
   let data;try{data=event.data?.json()}catch{return;}
   if(!data||typeof data.title!=='string')return;
-  if(data.startAt&&(!Number.isFinite(Date.parse(data.startAt))||Date.parse(data.startAt)<=Date.now()))return;
+  const expiry=data.expiresAt||data.startAt;
+  if(expiry&&(!Number.isFinite(Date.parse(expiry))||Date.parse(expiry)<=Date.now()))return;
   const base=new URL('../',self.registration.scope);let url=base.href;
   try{const candidate=new URL(data.url,base);if(candidate.origin===base.origin&&candidate.pathname.startsWith(base.pathname))url=candidate.href}catch{}
   const body=await ticketNotificationBody(data);

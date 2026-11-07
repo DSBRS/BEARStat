@@ -277,6 +277,32 @@ nav a:last-child{flex:1.35}
  #push_settings_slot .push-reminder-panel{padding:13px}
  .notification-page-heading>a.btn{padding:9px 13px}
 }
+
+/* Independent notification controls */
+#push_settings_slot .push-categories{margin-top:26px}
+#push_settings_slot .push-category-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#push_settings_slot .push-category-heading h2{margin:0;font-size:19px}
+#push_settings_slot .push-category-heading p{margin:7px 0}
+#push_settings_slot .push-category-actions{display:flex;gap:6px}
+#push_settings_slot .push-category-group{border:0;padding:0;margin:22px 0;min-width:0}
+#push_settings_slot .push-category-group legend{font-weight:800;font-size:13px;margin-bottom:10px;color:var(--sub)}
+#push_settings_slot .push-category-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#push_settings_slot .push-category-option{position:relative;display:flex;align-items:center;gap:14px;justify-content:space-between;padding:16px;border:1px solid var(--line);border-radius:13px;cursor:pointer;margin:0;min-width:0;background:var(--card,#fff);color:var(--ink)}
+#push_settings_slot .push-category-option:has(input:checked){border-color:var(--navy);background:var(--chip)}
+#push_settings_slot .push-category-option span{min-width:0;flex:1}
+#push_settings_slot .push-category-option b{font-size:14px;display:block}
+#push_settings_slot .push-category-option small{display:block;font-size:12px;line-height:1.6;margin-top:5px;color:var(--sub);word-break:keep-all}
+#push_settings_slot .push-category-option input{position:absolute;opacity:0;width:1px;height:1px;min-width:0;padding:0;margin:0}
+#push_settings_slot .push-category-option i{display:block;width:40px;height:24px;flex:0 0 40px;border-radius:20px;background:#a0a8b5;position:relative;transition:background .15s}
+#push_settings_slot .push-category-option i:after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:white;transition:transform .15s}
+#push_settings_slot .push-category-option input:checked+i{background:var(--navy)}
+#push_settings_slot .push-category-option input:checked+i:after{transform:translateX(16px)}
+#push_settings_slot .push-category-option:has(input:focus-visible){outline:3px solid #6796d8;outline-offset:3px}
+#push_settings_slot .push-category-option:has(input:disabled){opacity:.6;cursor:wait}
+#push_settings_slot .push-preference-footer{margin:18px 0}
+#push_settings_slot .push-preference-footer .btn{margin:0;width:100%;max-width:100%}
+@media(min-width:1024px){body[data-r="notifications"] #push_settings_slot{max-width:980px;margin:0 auto}#push_settings_slot .push-settings{padding:28px}}
+@media(max-width:600px){#push_settings_slot .push-category-grid{grid-template-columns:1fr;gap:8px}#push_settings_slot .push-category-option{padding:15px 13px}#push_settings_slot .push-category-heading{align-items:flex-start;flex-direction:column}#push_settings_slot .push-category-actions{width:100%}#push_settings_slot .push-category-actions .chip{flex:1;min-height:40px}#push_settings_slot .push-category-heading h2{font-size:18px}}
 </style>
 
 <style>
@@ -2119,13 +2145,39 @@ function homeTodayScheduleHTML(){
 
 function rememberPushEnabled(enabled){try{if(enabled)localStorage.setItem('bearstat-push-enabled-v1','1');else localStorage.removeItem('bearstat-push-enabled-v1')}catch{}}
 function knownPushEnabled(){try{return 'Notification' in window&&Notification.permission==='granted'&&localStorage.getItem('bearstat-push-enabled-v1')==='1'}catch{return false}}
-const pushState={suppressed:knownPushEnabled(),supported:!!(window.isSecureContext&&'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window),ready:false,enabled:false,hasSubscription:false,migrate:false,busy:false,config:null,registration:null,message:'',open:false,recordUpdates:true,reminderMinutes:5,ticketAtStart:true};
-function pushSettingsHTML(){
- const s=pushState;
- if(document.body.dataset.r!=='notifications'&&!s.open)return '<div id="push_settings_slot"></div>';
- return `<div id="push_settings_slot"><div class="card push-settings"><details id="push_settings"${s.open?' open':''}><summary><span class="push-bell" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><span>알림 설정</span><span class="push-state">${s.enabled?'켜짐':'꺼짐'}</span></summary><div class="note">알림을 켜면 사이트를 닫아도 시작 전 알림을 받아요. 시간이 정해진 일정만 알려주며, 지난 일정과 진행·종료·취소된 경기는 제외해요.</div>${!s.supported?'<div class="note">이 브라우저에서는 푸시 알림을 사용할 수 없어요. 아이폰은 Safari에서 홈 화면에 추가한 뒤 앱을 열어주세요.</div>':`<button type="button" class="btn${s.enabled?' g':''}" data-push-toggle${s.busy||(!s.ready&&!s.enabled&&!s.hasSubscription)?' disabled':''}>${s.busy?'처리 중…':s.migrate?'새 서버로 이 기기 알림 연결':(s.enabled||s.hasSubscription)?'이 기기 알림 끄기':'이 기기 알림 켜기'}</button>`}${s.enabled?'<button type="button" class="btn g" data-push-test>이 기기로 테스트 알림 보내기</button>':''}${s.enabled&&s.legacySubscription?'<div class="note">테스트 알림이 도착했다면 이전 알림 연결을 정리해주세요.</div><button type="button" class="btn g" data-push-stop-legacy>이전 서버 알림 정리</button>':''}<div class="push-reminder-panel"><div class="push-reminder-heading"><b>일정 시작 전 알림</b><span>원하는 시간에 미리 알림을 받아요.</span></div><div class="push-reminder-row"><input id="push-reminder-minutes" type="number" min="0" max="10080" step="1" inputmode="numeric" aria-label="알림 시간(분)" value="${s.reminderMinutes}"${s.busy?' disabled':''}><span class="push-reminder-unit">분 전</span><button type="button" class="btn g push-reminder-save" data-push-save-time${!s.enabled||s.busy?' disabled':''}>시간 저장</button></div><div class="push-reminder-hint">0분은 사전 알림 끄기 · 1분 단위로 설정 가능</div><label class="push-ticket-toggle"><input type="checkbox" data-push-ticket-start${s.ticketAtStart?' checked':''}${s.busy?' disabled':''}><span><b>티켓 예매 정각 알림</b><small>예매 시작 시각에 별도 알림을 받아요.</small></span></label></div><label class="note push-record-toggle"><input type="checkbox" data-push-record-updates${s.recordUpdates?' checked':''}${s.busy?' disabled':''}><span>기록 업데이트 알림 받기</span></label><div class="note">새 경기 기록이나 수정된 기록이 공개되면 알려드려요. 같은 내용의 단순 새로고침은 알리지 않아요.</div><div class="note">아이폰은 홈 화면에 추가한 웹앱에서 알림을 허용해주세요. 기기와 네트워크 상태에 따라 도착이 늦어질 수 있어요.</div>${isOwner?`<details class="push-admin"><summary>관리자 · 알림 서버 연결</summary><div class="note">서버 설정 파일을 적용한 뒤 한 번만 연결해주세요.</div><button type="button" class="btn g" data-push-setup${s.busy?' disabled':''}>알림 서버 연결하기</button></details>`:''}<div class="note" role="status" aria-live="polite">${esc(s.message||(!s.ready?'알림 서버 연결을 확인하고 있어요.':''))}</div></details></div></div>`;
+const PUSH_CATEGORY_GROUPS=[
+ ['베어스탯 소식', [['features','기능 추가 알림','새 기능과 개선 소식을 알려드려요.'],['records','기록 업데이트 알림','공개 경기 기록이 추가·수정되면 알려드려요.']]],
+ ['경기 알림', [['kbo','야구 알림','두산 1군 경기 시작 전'],['futures','퓨처스 알림','퓨처스리그 경기 시작 전'],['edu','교육리그 알림','교육리그·연습경기 시작 전'],['handball','핸드볼 알림','두산 핸드볼 경기 시작 전'],['national','국가대표 알림','국가대표 경기와 대표팀 일정 시작 전']]],
+ ['예매·행사·방송', [['ticket','티켓팅 알림','예매 시작 전 · 선택 시 정각에도 알림'],['club','구단 행사 알림','구단 공식 행사 시작 전'],['fan','팬 행사 알림','팬 행사·이벤트 시작 전'],['broadcast','방송 알림','방송 시작 전'],['radio','라디오·유튜브 알림','라디오·유튜브 일정 시작 전'],['etc','기타 일정 알림','그 밖의 등록된 일정 시작 전']]]
+];
+const PUSH_CATEGORY_KEYS=PUSH_CATEGORY_GROUPS.flatMap(([,rows])=>rows.map(([key])=>key));
+function normalizePushCategories(value={},recordUpdates=true){return Object.fromEntries(PUSH_CATEGORY_KEYS.map(key=>[key,typeof value?.[key]==='boolean'?value[key]:key==='features'?false:key==='records'?recordUpdates!==false:true]));}
+function readLocalPushPreferences(){try{return JSON.parse(localStorage.getItem('bearstat-push-preferences-v2')||'null')}catch{return null}}
+function storeLocalPushPreferences(){try{const s=pushState;localStorage.setItem('bearstat-push-preferences-v2',JSON.stringify({categories:s.categories,reminderMinutes:s.reminderMinutes,ticketAtStart:s.ticketAtStart}));return true}catch{return false}}
+function pushPreferencePayload(){const s=pushState;return {categories:{...s.categories},recordUpdates:s.categories.records,reminderMinutes:s.reminderMinutes,ticketAtStart:s.ticketAtStart};}
+const localPushPreferences=readLocalPushPreferences();
+const pushState={suppressed:knownPushEnabled(),supported:!!(window.isSecureContext&&'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window),ready:false,enabled:false,hasSubscription:false,migrate:false,busy:false,config:null,registration:null,message:'',open:false,recordUpdates:localPushPreferences?.categories?.records!==false,reminderMinutes:localPushPreferences?.reminderMinutes??5,ticketAtStart:localPushPreferences?.ticketAtStart!==false,categories:normalizePushCategories(localPushPreferences?.categories),dirty:false};
+function pushCategorySettingsHTML(){
+ const s=pushState,disabled=s.busy?' disabled':'';
+ return `<section class="push-categories" aria-label="받을 알림 선택"><div class="push-category-heading"><div><h2>받고 싶은 알림만 골라요</h2><p class="note">${PUSH_CATEGORY_KEYS.length}개 중 ${Object.values(s.categories).filter(Boolean).length}개 선택 · 이 기기에 적용</p></div><div class="push-category-actions"><button type="button" class="chip" data-push-select="all"${disabled}>전체 선택</button><button type="button" class="chip" data-push-select="none"${disabled}>전체 해제</button></div></div>${PUSH_CATEGORY_GROUPS.map(([group,rows])=>`<fieldset class="push-category-group"><legend>${group}</legend><div class="push-category-grid">${rows.map(([key,title,description])=>`<label class="push-category-option"><span><b>${title}</b><small>${description}</small></span><input type="checkbox" role="switch" data-push-category="${key}"${s.categories[key]?' checked':''}${disabled}><i aria-hidden="true"></i></label>`).join('')}</div></fieldset>`).join('')}<p class="note">국가대표로 분류된 일정은 야구 알림과 별도로 받아요. 일정 알림은 날짜와 시간이 등록된 경우에만 보내요.</p></section>`;
 }
-function refreshPushSettings(){const slot=document.getElementById('push_settings_slot');if(slot)slot.outerHTML=pushSettingsHTML();}
+function pushSettingsHTML(){
+ const s=pushState,disabled=s.busy?' disabled':'';
+ if(document.body.dataset.r!=='notifications'&&!s.open)return '<div id="push_settings_slot"></div>';
+ return `<div id="push_settings_slot"><div class="card push-settings"><details id="push_settings"${s.open?' open':''}><summary><span class="push-bell" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></span><span>이 기기 알림</span><span class="push-state">${s.enabled?'켜짐':'꺼짐'}</span></summary>
+ <p class="note">원하는 항목을 선택하고 설정을 저장해주세요. 알림을 켜면 사이트를 닫아도 선택한 알림을 받을 수 있어요.</p>
+ ${!s.supported?'<p class="note">이 브라우저에서는 푸시 알림을 사용할 수 없어요. 아이폰은 Safari에서 홈 화면에 추가한 뒤 앱을 열어주세요.</p>':`<button type="button" class="btn${s.enabled?' g':''}" data-push-toggle${s.busy||(!s.ready&&!s.enabled&&!s.hasSubscription)?' disabled':''}>${s.busy?'처리 중…':s.migrate?'새 서버로 이 기기 알림 연결':(s.enabled||s.hasSubscription)?'이 기기 알림 끄기':'이 기기 알림 켜기'}</button>`}
+ ${s.enabled?'<button type="button" class="btn g" data-push-test>이 기기로 테스트 알림 보내기</button>':''}
+ ${s.enabled&&s.legacySubscription?'<p class="note">테스트 알림이 도착했다면 이전 알림 연결을 정리해주세요.</p><button type="button" class="btn g" data-push-stop-legacy>이전 서버 알림 정리</button>':''}
+ ${pushCategorySettingsHTML()}
+ <div class="push-reminder-panel"><div class="push-reminder-heading"><b>일정 시작 전 알림</b><span>선택한 경기·행사·방송·예매에 공통으로 적용해요.</span></div><div class="push-reminder-row"><input id="push-reminder-minutes" type="number" min="0" max="10080" step="1" inputmode="numeric" aria-label="알림 시간(분)" value="${s.reminderMinutes}"${disabled}><span class="push-reminder-unit">분 전</span></div><div class="push-reminder-hint">0분은 사전 알림 끄기 · 1분 단위, 최대 7일 전</div><label class="push-ticket-toggle"><input type="checkbox" data-push-ticket-start${s.ticketAtStart?' checked':''}${disabled}><span><b>티켓 예매 정각에도 알림</b><small>티켓팅 알림이 켜져 있을 때만 보내요.</small></span></label></div>
+ <div class="push-preference-footer"><button type="button" class="btn" data-push-save-preferences${disabled}>${s.busy?'저장 중…':'선택한 알림 설정 저장'}</button><p class="note">${s.dirty?'변경한 설정을 저장해주세요.':!s.enabled?'선택을 저장한 뒤 이 기기 알림을 켜주세요.':'저장한 항목만 알림을 받아요.'}</p></div>
+ <div class="note" role="status" aria-live="polite">${esc(s.message||(!s.ready&&s.supported?'알림 서버 연결을 확인하고 있어요.':''))}</div>
+ <p class="note">지난 일정과 진행·종료·취소된 경기는 알리지 않아요. 기기와 네트워크 상태에 따라 도착이 늦어질 수 있어요.</p>
+ ${isOwner?`<details class="push-admin"><summary>관리자 · 알림 관리</summary><p class="note">새 기능을 공개한 뒤 안내를 등록하면 ‘기능 추가 알림’을 켠 기기에만 보내요.</p><label for="push-feature-title">안내 제목</label><input id="push-feature-title" maxlength="80" placeholder="예: 등번호 탐색 기능이 추가됐어요"><label for="push-feature-body">안내 내용</label><textarea id="push-feature-body" maxlength="280" placeholder="새로 사용할 수 있는 기능을 알려주세요."></textarea><label for="push-feature-route">연결 화면</label><select id="push-feature-route"><option value="#/">홈</option><option value="#/numbers">등번호</option><option value="#/records">개인 기록</option><option value="#/player-cards">선수 카드</option><option value="#/awards">수상 기록</option><option value="#/standings">순위</option><option value="#/h2h">상대 전적</option><option value="#/milestones">기록 달성</option></select><button type="button" class="btn g" data-push-announce${disabled}>안내 등록하고 알림 보내기</button><p class="note">서버 설정 파일을 적용한 뒤 한 번만 연결해주세요.</p><button type="button" class="btn g" data-push-setup${disabled}>알림 서버 연결하기</button></details>`:''}
+ </details></div></div>`;
+}
+function refreshPushSettings(){const active=document.activeElement,key=active?.dataset?.pushCategory;const slot=document.getElementById('push_settings_slot');if(slot)slot.outerHTML=pushSettingsHTML();if(key)document.querySelector('[data-push-category="'+key+'"]')?.focus({preventScroll:true});}
 async function pushAPI(body=null,accessToken=''){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
  try{
@@ -2158,11 +2210,11 @@ async function preparePush(){
   const subscription=await s.registration.pushManager.getSubscription(),token=pushToken();s.hasSubscription=!!subscription;
   if(navigator.serviceWorker.getRegistration){const legacy=await navigator.serviceWorker.getRegistration(new URL('./',location.href).href);s.legacyRegistration=legacy?.scope===new URL('./',location.href).href?legacy:null;s.legacySubscription=s.legacyRegistration?await s.legacyRegistration.pushManager.getSubscription():null;}
   s.config=await pushAPI();s.ready=!!(s.config.ready&&s.config.publicKey);s.migrate=!!(subscription&&s.config.publicKey&&subscription.options?.applicationServerKey&&btoa(String.fromCharCode(...new Uint8Array(subscription.options.applicationServerKey))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')!==s.config.publicKey);
-  if(s.ready&&subscription&&token&&Notification.permission==='granted'){const status=await pushAPI({action:'status',token,subscription:subscription.toJSON()});s.enabled=status.enabled===true;s.recordUpdates=status.recordUpdates!==false;s.reminderMinutes=Number(status.reminderMinutes??5);s.ticketAtStart=status.ticketAtStart!==false;}
+  if(s.ready&&subscription&&token&&Notification.permission==='granted'){const status=await pushAPI({action:'status',token,subscription:subscription.toJSON()});s.enabled=status.enabled===true;if(!s.dirty){s.categories=normalizePushCategories(status.categories,status.recordUpdates);s.recordUpdates=s.categories.records;s.reminderMinutes=Number(status.reminderMinutes??5);s.ticketAtStart=status.ticketAtStart!==false;storeLocalPushPreferences();}}
   else s.enabled=false;
   s.suppressed=s.enabled;rememberPushEnabled(s.enabled);
   s.message=!s.ready?'알림 서버 설정이 아직 완료되지 않았어요.':s.migrate?'새 알림 서버가 준비됐어요. 아래 버튼으로 이 기기 알림을 다시 연결해주세요.':s.enabled?'이 기기에서 설정한 시간에 알림을 받아요.':Notification.permission==='denied'?'브라우저 설정에서 이 사이트의 알림을 허용해주세요.':'알림 켜기를 누르면 기기의 알림 허용 창이 열려요.';
- }catch(e){s.ready=false;s.message=e.message||'알림 서버에 연결하지 못했어요.';}
+ }catch(e){s.ready=false;s.message='알림 서버에 연결하지 못했어요. 잠시 후 다시 시도해주세요.';}
  finally{refreshPushSettings()}
 }
 async function togglePush(){
@@ -2177,11 +2229,12 @@ async function togglePush(){
    const browserRemoved=await sub.unsubscribe();if(!serverRemoved&&!browserRemoved)throw Error('알림을 끄지 못했어요. 다시 시도해주세요.');s.enabled=false;s.hasSubscription=false;s.suppressed=false;rememberPushEnabled(false);s.message='이 기기 알림을 껐어요.';return;
   }
   // Called synchronously from the user's click; never prompt on page load.
+  capturePushPreferenceDraft();const reminderMinutes=Number(s.reminderMinutes);if(String(s.reminderMinutes).trim()===''||!Number.isInteger(reminderMinutes)||reminderMinutes<0||reminderMinutes>10080)throw Error('0~10080분 사이의 정수를 입력해주세요.');if(s.config?.preferencesVersion!==2)throw Error('새 알림 서버 연결을 확인한 뒤 다시 켜주세요.');s.reminderMinutes=reminderMinutes;
   const permission=await Notification.requestPermission();if(permission!=='granted'){s.message=permission==='denied'?'알림이 차단됐어요. 브라우저 설정에서 허용해주세요.':'알림 허용을 취소했어요.';return;}
   const token=pushToken(true);let sub=await s.registration.pushManager.getSubscription();
   if(s.migrate&&sub){if(!await sub.unsubscribe())throw Error('기존 알림 연결을 바꾸지 못했어요. 다시 시도해주세요.');sub=null;s.hasSubscription=false;}
   if(!sub){sub=await s.registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:pushApplicationKey(s.config.publicKey)});fresh=sub;}
-  await pushAPI({action:'subscribe',subscription:sub.toJSON(),token,recordUpdates:s.recordUpdates,reminderMinutes:s.reminderMinutes,ticketAtStart:s.ticketAtStart});s.enabled=true;s.migrate=false;s.hasSubscription=true;s.suppressed=true;s.open=document.body.dataset.r==='notifications';rememberPushEnabled(true);s.message='알림을 켰어요. 사이트를 닫아도 설정한 시간에 알림을 받아요.';
+  await pushAPI({action:'subscribe',subscription:sub.toJSON(),token,...pushPreferencePayload()});s.dirty=false;storeLocalPushPreferences();s.enabled=true;s.migrate=false;s.hasSubscription=true;s.suppressed=true;s.open=document.body.dataset.r==='notifications';rememberPushEnabled(true);s.message='알림을 켰어요. 사이트를 닫아도 설정한 시간에 알림을 받아요.';
  }catch(e){if(fresh)try{await fresh.unsubscribe();s.hasSubscription=false}catch{}s.message=e.message||'알림 설정을 저장하지 못했어요.';}
  finally{s.busy=false;refreshPushSettings()}
 }
@@ -2207,28 +2260,51 @@ function notificationSettingsPage(){
  pushState.open=true;
  return `<div class="brand notification-page-heading"><h1 style="margin:0">알림 설정</h1><a class="btn g" href="#/">홈으로</a></div>${pushSettingsHTML()}`;
 }
-document.addEventListener('change',async ev=>{
- if(!ev.target.matches('[data-push-record-updates]'))return;
- const s=pushState,previous=s.recordUpdates;s.recordUpdates=ev.target.checked;
- if(!s.enabled)return;
- s.busy=true;refreshPushSettings();
- try{const sub=await s.registration.pushManager.getSubscription();if(!sub)throw Error('이 기기 알림을 다시 연결해주세요.');await pushAPI({action:'preferences',subscription:sub.toJSON(),token:pushToken(),recordUpdates:s.recordUpdates,reminderMinutes:s.reminderMinutes,ticketAtStart:s.ticketAtStart});s.message=s.recordUpdates?'기록 업데이트 알림을 켰어요.':'기록 업데이트 알림을 껐어요. 일정 알림은 계속 받아요.';}
- catch(e){s.recordUpdates=previous;s.message=e.message||'설정을 저장하지 못했어요.';}
- finally{s.busy=false;refreshPushSettings();}
-});
-
-async function savePushReminderSettings(){
- const s=pushState;if(!s.enabled||s.busy)return;
- const input=document.getElementById('push-reminder-minutes');
- const minutes=Number(input?.value);
- if(!Number.isInteger(minutes)||minutes<0||minutes>10080){s.message='0~10080분 사이의 정수를 입력해주세요.';refreshPushSettings();return;}
- const atStart=document.querySelector('[data-push-ticket-start]')?.checked!==false;
- s.busy=true;s.reminderMinutes=minutes;s.ticketAtStart=atStart;refreshPushSettings();
- try{const sub=await s.registration.pushManager.getSubscription();if(!sub)throw Error('알림을 다시 연결해주세요.');await pushAPI({action:'preferences',subscription:sub.toJSON(),token:pushToken(),recordUpdates:s.recordUpdates,reminderMinutes:minutes,ticketAtStart:atStart});s.message='알림 시간을 저장했어요.';}
- catch(e){s.message=e.message||'알림 시간을 저장하지 못했어요.';}
+function capturePushPreferenceDraft(){
+ const s=pushState,input=document.getElementById('push-reminder-minutes');
+ if(input)s.reminderMinutes=input.value;
+ const ticket=document.querySelector('[data-push-ticket-start]');if(ticket)s.ticketAtStart=ticket.checked;
+ s.recordUpdates=s.categories.records;
+}
+async function savePushReminderSettings(){return savePushPreferences()}
+async function savePushPreferences(){
+ const s=pushState;if(s.busy)return;capturePushPreferenceDraft();
+ const minutes=Number(s.reminderMinutes);
+ if(String(s.reminderMinutes).trim()===''||!Number.isInteger(minutes)||minutes<0||minutes>10080){s.message='0~10080분 사이의 정수를 입력해주세요.';refreshPushSettings();return;}
+ s.reminderMinutes=minutes;s.busy=true;refreshPushSettings();
+ try{
+  if(s.enabled){
+   if(s.config?.preferencesVersion!==2)throw Error('새 알림 서버 연결을 확인한 뒤 다시 저장해주세요.');
+   const sub=await s.registration.pushManager.getSubscription();if(!sub)throw Error('이 기기 알림을 다시 연결해주세요.');
+   await pushAPI({action:'preferences',subscription:sub.toJSON(),token:pushToken(),...pushPreferencePayload()});
+  }
+  const saved=storeLocalPushPreferences();s.dirty=false;
+  s.message=s.enabled?'선택한 알림과 시간을 저장했어요.':saved?'선택을 이 기기에 저장했어요. 알림 켜기를 누르면 적용돼요.':'선택했어요. 이 브라우저에서는 선택을 보관할 수 없어 알림 켜기를 눌러 적용해주세요.';
+ }catch(e){s.message=(e.message||'설정을 저장하지 못했어요.')+' 변경한 선택은 아직 적용되지 않았어요.';s.dirty=true;}
  finally{s.busy=false;refreshPushSettings()}
 }
-document.addEventListener('click',ev=>{if(ev.target.closest('[data-push-save-time]'))void savePushReminderSettings();});
+document.addEventListener('change',ev=>{
+ if(!ev.target.matches('[data-push-category], [data-push-ticket-start], #push-reminder-minutes'))return;
+ const s=pushState;if(s.busy)return;capturePushPreferenceDraft();
+ const key=ev.target.dataset.pushCategory;if(PUSH_CATEGORY_KEYS.includes(key))s.categories[key]=ev.target.checked;
+ s.recordUpdates=s.categories.records;s.dirty=true;s.message='변경한 설정을 저장해주세요.';if(ev.target.id==='push-reminder-minutes'){const status=document.querySelector('#push_settings_slot [role=status]');if(status)status.textContent=s.message;return;}refreshPushSettings();
+});
+document.addEventListener('click',ev=>{
+ const select=ev.target.closest('[data-push-select]');
+ if(select&&!pushState.busy){capturePushPreferenceDraft();pushState.categories=Object.fromEntries(PUSH_CATEGORY_KEYS.map(key=>[key,select.dataset.pushSelect==='all']));pushState.recordUpdates=pushState.categories.records;pushState.dirty=true;pushState.message='변경한 설정을 저장해주세요.';refreshPushSettings();}
+ if(ev.target.closest('[data-push-save-preferences], [data-push-save-time]'))void savePushPreferences();
+ if(ev.target.closest('[data-push-announce]'))void publishFeatureAnnouncement();
+});
+async function publishFeatureAnnouncement(){
+ const s=pushState;if(!isOwner||s.busy)return;
+ const title=document.getElementById('push-feature-title')?.value.trim(),body=document.getElementById('push-feature-body')?.value.trim(),route=document.getElementById('push-feature-route')?.value;
+ if(!title||!body){s.message='안내 제목과 내용을 입력해주세요.';const status=document.querySelector('#push_settings_slot [role=status]');if(status)status.textContent=s.message;return;}
+ if(!confirm('기능 추가 알림을 켠 기기에 다음 안내를 보낼까요?\n\n'+title+'\n'+body))return;
+ s.busy=true;
+ try{const {data,error}=await SB.auth.getSession();if(error||!data.session?.access_token)throw Error('관리자로 다시 로그인해주세요.');const result=await pushAPI({action:'announce',title,body,route},data.session.access_token);s.message=result.duplicate?'이미 등록된 안내예요. 중복으로 보내지 않아요.':'안내를 등록했어요. 기능 추가 알림을 선택한 기기에 순서대로 보내요.';}
+ catch(e){s.message=e.message||'안내를 등록하지 못했어요.';}
+ finally{s.busy=false;refreshPushSettings()}
+}
 let scheduleSearch='',scheduleSearchDraft='',scheduleSearchLimit=30;
 function scheduleSearchRows(query,events=Repo.all()){
  const normalize=value=>S(value).toLowerCase().replace(/[.\/]/g,'-').replace(/\s+/g,' ').trim();
@@ -4569,7 +4645,7 @@ function eduEditorHTML(e,part='all',onlyRole=null){
 }
 function refreshEduEditor(){
   const box=document.querySelector('#edu_editor');if(!box)return;
-  const e={...(editing||{}),type:$('#f_type')?.value,date:$('#f_date')?.value};
+  const e={...(editing||{}),type:$('#f_type')?.value,date:$('#f_date')?.value,notificationCategory:$('#f_notificationCategory')?.value||''};
   box.innerHTML=e.type==='edu'?eduEditorHTML(e,'selection'):'';
   for(const [id,role] of [['edu_pitch_records','pitcher'],['edu_bat_records','hitter']]){
     const records=document.querySelector('#'+id);
@@ -4790,6 +4866,7 @@ function admin(){
   ${adminStepTabs(e)}
   <section data-admin-step="1" style="${adminFormStep===1?'':'display:none'}">
   <label>종류</label><select id="f_type"${editing?.kboGameId?' disabled':''}>${['kbo','futures','club','fan','broadcast','radio','ticket','edu','handball','etc'].map(k=>`<option value="${k}"${e.type===k?' selected':''}>${TYPES[k]}</option>`).join('')}</select>
+  <label for="f_notificationCategory">알림 분류</label><select id="f_notificationCategory"><option value=""${!e.notificationCategory?' selected':''}>일정 종류에 맞게 자동 분류</option><option value="national"${e.notificationCategory==='national'?' selected':''}>국가대표 알림</option></select><div class="note">대표팀 경기·행사는 국가대표로 지정해주세요. 경기 종류와 기록은 그대로 유지돼요.</div>
   <div id="event_custom_title_wrap" style="${['kbo','edu'].includes(e.type)?'display:none':''}">
     <label for="f_title">일정 제목</label>
     <input id="f_title" value="${esc(e.title&&e.title!==TYPES[e.type]?e.title:'')}" placeholder="${e.type==='ticket'?'예: 2027 두산 베어스 시즌권 예매':'예: 일정 이름을 입력하세요'}">
@@ -6594,7 +6671,7 @@ if(!v('date')){
     const cancellationOverride=!!old.cancellationOverride||cancelled!==isCancelled(old)||cancelReason!==S(old.cancelReason);
     const status=cancelled?'cancelled':(old.status==='cancelled'||!old.status?((sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?'final':'scheduled'):old.status);
     if(t.disabled)return;t.disabled=true;t.textContent='저장 중…';
-    Repo.upsert({...old,id,type,date:v('date'),time:v('time'),title,ticketSite:type==='ticket'?v('ticketSite'):'',place:type==='ticket'?v('ticketSite'):customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:editing?.kboGameId?(old.players||[]):v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp,cancelReason,cancelled,status,cancellationOverride,reschedule,venue:type==='ticket'?v('ticketSite'):customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),headerNo:Number(v('headerNo'))||0,gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>{t.disabled=false;t.textContent=editing?'일정 수정':'일정 추가';alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다'))});
+    Repo.upsert({...old,id,type,notificationCategory:v('notificationCategory'),date:v('date'),time:v('time'),title,ticketSite:type==='ticket'?v('ticketSite'):'',place:type==='ticket'?v('ticketSite'):customVal('place'),homeAway,program:v('program'),channel:v('channel'),players:editing?.kboGameId?(old.players||[]):v('players').split(',').map(x=>x.trim()).filter(Boolean),desc:v('desc'),opp,cancelReason,cancelled,status,cancellationOverride,reschedule,venue:type==='ticket'?v('ticketSite'):customVal('place'),oppStarter:v('oppStarter'),starter:v('starter'),score:(sd!==''&&so!==''&&!isNaN(+sd)&&!isNaN(+so))?{d:+sd,v:+so}:null,stage:v('stage'),headerNo:Number(v('headerNo'))||0,gameNo:$('#f_gno')?(gn?+gn:0):(old.gameNo||0),series:f('series'),duration:f('duration'),winP:f('winP'),loseP:f('loseP'),saveP:f('saveP'),holdP:f('holdP'),gwRbi:f('gwRbi'),doubles:f('doubles'),triples:f('triples'),hits:f('hits'),steals:f('steals'),hrEntries,homeRuns}).then(()=>{editing=null;adminView='manage';keep()}).catch(e=>{t.disabled=false;t.textContent=editing?'일정 수정':'일정 추가';alert('저장하지 못했습니다: '+(e.message||'소유자만 수정할 수 있습니다'))});
   }
   else if(t.id==='cancel'){editing=null;adminView='manage';keep()}
   else if(t.dataset.hideAuto){if(confirm('이 자동연동 일정을 숨길까요?\n숨긴 뒤에도 자동연동으로 다시 나타나지 않습니다.'))Repo.hideAuto(t.dataset.hideAuto).then(()=>keep()).catch(e=>alert('숨기지 못했습니다: '+(e.message||'')))}
