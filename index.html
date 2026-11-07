@@ -735,6 +735,19 @@ table th button,table td button{ text-align:center }
 @media(prefers-reduced-motion:reduce){.jersey-item{transition:none}.jersey-item:hover{transform:none}}
 
 </style>
+<style id="bearstat-mobile-five-nav">
+@media(max-width:1023px){
+ body>nav>#nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));box-sizing:border-box;width:100%;max-width:none;min-width:0;padding:0;margin:0;overflow:visible;gap:0}
+ body>nav>#nav>a,body>nav>#nav>a:last-child,body>nav>#nav[data-owner="true"]>a,body>nav>#nav[data-owner="true"]>a:last-child{display:flex;align-items:center;justify-content:center;box-sizing:border-box;min-width:0;width:100%;max-width:100%;flex:none;margin:0;padding:14px 2px;min-height:48px;font-size:12px;line-height:20px;white-space:nowrap;overflow:visible;text-overflow:clip}
+ .mobile-record-page-header{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:0;width:100%;min-width:0;margin:5px 0 20px}
+ .mobile-record-page-header h1{grid-column:2;margin:0;font-size:22px;line-height:1.3;letter-spacing:-.5px;text-align:center;white-space:nowrap}
+ .mobile-record-page-header a{display:flex;align-items:center;min-height:44px;padding:2px 0;font-size:14px;line-height:20px;color:var(--navy);text-decoration:none;white-space:nowrap}
+ .mobile-record-page-header a:focus-visible{outline:2px solid var(--navy);outline-offset:3px;border-radius:3px}
+ .mobile-record-home{justify-self:start}
+ .mobile-record-related{grid-column:3;justify-self:end;display:flex;flex-direction:column;gap:4px;align-items:flex-end;min-width:0}
+ .mobile-record-related a{justify-content:flex-end}
+}
+</style>
 </head>
 <body>
 <div id="app"></div>
@@ -1298,8 +1311,9 @@ document.addEventListener('click',event=>{
  route2();
 });
 function updateNavigation(r){
- const links=[['home','홈'],['standings','순위'],['h2h','맞대결'],['opponent','상대전적'],['records','개인기록'],['numbers','등번호'],['milestones','달성 기록'],['awards','수상 기록']];
- if(isOwner)links.push(['info','정보 입력']);
+ const mobile=window.matchMedia('(max-width:1023px)').matches;
+ const links=mobile?[['home','홈'],['standings','순위'],['h2h','맞대결'],['records','개인기록'],['numbers','등번호']]:[['home','홈'],['standings','순위'],['h2h','맞대결'],['opponent','상대전적'],['records','개인기록'],['numbers','등번호'],['milestones','달성 기록'],['awards','수상 기록']];
+ if(isOwner&&!mobile)links.push(['info','정보 입력']);
  const nav=document.getElementById('nav');
  nav.dataset.owner=isOwner?'true':'false';
  nav.innerHTML=links.map(([key,label])=>`<a href="#/${key==='home'?'':key}" class="${r===key?'on':''}"${r===key?' aria-current="page"':''}>${label}</a>`).join('');
@@ -5902,6 +5916,11 @@ document.addEventListener('input',event=>{
  const route=input.dataset.playerSearch;if(!Object.hasOwn(playerTableSearch,route))return;
  playerTableSearch[route]=input.value;applyPlayerTableSearch();
 });
+function mobileRecordPageHeader(route){
+ const title=route==='h2h'?'맞대결':'개인기록';
+ const links=route==='h2h'?[['opponent','상대전적 ›']]:[['milestones','달성기록 ›'],['awards','수상기록 ›']];
+ return `<header class="mobile-record-page-header" aria-label="${title} 페이지 이동"><a class="mobile-record-home" href="#/">‹ 홈</a><h1>${title}</h1><div class="mobile-record-related">${links.map(([path,label])=>`<a href="#/${path}">${label}</a>`).join('')}</div></header>`;
+}
 function recordMenuLayout(html,route){
  if(['admin','players','home','info','player-cards','numbers'].includes(route))return html;
  if(Object.hasOwn(playerTableSearch,route)){html=html.replace(/(<div class="brand">[\s\S]*?<\/div><\/div>)/,brand=>brand+playerSearchHTML(route));requestAnimationFrame(applyPlayerTableSearch)}
@@ -5922,6 +5941,10 @@ function recordMenuLayout(html,route){
  });
  // Keep consecutive menus together and let small screens wrap.
  html=html.replace(/(?:<div class="record-menu-slot">[\s\S]*?<\/details><\/div>\s*)+/g,group=>`<div class="record-menu-row">${group}</div>`);
+ if(['h2h','records'].includes(route)&&window.matchMedia('(max-width:1023px)').matches){
+  const title=route==='h2h'?'맞대결':'개인기록';
+  html=html.replace(`<div class="brand"><div class="logo">${title}</div></div>`,mobileRecordPageHeader(route));
+ }
  return html;
 }
 if(typeof document!=='undefined'){
@@ -6246,7 +6269,7 @@ function desktopPlayerCardsHTML(){
  });
  const shown=sorted.slice(0,query?12:4);
  return `<div class="desktop-player-grid">${shown.length?shown.map(row=>{
-  const key=row.role==='hitter'?(row.n==='고영민'?'sb':'hr'):(row.n==='김강률'?'s':'w'),label={hr:'홈런',sb:'도루',w:'승',s:'세이브'}[key];
+  const key=({'hitter:조수행':'sb','hitter:정수빈':'hit','pitcher:이병헌':'h','pitcher:김택연':'s'})[row.role+':'+row.n]||(row.role==='hitter'?(row.n==='고영민'?'sb':'hr'):(row.n==='김강률'?'s':'w')),label={hr:'홈런',sb:'도루',hit:'안타',w:'승',s:'세이브',h:'홀드'}[key];
   const period=careerActivityPeriod(row.n,row.role,'bears').text;
   return `<button type="button" class="desktop-player-card" data-desktop-player="${esc(row.n)}" data-desktop-player-role="${row.role}" aria-label="${esc(row.n)} 베어스통산 기록 보기"><span class="desktop-player-role">${row.role==='hitter'?'타자':'투수'} · ${esc(period||'OB·두산')}</span><span class="desktop-player-name">${esc(row.n)}</span><span class="desktop-player-value">${personalCareerDisplay(row,key)}<small>${label}</small></span><span class="desktop-player-footer"><span>OB·두산 소속 기록</span><i aria-hidden="true">↗</i></span></button>`;
  }).join(''):'<div class="empty">일치하는 선수가 없어요. 이름이나 타자·투수 조건을 확인해 주세요.</div>'}</div><div class="desktop-player-status" role="status" aria-live="polite">${query?`${matches.length}명 검색${matches.length>shown.length?' · 먼저 '+shown.length+'명 표시':''}`:'베어스 유니폼과 함께한 선수들의 기록을 만나보세요.'}</div><div class="desktop-browse"><span>정규시즌 · 기존 베어스통산 집계 기준</span><button type="button" data-desktop-browse>전체 기록 보기 →</button></div>`;
@@ -6406,7 +6429,7 @@ function jerseyModalHTML(){
 }
 function jerseyView(){
  const data=jerseyData();
- return `<div class="jersey-page"><div class="jersey-page-heading"><div><p>BEARS / NUMBER ARCHIVE</p><h1>등번호</h1><span>하나의 번호, 그 뒤에 남은 이름들.</span></div><div class="jersey-years">OB · 두산 베어스<br><b>1982–${data.maxYear}</b></div></div><div class="jersey-toolbar"><label class="jersey-year-control" for="jersey-season"><span>시즌 선택</span><select id="jersey-season"><option value="current"${jerseySeason==='current'?' selected':''}>현재 · 자료 기준</option>${Array.from({length:data.maxYear-data.minYear+1},(_,i)=>data.maxYear-i).map(year=>`<option value="${year}"${String(year)===jerseySeason?' selected':''}>${year}년 ${year<1999?'OB':'두산'}</option>`).join('')}</select></label><label class="jersey-search-control" for="jersey-search"><span>등번호 · 역대 사용자 검색</span><input type="search" id="jersey-search" placeholder="예: 37, 박건우, 김동주" value="${esc(jerseyQuery)}" autocomplete="off" aria-controls="jersey-grid"></label></div><div class="jersey-range" role="group" aria-label="등번호 범위">${[['all','전체'],['low','1–49'],['mid','50–99'],['high','100번대'],['retired','영구결번'],['extra','0·00번대']].map(([key,label])=>`<button type="button" data-jersey-range="${key}" aria-pressed="${jerseyRange===key}">${label}</button>`).join('')}</div><div class="jersey-section-head"><h2>${jerseySeason==='current'?'현재 등번호 배정':jerseySeason+'년 등번호 배정'}</h2><span id="jersey-result-count" role="status" aria-live="polite">${jerseySelectedNumbers().length}개 번호</span></div><p class="jersey-view-note">${jerseySeason==='current'?'현재 이름은 '+data.asOf.replaceAll('-','.')+' 자료 기준':'시즌 중 변경된 번호는 상세에서 모든 사용자를 확인할 수 있어요.'} · 이름이 없는 번호는 배정 자료 미확인</p><div class="jersey-grid" id="jersey-grid">${jerseyGridHTML()}</div>${jerseySourcesHTML()}</div>${jerseyModalHTML()}`;
+ return `<div class="jersey-page"><div class="jersey-page-heading"><div><p>BEARS / NUMBER ARCHIVE</p><h1>등번호</h1><span>하나의 번호, 그 뒤에 남은 이름들.</span></div><div class="jersey-years">OB · 두산 베어스<br><b>1982–${data.maxYear}</b></div></div><div class="jersey-toolbar"><label class="jersey-year-control" for="jersey-season"><span>시즌 선택</span><select id="jersey-season"><option value="current"${jerseySeason==='current'?' selected':''}>현재 · 자료 기준</option>${Array.from({length:data.maxYear-data.minYear+1},(_,i)=>data.maxYear-i).map(year=>`<option value="${year}"${String(year)===jerseySeason?' selected':''}>${year}년 ${year<1999?'OB':'두산'}</option>`).join('')}</select></label><label class="jersey-search-control" for="jersey-search"><span>등번호 · 역대 사용자 검색</span><input type="search" id="jersey-search" placeholder="예: 31, 정수빈" value="${esc(jerseyQuery)}" autocomplete="off" aria-controls="jersey-grid"></label></div><div class="jersey-range" role="group" aria-label="등번호 범위">${[['all','전체'],['low','1–49'],['mid','50–99'],['high','100번대'],['retired','영구결번'],['extra','0·00번대']].map(([key,label])=>`<button type="button" data-jersey-range="${key}" aria-pressed="${jerseyRange===key}">${label}</button>`).join('')}</div><div class="jersey-section-head"><h2>${jerseySeason==='current'?'현재 등번호 배정':jerseySeason+'년 등번호 배정'}</h2><span id="jersey-result-count" role="status" aria-live="polite">${jerseySelectedNumbers().length}개 번호</span></div><p class="jersey-view-note">${jerseySeason==='current'?'현재 이름은 '+data.asOf.replaceAll('-','.')+' 자료 기준':'시즌 중 변경된 번호는 상세에서 모든 사용자를 확인할 수 있어요.'} · 이름이 없는 번호는 배정 자료 미확인</p><div class="jersey-grid" id="jersey-grid">${jerseyGridHTML()}</div>${jerseySourcesHTML()}</div>${jerseyModalHTML()}`;
 }
 function refreshJerseyGrid(){const grid=document.getElementById('jersey-grid');if(grid){grid.innerHTML=jerseyGridHTML();document.getElementById('jersey-result-count').textContent=jerseySelectedNumbers().length+'개 번호'}}
 function closeJerseyModal(){const number=jerseyOpen;jerseyOpen=null;route2();requestAnimationFrame(()=>document.querySelector(`[data-jersey-open="${number}"]`)?.focus())}
