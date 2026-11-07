@@ -4264,7 +4264,7 @@ function h2hView(){
     const row=e=>{const r=result(e);return `<div class="ev"><div class="tm" style="flex-shrink:0">${h2hPeriod==='career'?`<span style="display:block;font-size:11px;color:var(--sub)">${esc(e.date.slice(0,4))}</span>`:''}${esc(e.date.slice(5).replace('-','.'))}</div><div class="bd"><div class="ti">${hasScore(e)?`${e.score.d}:${e.score.v} <span class="res ${r}" style="margin:0">${RL[r]||esc(e.statusText||'진행 중')}</span>`:(e.time||'시간 미정')}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place,e.date))}${e.stage?' · '+e.stage:''}${h2hVenueGameLabel(e)?' · '+esc(h2hVenueGameLabel(e)):''}</div></div></div>`};
     const cancelRow=e=>`<div class="ev"><div class="tm" style="flex-shrink:0">${h2hPeriod==='career'?`<span style="display:block;font-size:11px;color:var(--sub)">${esc(e.date.slice(0,4))}</span>`:''}${esc(e.date.slice(5).replace('-','.'))}</div><div class="bd"><div class="ti">${e.cancelReason?`${esc(e.cancelReason)}취소`:'경기취소'}</div><div class="sb">${esc(normalizeH2hVenue(e.venue||e.place,e.date))}</div>${rescheduleNoticeHTML(e)}</div></div>`;
     body=`<div class="card" style="margin-top:14px">
-      <div class="top"><span>${h2hPeriod==='career'?'통산':h2hYear+' 시즌'} 상대전적 · 두산베어스 vs ${esc(teamDisplayName(h2hOpponent))}</span></div>
+      <div class="top"><span class="h2h-matchup-title">${h2hPeriod==='career'?'통산':h2hYear+' 시즌'} 상대전적 · 두산베어스 vs ${esc(teamDisplayName(h2hOpponent))}</span></div>
       <div class="big">${career&&!career.years.length?'공식 집계 미확인':h2hCountText(c)} <span class="sb" style="font-size:16px;font-weight:800">· 승률 ${career&&!career.years.length?'—':winPct(c)}</span></div>
       ${venueRows?`<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:6px">${venueRows}</div>`:''}
     </div>
@@ -7039,6 +7039,8 @@ try{
 .doosan-bear-name{white-space:nowrap;display:inline-block;overflow:visible;padding-right:8px}
 .doosan-bear-icon{display:inline-block;width:44px;height:38px;margin-left:5px;margin-right:4px;vertical-align:-11px;pointer-events:none;user-select:none;overflow:visible}
 .doosan-bear-icon img{display:block;width:38px;height:38px;object-fit:contain;overflow:visible}
+.h2h-matchup-title .doosan-bear-name{padding-right:0}
+.h2h-matchup-title .doosan-bear-icon{width:38px;margin-right:0}
 @media (max-width:640px){.doosan-bear-name{padding-right:5px}.doosan-bear-icon{width:38px;height:32px;margin-left:4px;margin-right:2px;vertical-align:-10px}.doosan-bear-icon img{width:32px;height:32px}}
 </style>
 <script>
