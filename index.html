@@ -2804,7 +2804,10 @@ async function requestDefenseSource(event,details=false,force=false){
  const resolved=defenseResolvedEvent(event),params=new URLSearchParams({defense:details?'details':'summary'});
  if(/^\d{8}[A-Z]{4}\d$/.test(S(resolved.kboGameId)))params.set('gameId',resolved.kboGameId);
  else{params.set('defenseDate',S(event.date));params.set('opp',S(event.opp));params.set('headerNo',String(+event.headerNo||0));}
- try{const b=await relayJSON(SUPABASE_URL+'/functions/v1/kbo-relay?'+params,90000,'background','defense:'+key+':'+details);
+ try{
+  await loadStaticDefense();
+  const staticBody=STATIC_DEFENSE_CACHE.get(S(resolved.kboGameId));
+  const b=!details&&staticBody?staticBody:await relayJSON(SUPABASE_URL+'/functions/v1/kbo-relay?'+params,90000,'background','defense:'+key+':'+details);
   if(b.schemaVersion!==1||b.source!=='kbo'||!Array.isArray(b.errors)||!Array.isArray(b.fielders)||!/^\d{8}[A-Z]{4}\d$/.test(S(b.gameId)))throw Error('실책 조회 기능 업데이트가 필요합니다');
   if(S(b.gameId).slice(0,8)!==S(event.date).replaceAll('-',''))throw Error('실책 경기 날짜 불일치');
   const keep=saved?.detailsReady&&!b.detailsReady?{records:saved.records,detailsReady:true}:{};
@@ -2818,8 +2821,16 @@ function scheduleDefenseSource(){
  const games=defenseRecordEvents().filter(e=>defenseErrorSource(e)&&officialErrorNotes(e)===null),job={signature,running:true,total:games.length,done:0};defenseSourceJob=job;
  let next=0;Promise.all(Array.from({length:2},async()=>{while(next<games.length&&defenseSourceJob===job){await requestDefenseSource(games[next++]);job.done++;}})).finally(()=>{job.running=false;if(recBatTab==='defense')rerender()});
 }
-function loadDefenseErrorRelays(name,rows){
- for(const row of rows){if(!row.count||defenseErrorSource(row.event)!=='naver')continue;requestDefenseSource(row.event,true);}
+async function loadDefenseErrorRelays(name,rows){
+ const targetRows=rows.filter(row=>row.count&&defenseErrorSource(row.event)==='naver');
+ const ids=[...new Set(targetRows.map(row=>S(row.event?.kboGameId)).filter(Boolean))];
+ if(ids.length)await primeStaticRelays(ids);
+ for(const row of targetRows){
+  const id=S(row.event?.kboGameId);
+  if(id&&SITUATION_RELAY_CACHE.has(id))continue;
+  requestDefenseSource(row.event,true);
+ }
+ if(recBatTab==='defense')rerender();
 }
 function defenseErrorHistoryHTML(name,overrideSummary=null){
  const summary=overrideSummary||defenseErrorSummary(name),rows=summary.rows.filter(r=>r.count>0||r.count===null);loadDefenseErrorRelays(name,rows);
@@ -3397,6 +3408,115 @@ function situationRelayCandidates(name,stat){
  })).sort((a,b)=>b.date.localeCompare(a.date));
 }
 const RELAY_PLAYER_CACHE=new Map();
+const STATIC_RELAY_YEARS=new Map();
+const STATIC_RELAY_INFLIGHT=new Map();
+
+async function loadStaticRelayYear(year){
+ year=String(year||'');
+ if(!/^\d{4}$/.test(year))return false;
+ if(STATIC_RELAY_YEARS.has(year))return STATIC_RELAY_YEARS.get(year);
+
+ let pending=STATIC_RELAY_INFLIGHT.get(year);
+ if(!pending){
+  pending=(async()=>{
+   try{
+    const response=await fetch(
+     new URL(`data/kbo-relay-${year}.json`,new URL('.',location.href)),
+     {cache:'force-cache',signal:AbortSignal.timeout(30000)}
+    );
+
+    if(response.status===404){
+     STATIC_RELAY_YEARS.set(year,false);
+     return false;
+    }
+
+    if(!response.ok)throw Error('정적 중계 기록 HTTP '+response.status);
+
+    const rows=await response.json();
+    if(!Array.isArray(rows))throw Error('정적 중계 기록 형식 오류');
+
+    for(const relay of rows){
+     if(
+      relay?.schemaVersion===1 &&
+      /^\d{8}[A-Z0-9]+$/.test(String(relay.gameId||'')) &&
+      Array.isArray(relay.plays)
+     ){
+      SITUATION_RELAY_CACHE.set(relay.gameId,relay);
+     }
+    }
+
+    STATIC_RELAY_YEARS.set(year,true);
+    return true;
+   }catch(error){
+    console.warn('Static relay load failed:',year,error);
+    return false;
+   }finally{
+    STATIC_RELAY_INFLIGHT.delete(year);
+   }
+  })();
+
+  STATIC_RELAY_INFLIGHT.set(year,pending);
+ }
+
+ return pending;
+}
+
+async function primeStaticRelays(ids){
+ const years=[
+  ...new Set(
+   ids
+    .map(id=>String(id||'').slice(0,4))
+    .filter(year=>/^\d{4}$/.test(year))
+  )
+ ];
+
+ await Promise.all(years.map(loadStaticRelayYear));
+}
+const STATIC_DEFENSE_CACHE=new Map();
+let STATIC_DEFENSE_PENDING=null;
+let STATIC_DEFENSE_LOADED=false;
+
+async function loadStaticDefense(){
+ if(STATIC_DEFENSE_LOADED)return true;
+ if(STATIC_DEFENSE_PENDING)return STATIC_DEFENSE_PENDING;
+
+ STATIC_DEFENSE_PENDING=(async()=>{
+  try{
+   const response=await fetch(
+    new URL('data/kbo-defense-2026.json',new URL('.',location.href)),
+    {cache:'force-cache',signal:AbortSignal.timeout(30000)}
+   );
+
+   if(response.status===404)return false;
+   if(!response.ok)throw Error('정적 수비 기록 HTTP '+response.status);
+
+   const rows=await response.json();
+   if(!Array.isArray(rows))throw Error('정적 수비 기록 형식 오류');
+
+   for(const body of rows){
+    if(
+     body?.schemaVersion===1 &&
+     body.source==='kbo' &&
+     /^\d{8}[A-Z0-9]+$/.test(String(body.gameId||'')) &&
+     Array.isArray(body.errors) &&
+     Array.isArray(body.fielders)
+    ){
+     STATIC_DEFENSE_CACHE.set(body.gameId,body);
+    }
+   }
+
+   STATIC_DEFENSE_LOADED=true;
+   return true;
+  }catch(error){
+   console.warn('Static defense load failed:',error);
+   return false;
+  }finally{
+   STATIC_DEFENSE_PENDING=null;
+  }
+ })();
+
+ return STATIC_DEFENSE_PENDING;
+}
 const relayPlayerKey=(id,name,role)=>JSON.stringify([id,name,role]);
 function cachedPlayerRelay(id,name,role){const game=Repo.all().find(e=>e.kboGameId===id);if(isLiveGame(game))return game.kbo?.liveRelay||null;return SITUATION_RELAY_CACHE.get(id)||RELAY_PLAYER_CACHE.get(relayPlayerKey(id,name,role));}
 const RELAY_REQUEST_QUEUE=[];let relayRequestsActive=0,relayBackgroundActive=0;
@@ -3438,7 +3558,9 @@ async function relayJSON(url,timeout,priority='interactive',requestKey=''){
 }
 const RELAY_BATCH_INFLIGHT=new Map();
 async function primePlayerRelay(ids,name,role,priority='interactive'){
- const missing=[...new Set(ids)].filter(id=>!cachedPlayerRelay(id,name,role));
+ ids=[...new Set(ids)];
+ await primeStaticRelays(ids);
+ const missing=ids.filter(id=>!cachedPlayerRelay(id,name,role));
  for(let i=0;i<missing.length;i+=100){
   const chunk=missing.slice(i,i+100),query=new URLSearchParams({gameIds:chunk.join(','),player:name,role});
   const key=JSON.stringify([name,role,[...chunk].sort()]);
@@ -3455,13 +3577,16 @@ async function primePlayerRelay(ids,name,role,priority='interactive'){
  }
 }
 async function readSituationRelay(id,name,role,priority='interactive',force=false){
- const existing=cachedPlayerRelay(id,name,role);if(!force&&existing&&!((situationHistoryStat==='rbi'||playerHistoryStat==='rbi')&&(existing.validationVersion||0)<5))return existing;
+ if(!force&&!cachedPlayerRelay(id,name,role)){
+  await loadStaticRelayYear(String(id||'').slice(0,4));
+ }
+ const existing=cachedPlayerRelay(id,name,role);if(!force&&existing&&(SITUATION_RELAY_CACHE.has(id)||!((situationHistoryStat==='rbi'||playerHistoryStat==='rbi')&&(existing.validationVersion||0)<5)))return existing;
  if(RELAY_INFLIGHT.has(id)){if(priority!=='background')promoteRelayRequest('game:'+id);return RELAY_INFLIGHT.get(id);}
  const pending=fetchSituationRelay(id,name,role,priority,force);RELAY_INFLIGHT.set(id,pending);
  try{return await pending}finally{RELAY_INFLIGHT.delete(id)}
 }
 async function fetchSituationRelay(id,name,role,priority='interactive',force=false){
- const existing=cachedPlayerRelay(id,name,role);if(!force&&existing&&!((situationHistoryStat==='rbi'||playerHistoryStat==='rbi')&&(existing.validationVersion||0)<5))return existing;
+ const existing=cachedPlayerRelay(id,name,role);if(!force&&existing&&(SITUATION_RELAY_CACHE.has(id)||!((situationHistoryStat==='rbi'||playerHistoryStat==='rbi')&&(existing.validationVersion||0)<5)))return existing;
  const b=await relayJSON(SUPABASE_URL+'/functions/v1/kbo-relay?gameId='+encodeURIComponent(id),90000,priority,'game:'+id);
  if(b.schemaVersion!==1||b.gameId!==id||!Array.isArray(b.plays))throw Error('응답 기록 형식 또는 경기 ID 불일치');
  SITUATION_RELAY_CACHE.set(id,b);return b;
