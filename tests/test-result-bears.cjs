@@ -41,5 +41,17 @@ for (const [score, label] of [['3-2', '3:2 승'], ['5-6', '5:6 패'], ['0-0', '0
 assert.ok(ctx.nationalScoreHTML({ type: 'national', score: '5-3', status: 'live' }).includes('진행 중'));
 assert.equal(ctx.nationalScoreHTML({ type: 'national', score: '5-3', cancelled: true }), '');
 assert.ok(html.includes('const NATIONAL_BEAR_IMAGES') && html.includes('const DOOSAN_BEAR_IMAGES'), 'Keep existing title mascots');
-console.log(`Passed ${checks + 3} checks and all inline JavaScript syntax checks`);
+// Regression: the exact completed game reported as missing must render its away-loss mascot.
+const nationalGames = JSON.parse(html.match(/const NATIONAL_TEAM_GAMES=(\[.*?\]);/)[1]);
+const japanGame = nationalGames.find(e => e.id === 'nat-u23-2026-1');
+assert.equal(japanGame.homeAway, 'away');
+assert.equal(japanGame.score, '5-6');
+assert.ok(japanGame.venue.includes('소베라니아'));
+const japanScore = ctx.nationalScoreHTML(japanGame);
+assert.match(japanScore, /5:6 패<\/span><img[^>]+national-loss-away\.svg/);
+const cubaScore = ctx.nationalScoreHTML(nationalGames.find(e => e.id === 'nat-u23-2026-0'));
+assert.match(cubaScore, /3:2 승<\/span><img[^>]+national-win-home\.svg/);
+const gameCardSource = html.slice(html.indexOf('function gameCard('), html.indexOf('function showUpcomingScheduleTime('));
+assert.ok(gameCardSource.includes('${RL[r]||esc(e.statusText||\'진행 중\')}</span>${resultBearHTML(e)}'), 'Doosan mascot follows the result label');
+console.log(`Passed ${checks + 9} checks and all inline JavaScript syntax checks`);
 module.exports = ctx;
