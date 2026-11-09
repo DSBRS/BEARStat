@@ -8,7 +8,7 @@ on:
     - cron: '17 15 * * *'
   push:
     branches: [main]
-    paths: ['index.html', 'scripts/export-notification-events.py', 'scripts/export-public-records.py', '.github/workflows/bearstat-public-archive.yml']
+    paths: ['index.html', 'assets/result-bears/**', 'scripts/export-notification-events.py', 'scripts/export-public-records.py', '.github/workflows/bearstat-public-archive.yml']
 permissions:
   contents: write
   pages: write
@@ -55,6 +55,7 @@ jobs:
           mkdir -p _site
           cp index.html _site/
           cp -r data _site/
+          cp -r assets _site/
           for file in sw.js sw-cloudflare.js manifest.webmanifest favicon.png apple-touch-icon.png; do
             if [ -f "$file" ]; then cp "$file" _site/; fi
           done

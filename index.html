@@ -308,9 +308,9 @@ nav a:last-child{flex:1.35}
 
 /* Result bear beside final scores */
 .result-bear-wrap{display:inline-flex;align-items:center;gap:3px;white-space:nowrap;vertical-align:middle}
-.result-bear{width:34px;height:34px;display:inline-block;vertical-align:middle;margin-left:0;transform:translateY(1px);flex:0 0 auto;overflow:visible}
-.ev .result-bear{width:30px;height:30px;margin-left:0}
-@media(max-width:600px){.result-bear{width:30px;height:30px}.ev .result-bear{width:27px;height:27px}}
+.result-bear{object-fit:contain;width:40px;height:40px;display:inline-block;vertical-align:middle;margin-left:0;transform:translateY(1px);flex:0 0 auto;overflow:visible}
+.ev .result-bear{width:36px;height:36px;margin-left:0}
+@media(max-width:600px){.result-bear{width:36px;height:36px}.ev .result-bear{width:32px;height:32px}}
 </style>
 
 <style>
@@ -2103,38 +2103,30 @@ function gameBatterSheetHTML(){
   </div></div>`;
 }
 
-function resultBearSeed(e){
-  const key=S(e?.id||'')+'|'+S(e?.date||'')+'|'+S(e?.opp||'');
-  let n=0;for(let i=0;i<key.length;i++)n=(n*31+key.charCodeAt(i))>>>0;return n%2;
-}
-function resultBearSVG(win,variant,national=false){
-  const home=variant===1;
-  const cap=national?'K':'D';
-  const jersey=national?(home?'#fff':'#172448'):(home?'#fff':'#172448');
-  const ink='#624a42',navy='#172448',red='#e94855',skin='#fff2e6',pink='#ffb6bf',blue='#63afe9';
-  const tears=win?'':`<path d="M28 47q-3 8 0 14q4-6 0-14M52 47q-3 8 0 14q4-6 0-14" fill="${blue}" opacity=".9"/>`;
-  const extras=win?(variant===1?`<path d="M11 27c-7-5-9 5-2 8c5-3 7-5 2-8M69 21c-5-5-10 3-3 7c4-2 7-4 3-7" fill="${pink}"/>`:`<path d="M10 20l5 5m-2-10l5 6M67 17l-4 7m9-4l-6 6" stroke="#f4bf3f" stroke-width="3" stroke-linecap="round"/>`):(variant===1?`<path d="M12 48q-8 4-4 9q7 0 9-7M67 48q8 4 4 9q-7 0-9-7" fill="${blue}"/>`:`<path d="M65 18c6-6 12 2 6 7l-6 5-6-5c-6-5 0-13 6-7" fill="${pink}"/><path d="M62 19l6 9" stroke="${ink}" stroke-width="2"/>`);
-  const face=win?`<path d="M29 42q4 5 8 0M48 42q4 5 8 0" fill="none" stroke="${ink}" stroke-width="3" stroke-linecap="round"/><path d="M37 49q4 8 8 0" fill="#ff8f91" stroke="${ink}" stroke-width="2.5" stroke-linejoin="round"/>`:`<path d="M28 43q4 4 8 0M48 43q4 4 8 0" fill="none" stroke="${ink}" stroke-width="3" stroke-linecap="round"/><path d="M38 52q4-4 8 0" fill="none" stroke="${ink}" stroke-width="2.5" stroke-linecap="round"/>`;
-  const arms=win?`<circle cx="19" cy="51" r="9" fill="${skin}" stroke="${ink}" stroke-width="3"/><circle cx="65" cy="51" r="9" fill="${skin}" stroke="${ink}" stroke-width="3"/>`:`<ellipse cx="29" cy="65" rx="12" ry="7" fill="${skin}" stroke="${ink}" stroke-width="3"/><ellipse cx="55" cy="65" rx="12" ry="7" fill="${skin}" stroke="${ink}" stroke-width="3"/>`;
-  return `<svg class="result-bear" viewBox="0 0 84 78" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">${extras}<circle cx="22" cy="31" r="12" fill="${skin}" stroke="${ink}" stroke-width="3"/><circle cx="62" cy="31" r="12" fill="${skin}" stroke="${ink}" stroke-width="3"/><path d="M19 58q23 18 46 0l-5-20H24z" fill="${jersey}" stroke="${ink}" stroke-width="3"/><path d="M27 39h30" stroke="${national?red:navy}" stroke-width="3"/><ellipse cx="42" cy="39" rx="25" ry="22" fill="${skin}" stroke="${ink}" stroke-width="3"/><ellipse cx="28" cy="50" rx="5" ry="3" fill="${pink}" opacity=".65"/><ellipse cx="56" cy="50" rx="5" ry="3" fill="${pink}" opacity=".65"/>${face}${tears}<path d="M21 29q3-18 21-18q18 0 22 18q-20-7-43 0" fill="${navy}" stroke="${ink}" stroke-width="3"/><path d="M25 28q18-7 36 0" fill="none" stroke="${ink}" stroke-width="3"/><text x="42" y="25" text-anchor="middle" font-size="15" font-weight="900" font-family="Arial,sans-serif" fill="white">${cap}</text>${arms}<text x="42" y="62" text-anchor="middle" font-size="${national?8:6.5}" font-weight="900" font-family="Arial,sans-serif" fill="${home?navy:'#fff'}">${national?'KOREA':'BEARS'}</text></svg>`;
-}
+// Supplied mascot artwork: white jerseys are home, navy jerseys are away.
+// Do not infer the designated side from venue, country, title order or a random seed.
 function resultBearHTML(e,league='doosan'){
-  if(!e||isCancelled(e))return '';
-  let a,b;
-  if(e.type==='national'){
-    const m=S(e.score).match(/(\d+)\s*[-:]\s*(\d+)/);if(!m)return '';
-    a=+m[1];b=+m[2];
-  }else{
-    if(!hasScore(e))return '';
-    a=+(e.score?.d);b=+(e.score?.v);
+  if(!e||isCancelled(e)||isLiveGame(e)||!['home','away'].includes(e.homeAway))return '';
+  let points;
+  if(hasScore(e))points=[Number(e.score.d),Number(e.score.v)];
+  else if(e.type==='national'){
+    const m=S(e.score).match(/(\d+)\s*[-:]\s*(\d+)/);
+    if(m)points=[Number(m[1]),Number(m[2])];
   }
-  if(!Number.isFinite(a)||!Number.isFinite(b)||a===b)return '';
-  const win=a>b,variant=resultBearSeed(e)+1;
-  return resultBearSVG(win,variant,e.type==='national');
+  if(!points||!points.every(n=>Number.isFinite(n)&&Number.isInteger(n)&&n>=0)||points[0]===points[1])return '';
+  const team=e.type==='national'?'national':'doosan';
+  const outcome=points[0]>points[1]?'win':'loss';
+  const label=(e.homeAway==='home'?'홈':'원정')+' '+(outcome==='win'?'승리':'패배');
+  return `<img class="result-bear" src="./assets/result-bears/${team}-${outcome}-${e.homeAway}.svg" alt="" aria-hidden="true" title="${label}" width="40" height="40" decoding="async">`;
 }
 function nationalScoreHTML(e){
-  const m=S(e?.score).match(/(\d+)\s*[-:]\s*(\d+)/);if(!m)return '';
-  return `<span class="result-bear-wrap"><span>${m[1]}-${m[2]}</span>${resultBearHTML(e,'national')}</span>`;
+  if(isCancelled(e))return '';
+  const m=S(e?.score).match(/(\d+)\s*[-:]\s*(\d+)/);
+  const points=hasScore(e)?[Number(e.score.d),Number(e.score.v)]:m?[Number(m[1]),Number(m[2])]:null;
+  if(!points||!points.every(n=>Number.isFinite(n)&&Number.isInteger(n)&&n>=0))return '';
+  const [korea,opponent]=points;
+  const label=isLiveGame(e)?esc(S(e.statusText)||'진행 중'):RL[korea>opponent?'W':korea<opponent?'L':'D'];
+  return `<span class="result-bear-wrap"><span>${korea}:${opponent} ${label}</span>${resultBearHTML(e,'national')}</span>`;
 }
 function gameCard(e,kind){
   if(!e)return `<div class="card"><div class="empty">오늘 경기가 없습니다.</div></div>`;
@@ -2163,7 +2155,7 @@ function evRow(e){
   if(['kbo','edu','futures'].includes(e.type)){const r=result(e);sb=isCancelled(e)?[e.venue,e.cancelReason?`취소 사유: ${e.cancelReason}`:'취소 경기'].filter(Boolean).join(' · '):[e.venue,hasScore(e)?`${e.score.d}:${e.score.v} ${RL[r]||esc(e.statusText||'진행 중')}`:'',e.stage?[e.stage,e.gameNo?e.gameNo+'차전':''].join(' '):'',starterDisplayName(e.starter)].filter(Boolean).join(' · ');}
   else if(e.type==='broadcast'||e.type==='radio')sb=[e.program,e.players&&e.players.join(', '),e.channel].filter(Boolean).join(' · ');
   else if(e.type==='ticket')sb=esc(ticketSiteName(e));
-  else if(e.type==='national')sb=[e.place,nationalScoreHTML(e)].filter(Boolean).join(' · ');
+  else if(e.type==='national')sb=[esc(S(e.venue||e.place)||'구장 미정'),isCancelled(e)?(e.cancelReason?'취소 사유: '+esc(e.cancelReason):'취소 경기'):nationalScoreHTML(e)].filter(Boolean).join(' · ');
   else sb=[e.place].filter(Boolean).join(' · ');
   const g=['kbo','edu','futures'].includes(e.type),o=g&&openIds.has(e.id);
   return `<div class="ev${g?' tap':''}"${g?` data-x="${esc(e.id)}"`:''}><div class="bd">${showUpcomingScheduleTime(e)?`<div class="event-start-time">${esc(handballInfo?.time||e.time||'--:--')}</div>`:''}<div class="ti"><span class="tag">${TYPES[e.type]||'기타'}</span>${g?esc(gameTitleWithHeader(e)):e.type==='handball'?esc(handballTitle):e.title}${e.demo?' <span class="tag">DEMO</span>':''}</div>${sb?`<div class="sb">${sb}</div>`:''}${rescheduleNoticeHTML(e)}${e.desc&&!(e.type==='national'&&S(e.score))?`<div class="sb">${e.desc}</div>`:''}${g?`<div class="more">${o?'접기 ▴':'경기 상세 ▾'}</div>`:''}${o?detail(e):''}</div></div>`;
