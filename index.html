@@ -7190,5 +7190,53 @@ try{
  scan(document.body);new MutationObserver(rs=>rs.forEach(r=>r.addedNodes.forEach(scan))).observe(document.body,{childList:true,subtree:true});
 })();
 </script>
+<style id="bearstat-addon-ui">
+.record-scroll,.opp-scroll{background:linear-gradient(to right,var(--card) 30%,transparent),linear-gradient(to left,var(--card) 30%,transparent) 100% 0,radial-gradient(farthest-side at 0 50%,rgba(20,20,60,.18),transparent),radial-gradient(farthest-side at 100% 50%,rgba(20,20,60,.18),transparent) 100% 0;background-repeat:no-repeat;background-size:40px 100%,40px 100%,14px 100%,14px 100%;background-attachment:local,local,scroll,scroll}
+.bs-gb{white-space:nowrap}
+.bs-asof{margin:18px 2px 0;font-size:11px;color:var(--sub);text-align:center}
+</style>
+<script id="bearstat-addon">
+(function(){
+ var queued=false;
+ function gbText(v){return v===0?'-':(Math.round(v*2)/2).toFixed(1)}
+ function addGameBehind(){
+  document.querySelectorAll('#app table').forEach(function(t){
+   if(t.dataset.bsGb)return;
+   var h=t.rows[0];if(!h)return;
+   var heads=[].map.call(h.cells,function(c){return c.textContent.trim()});
+   var iw=heads.indexOf('승'),il=heads.indexOf('패');
+   if(heads[0]!=='순위'||heads.indexOf('팀')<0||iw<0||il<0)return;
+   t.dataset.bsGb='1';
+   var th=document.createElement('th');th.textContent='게임차';th.className='bs-gb';h.appendChild(th);
+   var lw=null,ll=null;
+   [].slice.call(t.rows,1).forEach(function(r){
+    var c=r.cells;
+    if(c.length===1){c[0].colSpan=heads.length+1;lw=null;return}
+    var w=parseFloat(c[iw].textContent),l=parseFloat(c[il].textContent);
+    if(isNaN(w)||isNaN(l))return;
+    if(lw===null){lw=w;ll=l}
+    var td=document.createElement('td');td.className='bs-gb';
+    td.textContent=gbText(((lw-w)+(l-ll))/2);r.appendChild(td);
+   });
+  });
+ }
+ function addAsOf(){
+  if(document.body.dataset.r!=='home')return;
+  var app=document.getElementById('app');
+  if(!app||app.querySelector('.bs-asof'))return;
+  var tpl=document.getElementById('career_catalog_data');
+  var m=tpl&&tpl.innerHTML.slice(0,800).match(/"updatedAt":"([^"]+)"/);
+  if(!m)return;
+  var p=document.createElement('p');p.className='bs-asof';
+  p.textContent='선수 기록 데이터 기준 '+m[1]+' · 누적은 2025시즌 말 기준';
+  app.appendChild(p);
+ }
+ function run(){queued=false;try{addGameBehind();addAsOf()}catch(e){}}
+ function queue(){if(!queued){queued=true;requestAnimationFrame(run)}}
+ var app=document.getElementById('app');
+ if(app)new MutationObserver(queue).observe(app,{childList:true,subtree:true});
+ window.addEventListener('hashchange',queue);queue();
+})();
+</script>
 </body>
 </html>
