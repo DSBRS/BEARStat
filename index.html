@@ -1971,11 +1971,19 @@ document.addEventListener('change',event=>{
  const date=document.getElementById('f_rescheduledDate');if(date&&validScheduleDate(original))date.min=ymd(addDays(new Date(original+'T00:00:00'),1));
 });
 
+function bearsTeamNameForEvent(e){
+  const y=Number(S(e?.date).slice(0,4));
+  return Number.isFinite(y)&&y<=1998?'OB베어스':'두산베어스';
+}
+function bearsTeamKeyForEvent(e){
+  const y=Number(S(e?.date).slice(0,4));
+  return Number.isFinite(y)&&y<=1998?'ob':'doosan';
+}
 function detail(e){
   if(!e||!['kbo','edu','futures'].includes(e.type))return '';
-  const fin=hasScore(e),opp=S(e.opp)||'상대팀';
+  const fin=hasScore(e),opp=S(e.opp)||'상대팀',bearsName=bearsTeamNameForEvent(e);
   if(isCancelled(e)){
-    return `<div class="dt"><div class="big2">두산베어스 vs ${esc(teamDisplayName(opp))}</div><div class="sb" style="margin-top:6px">${esc(e.venue||e.place||'')}</div><div class="note" style="margin-top:18px;font-weight:800">${cancellationMessage(e)}</div>${rescheduleNoticeHTML(e)}</div>`;
+    return `<div class="dt"><div class="big2">${bearsName} vs ${esc(teamDisplayName(opp))}</div><div class="sb" style="margin-top:6px">${esc(e.venue||e.place||'')}</div><div class="note" style="margin-top:18px;font-weight:800">${cancellationMessage(e)}</div>${rescheduleNoticeHTML(e)}</div>`;
   }
   const row=(l,v,hide)=>{const x=S(v);return x?`<span>${l}</span><span>${esc(x)}</span>`:(hide?'':`<span>${l}</span><span class="tbd">미정</span>`)};
   const ha=e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':S(e.homeAway);
@@ -1985,7 +1993,7 @@ function detail(e){
     const hr=hrs.length?hrs.map(x=>`${esc(x.player)} ${x.inning}회 ${x.runs}점`).join('<br>'):S(e.homeRuns).split('\n').map(x=>esc(x.trim())).filter(Boolean).join('<br>');
     h+=row('승리투수',e.winP,1)+row('패전투수',e.loseP,1)+row('세이브',e.saveP,1)+row('홀드',e.holdP,1)+row('결승타',e.gwRbi,1)+(hr?`<span>홈런</span><span>${hr}</span>`:'')+row('경기시간',e.duration,1);
   }
-  let out=`<div class="dt">${fin?`<div class="big2">두산베어스 ${+e.score.d} : ${+e.score.v} ${esc(teamDisplayName(opp))}</div>`:''}<div class="meta">${h}</div></div>`;
+  let out=`<div class="dt">${fin?`<div class="big2">${bearsName} ${+e.score.d} : ${+e.score.v} ${esc(teamDisplayName(opp))}</div>`:''}<div class="meta">${h}</div></div>`;
   if(fin && e.batting?.length){
   out+=batterTable(e.batting,false,e)
 }
@@ -2114,7 +2122,7 @@ function resultBearHTML(e,league='doosan'){
     if(m)points=[Number(m[1]),Number(m[2])];
   }
   if(!points||!points.every(n=>Number.isFinite(n)&&Number.isInteger(n)&&n>=0)||points[0]===points[1])return '';
-  const team=e.type==='national'?'national':'doosan';
+  const team=e.type==='national'?'national':bearsTeamKeyForEvent(e);
   const outcome=points[0]>points[1]?'win':'loss';
   const label=(e.homeAway==='home'?'홈':'원정')+' '+(outcome==='win'?'승리':'패배');
   return `<img class="result-bear" src="./assets/result-bears/${team}-${outcome}-${e.homeAway}.svg" alt="" aria-hidden="true" title="${label}" width="40" height="40" decoding="async">`;
@@ -2130,13 +2138,13 @@ function nationalScoreHTML(e){
 }
 function gameCard(e,kind){
   if(!e)return `<div class="card"><div class="empty">오늘 경기가 없습니다.</div></div>`;
-  const r=result(e),sub=[e.stage,e.gameNo?e.gameNo+'차전':''].filter(Boolean).join(' · ');
+  const r=result(e),sub=[e.stage,e.gameNo?e.gameNo+'차전':''].filter(Boolean).join(' · '),bearsName=bearsTeamNameForEvent(e);
   const st=starterDisplayName(e.starter),ost=starterDisplayName(e.oppStarter);
 
   return `<div class="card"><div class="top"><span>${e.venue||''}${e.homeAway?` <span class="tag">${e.homeAway==='home'?'홈':e.homeAway==='away'?'원정':esc(e.homeAway)}</span>`:''}</span><span>${e.stage?`<span class="badge">${sub}</span>`:'정규시즌'}${[1,2].includes(+e.headerNo)?` <span class="tag">DH${+e.headerNo}</span>`:''}${e.series?` <span class="tag" style="margin:0 0 0 4px">${e.series}</span>`:''}</span></div>
   <div class="vs"><span class="vh">vs</span><span class="t">${esc(teamDisplayName(e.opp)||'상대팀 미정')}</span></div>
   ${isCancelled(e)?`<div class="sb" style="margin-top:8px">${esc(e.venue||e.place||'')}</div><div class="note" style="margin-top:16px;font-weight:800">${cancellationMessage(e)}</div>`:(hasScore(e)?`<div class="score"><span>${e.score.d} : ${e.score.v}</span><span class="result-bear-wrap"><span class="res ${r}">${RL[r]||esc(e.statusText||'진행 중')}</span>${resultBearHTML(e)}</span></div>`:(showUpcomingScheduleTime(e)?`<div class="time">${e.time||'<span class=tbd>시간 미정</span>'}</div>`:''))}
-  ${rescheduleNoticeHTML(e)}${isCancelled(e)?'':`<div class="meta"><span>경기장</span><span>${e.venue||'미정'}</span>${st?`<span>두산 선발</span><span>${esc(st)}</span>`:''}${ost?`<span>${esc(teamDisplayName(e.opp)||'상대팀')} 선발</span><span>${esc(ost)}</span>`:''}</div>`}</div>`;
+  ${rescheduleNoticeHTML(e)}${isCancelled(e)?'':`<div class="meta"><span>경기장</span><span>${e.venue||'미정'}</span>${st?`<span>${bearsName} 선발</span><span>${esc(st)}</span>`:''}${ost?`<span>${esc(teamDisplayName(e.opp)||'상대팀')} 선발</span><span>${esc(ost)}</span>`:''}</div>`}</div>`;
 }
 function showUpcomingScheduleTime(e){
  if(!e||!/^\d{4}-\d{2}-\d{2}$/.test(S(e.date))||S(e.date)<TS||isCancelled(e))return false;
@@ -7090,6 +7098,19 @@ try{
   const m={name:'BEARStat',short_name:'BEARStat',display:'standalone',start_url:location.href.split('#')[0],background_color:'#f4f5f9',theme_color:'#131230',icons:[{src:url,sizes:'180x180',type:'image/png'}]};
 
 }catch(e){}
+</script>
+<!-- ob-bears-era-decorator: OB mascot is intentionally separate from Doosan mascot -->
+<style>
+.ob-bear-name{white-space:nowrap;display:inline-block;overflow:visible}.ob-bear-icon{display:inline-block;width:38px;height:38px;margin:0 1px;vertical-align:-11px;pointer-events:none;user-select:none}.ob-bear-icon img{display:block;width:38px;height:38px;object-fit:contain}@media(max-width:640px){.ob-bear-icon,.ob-bear-icon img{width:32px;height:32px}.ob-bear-icon{vertical-align:-10px}}
+</style>
+<script>
+(()=>{
+ const SKIP='script,style,textarea,select,option,input,[contenteditable="true"],.ob-bear-name,.doosan-bear-name';
+ function make(){const w=document.createElement('span');w.className='ob-bear-name';w.append(document.createTextNode('OB베어스'));const i=document.createElement('span');i.className='ob-bear-icon';i.setAttribute('aria-hidden','true');const im=document.createElement('img');im.src='./assets/ob-bear.svg';im.alt='';im.draggable=false;i.append(im);w.append(i);return w}
+ function one(n){if(!n?.nodeValue||!n.nodeValue.includes('OB베어스')||n.parentElement?.closest(SKIP))return;const parts=n.nodeValue.split('OB베어스'),f=document.createDocumentFragment();parts.forEach((part,j)=>{if(j)f.append(make());if(part)f.append(document.createTextNode(part))});n.replaceWith(f)}
+ function scan(root){if(!root)return;if(root.nodeType===3){one(root);return}if(![1,11].includes(root.nodeType)||root.closest?.('.ob-bear-name'))return;const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),a=[];while(w.nextNode())a.push(w.currentNode);a.forEach(one)}
+ scan(document.body);new MutationObserver(rs=>rs.forEach(r=>r.addedNodes.forEach(scan))).observe(document.body,{childList:true,subtree:true});
+})();
 </script>
 <!-- doosan-approved-bear-decorator -->
 <style>
