@@ -8,7 +8,7 @@ on:
     - cron: '17 15 * * *'
   push:
     branches: [main]
-    paths: ['index.html', 'scripts/export-public-records.py', '.github/workflows/bearstat-public-archive.yml']
+    paths: ['index.html', 'scripts/export-notification-events.py', 'scripts/export-public-records.py', '.github/workflows/bearstat-public-archive.yml']
 permissions:
   contents: write
   pages: write
@@ -48,6 +48,8 @@ jobs:
       - name: Require an existing valid snapshot before deployment
         run: python -c "import json; m=json.load(open('data/manifest.json')); assert m['schemaVersion']==1"
       - uses: actions/configure-pages@v5
+      - name: Export built-in national and handball notification schedules
+        run: python scripts/export-notification-events.py
       - name: Prepare public site only
         run: |
           mkdir -p _site
