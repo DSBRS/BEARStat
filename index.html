@@ -1962,6 +1962,7 @@ function rescheduleLabel(event){
 function rescheduleNoticeHTML(event){
  if(!isCancelled(event)||!['kbo','futures','edu'].includes(event.type))return '';
  const next=resolvedReschedule(event),known=next&&validScheduleDate(next.date);
+ if(event.type==='edu'&&!known)return '';
  return `<div class="reschedule-notice">${known?`<a href="#/?date=${encodeURIComponent(next.date)}" aria-label="재편성 날짜 ${esc(next.date)} 일정 보기">↻ ${esc(rescheduleLabel(event))} <span aria-hidden="true">→</span></a>`:'<span>↻ 재편성일 미정</span>'}</div>`;
 }
 function reschedulesOnDate(date){
