@@ -1909,7 +1909,7 @@ const isExhibition=e=>!!e&&(S(e.stage).replace(/\s/g,'')==='시범경기'||S(e.k
 const isCancelled=e=>!!(e&&(e.cancelled===true||e.status==='cancelled'||e.cancelReason));
 const CANCEL_ICONS={'우천':'☂','그라운드 사정':'⛈','폭염':'☀','폭설':'❆','강풍':'༄','미세먼지':'☁︎','황사':'≋'};
 function cancellationIcon(reason){const text=S(reason);if(!text)return '⊘';for(const [name,icon] of Object.entries(CANCEL_ICONS))if(text.includes(name))return icon;return /강우|비로|rain/i.test(text)?'☂':'⊘';}
-const cancellationMessage=e=>S(e?.cancelReason)?`${cancellationIcon(e.cancelReason)} 이 경기는 ${esc(e.cancelReason)}으로 인해 취소되었습니다.`:'⊘ 이 경기는 취소되었습니다.';
+const cancellationMessage=e=>{const reason=S(e?.cancelReason).replace(/\s*취소\s*$/,'').trim();return reason?`${cancellationIcon(e.cancelReason)} 이 경기는 ${esc(reason)}으로 인해 취소되었습니다.`:'⊘ 이 경기는 취소되었습니다.';};
 const isLiveGame=e=>['live','inprogress'].includes(S(e?.status).toLowerCase());
 const result=e=>isLiveGame(e)||isCancelled(e)||!hasScore(e)?null:(+e.score.d>+e.score.v?'W':+e.score.d<+e.score.v?'L':'D');
 const RL={W:'승',L:'패',D:'무'};
