@@ -1728,7 +1728,11 @@ Repo.all=function(){
   const x=mergeEvents(_manualAll(),[...automatic.values()]);
   KBO_MERGE_WARNINGS=x.warnings;
   const hidden=new Set(HIDDEN_AUTO_IDS.map(S));
-  const visible=x.rows.filter(e=>!(e.kboGameId&&hidden.has(S(e.kboGameId))));
+  let visible=x.rows.filter(e=>!(e.kboGameId&&hidden.has(S(e.kboGameId))));
+  // 2026 Phoenix League: keep the verified result/cancellation rows added above and
+  // suppress the older manually registered education-league schedule rows so each game appears once.
+  const phoenix2026Dates=new Set(DEMO.filter(e=>e.source==='phoenix-official').map(e=>S(e.date)));
+  visible=visible.filter(e=>!(e.type==='edu'&&phoenix2026Dates.has(S(e.date))&&e.source!=='phoenix-official'));
   // Only ticket events are deduplicated by their actual booking identity.
   // Different games/times remain independent; never mutate Supabase records.
   const seenTickets=new Set();
