@@ -7259,15 +7259,23 @@ try{
    if(heads[0]!=='순위'||heads.indexOf('팀')<0||iw<0||il<0)return;
    t.dataset.bsGb='1';
    var th=document.createElement('th');th.textContent='게임차';th.className='bs-gb';h.appendChild(th);
-   var lw=null,ll=null;
+   var dataRows=[].slice.call(t.rows,1).filter(function(r){
+    var c=r.cells;if(c.length===1)return false;
+    var w=parseFloat(c[iw].textContent),l=parseFloat(c[il].textContent);
+    return !isNaN(w)&&!isNaN(l);
+   });
+   var leader=null;
+   dataRows.forEach(function(r){
+    var w=parseFloat(r.cells[iw].textContent),l=parseFloat(r.cells[il].textContent);
+    if(!leader||w-l>leader.w-leader.l)leader={w:w,l:l};
+   });
    [].slice.call(t.rows,1).forEach(function(r){
     var c=r.cells;
-    if(c.length===1){c[0].colSpan=heads.length+1;lw=null;return}
+    if(c.length===1){c[0].colSpan=heads.length+1;return}
     var w=parseFloat(c[iw].textContent),l=parseFloat(c[il].textContent);
-    if(isNaN(w)||isNaN(l))return;
-    if(lw===null){lw=w;ll=l}
+    if(isNaN(w)||isNaN(l)||!leader)return;
     var td=document.createElement('td');td.className='bs-gb';
-    td.textContent=gbText(((lw-w)+(l-ll))/2);r.appendChild(td);
+    td.textContent=gbText(((leader.w-w)+(l-leader.l))/2);r.appendChild(td);
    });
   });
  }
