@@ -1549,8 +1549,7 @@ document.addEventListener('click',ev=>{
 const live=()=>CUSTOM.some(e=>e.source==='kbo');
 const Repo={
   all(){const a=DEMO.concat(NATIONAL_TEAM_GAMES,HANDBALL_AUTO,CUSTOM),k=e=>e.date+e.type,isG=e=>e.type==='kbo',lv=CUSTOM.some(e=>e.source==='kbo'),real=new Set(a.filter(e=>!e.demo&&isG(e)).map(k));
-    const eduCancelReasons={'2026-10-09':'그라운드 사정 취소','2026-10-19':'그라운드 사정 취소','2026-10-23':'우천 취소','2026-10-24':'그라운드 사정 취소','2026-10-26':'그라운드 사정 취소'};
-    return a.filter(e=>!(e.demo&&isG(e)&&(lv||real.has(k(e))))&&!(e.source==='handball-auto'&&CUSTOM.some(c=>c.type==='handball'&&c.date===e.date&&c.opp===e.opp&&c.homeAway===e.homeAway))).map(e=>e.type==='edu'&&eduCancelReasons[e.date]?{...e,cancelled:true,status:'cancelled',cancelReason:eduCancelReasons[e.date]}:e)}, // 자동 일정은 수동 등록된 동일 경기와 중복하지 않음
+    return a.filter(e=>!(e.demo&&isG(e)&&(lv||real.has(k(e))))&&!(e.source==='handball-auto'&&CUSTOM.some(c=>c.type==='handball'&&c.date===e.date&&c.opp===e.opp&&c.homeAway===e.homeAway)))}, // 자동 일정은 수동 등록된 동일 경기와 중복하지 않음
   custom(){return CUSTOM},
   async saveRoster(rows,year=adminRosterYear){requireAdmin();if(!SB)throw new Error('Supabase 설정이 필요합니다');rows=normRoster(rows);const y=+year||TODAY.getFullYear(),key='bears_roster_'+y;const r=await SB.from('kv').upsert({key,body:rows});if(r.error)throw r.error;ROSTERS_BY_YEAR[y]=rows;if(y===TODAY.getFullYear())BEARS_ROSTER=rows;rerender()},
   async saveEduRoster(rows,year=adminEduRosterYear){requireAdmin();if(!SB)throw new Error('Supabase 설정이 필요합니다');rows=normRoster(rows);const y=+year||TODAY.getFullYear(),key='edu_roster_'+y;const r=await SB.from('kv').upsert({key,body:rows});if(r.error)throw r.error;EDU_ROSTERS_BY_YEAR[y]=rows;rerender()},
@@ -1708,7 +1707,20 @@ Repo.all=function(){
   const x=mergeEvents(_manualAll(),[...automatic.values()]);
   KBO_MERGE_WARNINGS=x.warnings;
   const hidden=new Set(HIDDEN_AUTO_IDS.map(S));
-  const visible=x.rows.filter(e=>!(e.kboGameId&&hidden.has(S(e.kboGameId))));
+  let visible=x.rows.filter(e=>!(e.kboGameId&&hidden.has(S(e.kboGameId))));
+  // 2026 Miyazaki Phoenix League: preserve the official cancellation classification
+  // even when the schedule itself is loaded from Supabase and cannot be edited by a logged-out viewer.
+  const EDU_2026_CANCEL_REASON={
+    '2026-10-09':'그라운드 사정 취소',
+    '2026-10-19':'그라운드 사정 취소',
+    '2026-10-23':'우천 취소',
+    '2026-10-24':'그라운드 사정 취소',
+    '2026-10-26':'그라운드 사정 취소'
+  };
+  visible=visible.map(e=>{
+    const reason=e.type==='edu'?EDU_2026_CANCEL_REASON[S(e.date)]:'';
+    return reason?{...e,cancelled:true,status:'cancelled',cancelReason:reason,cancellationOverride:true}:e;
+  });
   // Only ticket events are deduplicated by their actual booking identity.
   // Different games/times remain independent; never mutate Supabase records.
   const seenTickets=new Set();
