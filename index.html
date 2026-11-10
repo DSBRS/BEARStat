@@ -764,6 +764,20 @@ table th button,table td button{ text-align:center }
 .notification-page-heading>a.notification-home-icon:hover{background:#dfe1e1}
 .notification-page-heading>a.notification-home-icon:focus-visible{outline:3px solid var(--navy);outline-offset:3px}
 </style>
+
+<style id="score-bear-size-and-detail-name-fix">
+/* Score detail: make mascot art more visible without changing team/score text. */
+.dt .big2 .result-bear{width:42px !important;height:42px !important;vertical-align:-12px !important;margin:0 2px !important;}
+.dt .big2 .ob-bear-icon,.dt .big2 .doosan-bear-icon{width:44px !important;height:44px !important;vertical-align:-13px !important;margin-left:2px !important;margin-right:2px !important;}
+.dt .big2 .ob-bear-icon img,.dt .big2 .doosan-bear-icon img{width:44px !important;height:44px !important;}
+/* Expanded player/detail headers should show the name only, without the decorative bear. */
+.sheethead .ob-bear-icon,.sheethead .doosan-bear-icon,.historybox .sheethead .ob-bear-icon,.historybox .sheethead .doosan-bear-icon{display:none !important;}
+@media(max-width:640px){
+ .dt .big2 .result-bear{width:36px !important;height:36px !important;vertical-align:-10px !important;}
+ .dt .big2 .ob-bear-icon,.dt .big2 .doosan-bear-icon,.dt .big2 .ob-bear-icon img,.dt .big2 .doosan-bear-icon img{width:38px !important;height:38px !important;}
+ .dt .big2 .ob-bear-icon,.dt .big2 .doosan-bear-icon{vertical-align:-11px !important;}
+}
+</style>
 </head>
 <body>
 <div id="app"></div>
@@ -6430,12 +6444,12 @@ function careerPitchLoadedGames(name,stat){
   const start=apps.some(x=>x.start===true||x.starter===true||S(x.role).includes('선발'))?'선발':apps.length?'구원':'';
   out.push({date:S(e.date),opp:S(e.opp)||'',place:S(e.venue||e.place)||'',homeAway:S(e.homeAway)||'',role:start,ip,runs:runs===null?undefined:runs,er:er===null?undefined:er,result:decisionField?CAREER_PITCH_DETAIL_LABELS[stat]:'',score,note:''});
  }
- return out.sort((a,b)=>a.date.localeCompare(b.date));
+ return out.sort((a,b)=>b.date.localeCompare(a.date));
 }
 function careerPitchDetailGames(row,stat){
  const seed=CAREER_PITCH_DETAIL_SEED[row.n]?.[stat]||[],loaded=careerPitchLoadedGames(row.n,stat),seen=new Set(),all=[];
  for(const g of [...seed,...loaded]){const k=[g.date,g.opp,stat].join('|');if(seen.has(k))continue;seen.add(k);all.push(g)}
- return all.sort((a,b)=>a.date.localeCompare(b.date));
+ return all.sort((a,b)=>b.date.localeCompare(a.date));
 }
 function careerPitchDetailHTML(row){
  if(recKind!=='pitcher'||!careerPitchDetailStat)return '';
@@ -6444,7 +6458,7 @@ function careerPitchDetailHTML(row){
  const rows=games.map(g=>{
   const era=gameEra(g),role=g.role||'유형 미확인';
   const line1=[role,g.er!==undefined?g.er+'자책':'',era?'평균자책점 '+era:''].filter(Boolean).map(esc).join(' · ');
-  const line2=[g.ip?g.ip+'이닝':'',g.runs!==undefined?g.runs+'실점':'',g.place||'',g.homeAway==='home'?'홈':g.homeAway==='away'?'원정':'',g.score?'스코어 '+g.score:''].filter(Boolean).map(esc).join(' · ');
+  const line2=[g.ip?g.ip+'이닝':'',g.runs!==undefined?g.runs+'실점':'',g.place||'',g.homeAway==='home'?'홈':g.homeAway==='away'?'원정':''].filter(Boolean).map(esc).join(' · ');
   return `<section class="historyrow" style="padding:14px 0"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start"><div><b>${esc(g.date)}${g.opp?' · vs '+esc(g.opp):''}</b>${line1?`<div class="sb" style="margin-top:6px">${line1}</div>`:''}${line2?`<div class="sb" style="margin-top:3px">${line2}</div>`:''}${g.note?`<div class="sb" style="margin-top:3px">${esc(g.note)}</div>`:''}</div>${g.result?`<b style="white-space:nowrap">${esc(g.result)}</b>`:''}</div></section>`;
  }).join('');
  let status='';
