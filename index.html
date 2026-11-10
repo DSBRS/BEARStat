@@ -2007,7 +2007,7 @@ function detail(e){
     const hr=hrs.length?hrs.map(x=>`${esc(x.player)} ${x.inning}회 ${x.runs}점`).join('<br>'):S(e.homeRuns).split('\n').map(x=>esc(x.trim())).filter(Boolean).join('<br>');
     h+=row('승리투수',e.winP,1)+row('패전투수',e.loseP,1)+row('세이브',e.saveP,1)+row('홀드',e.holdP,1)+row('결승타',e.gwRbi,1)+(hr?`<span>홈런</span><span>${hr}</span>`:'')+row('경기시간',e.duration,1);
   }
-  let out=`<div class="dt">${fin?`<div class="big2">${bearsName} ${resultBearHTML(e)} ${+e.score.d} : ${+e.score.v} ${esc(teamDisplayName(opp))}</div>`:''}<div class="meta">${h}</div></div>`;
+  let out=`<div class="dt">${fin?`<div class="big2">${bearsName} ${+e.score.d} : ${+e.score.v} ${esc(teamDisplayName(opp))}</div>`:''}<div class="meta">${h}</div></div>`;
   if(fin && e.batting?.length){
   out+=batterTable(e.batting,false,e)
 }
