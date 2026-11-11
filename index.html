@@ -6838,7 +6838,10 @@ function jerseyNumberSVG(number){
  // Home marking: red face + navy outline; white extrusion to lower-right; very dark outer edge.
  // A masked white extrusion avoids the old stacked-text striping/black-blob artifact.
  const offsets=[];
- for(let d=7;d>=2;d--) offsets.push(`<text x="${110+d}" y="${y+d}" ${common} fill="${white}" stroke="${navy}" stroke-width="4.4" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>`);
+ // Keep the existing lower-right extrusion silhouette, but make the extrusion itself white.
+ // Draw one dark outer-edge layer first, then fill the same extrusion path with white layers.
+ offsets.push(`<text x="${110+8}" y="${y+8}" ${common} fill="${navy}" stroke="${navy}" stroke-width="4.6" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>`);
+ for(let d=7;d>=2;d--) offsets.push(`<text x="${110+d}" y="${y+d}" ${common} fill="${white}" stroke="${white}" stroke-width="2.4" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>`);
  return `<g class="jersey-number" aria-label="등번호 ${value}">
   ${offsets.join('')}
   <text x="110" y="${y}" ${common} fill="${red}" stroke="${navy}" stroke-width="4.2" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>
