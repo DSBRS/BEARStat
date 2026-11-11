@@ -6835,32 +6835,33 @@ function jerseyNumberSVG(number){
  const y=174;
  const common=`text-anchor="middle" font-family="Freshman, Impact, sans-serif" font-size="${fontSize}" font-weight="400" letter-spacing="${value.length>=3?-3:-1}"`;
  const navy="#10152f", white="#ffffff", red="#c8102e";
- const offsets=[];
- // Thick home-uniform extrusion: same lower-right silhouette, now a broad white face
- // with a dark navy edge. Layers begin close to the face so inner/front corners connect.
- offsets.push(`<text x="123" y="${y+13}" ${common} fill="${navy}" stroke="${navy}" stroke-width="5.2" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>`);
- for(let d=12;d>=2;d--) offsets.push(`<text x="${110+d}" y="${y+d}" ${common} fill="${white}" stroke="${white}" stroke-width="4.8" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>`);
+ // Home marking: red face + navy keyline + a THIN white lower-right extrusion + navy edge.
+ // Keep the extrusion close to the face so it reads like sewn marking thickness, not a detached shadow.
  return `<g class="jersey-number" aria-label="등번호 ${value}">
-  ${offsets.join('')}
-  <text x="110" y="${y}" ${common} fill="${red}" stroke="${navy}" stroke-width="4.2" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>
- </g>`;
-}
-function jerseyUniformBaseSVG(){
- return `<g class="jersey-uniform-base">
-  <path d="M68 34 L88 24 Q110 33 132 24 L152 34 L202 55 L190 91 L169 84 L166 194 Q166 210 154 218 Q133 227 110 230 Q87 227 66 218 Q54 210 54 194 L51 84 L30 91 L18 55 Z" fill="#fff" stroke="#d8dce5" stroke-width="2.2" stroke-linejoin="round"/>
-  <path d="M88 24 Q91 39 110 40 Q129 39 132 24" fill="#f8f9fb" stroke="#d8dce5" stroke-width="1.7"/>
-  <path d="M72 33 Q110 55 148 33" fill="none" stroke="#10152f" stroke-width="3.1" stroke-linecap="round"/>
-  <path d="M19.5 76.5 L51 87.5" fill="none" stroke="#10152f" stroke-width="3.1"/>
-  <path d="M169 87.5 L200.5 76.5" fill="none" stroke="#10152f" stroke-width="3.1"/>
-  <path d="M22 82 L50 91" fill="none" stroke="#d8dce5" stroke-width="1.2"/>
-  <path d="M170 91 L198 82" fill="none" stroke="#d8dce5" stroke-width="1.2"/>
-  <path d="M58 88 L58 190 Q58 207 70 214" fill="none" stroke="#eef0f4" stroke-width="1.5"/>
-  <path d="M162 88 L162 190 Q162 207 150 214" fill="none" stroke="#eef0f4" stroke-width="1.5"/>
+  <text x="${110+5}" y="${y+5}" ${common} fill="${white}" stroke="${navy}" stroke-width="5.2" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>
+  <text x="${110+4}" y="${y+4}" ${common} fill="${white}" stroke="${white}" stroke-width="3.0" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>
+  <text x="${110+3}" y="${y+3}" ${common} fill="${white}" stroke="${white}" stroke-width="3.0" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>
+  <text x="110" y="${y}" ${common} fill="${red}" stroke="${navy}" stroke-width="4.0" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>
  </g>`;
 }
 function jerseySVG(number,name,gold=false){
  return `<svg class="jersey-icon" viewBox="0 0 220 230" aria-hidden="true" focusable="false">
-  ${jerseyUniformBaseSVG()}
+  <defs>
+   <linearGradient id="jerseyFabric-${String(number).replace(/[^0-9A-Za-z]/g,'')}" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#ffffff"/>
+    <stop offset="1" stop-color="#fbfcff"/>
+   </linearGradient>
+  </defs>
+  <!-- clean home-uniform back: piping follows collar and sleeve hems -->
+  <path d="M76 28 L91 22 Q110 30 129 22 L144 28 L184 47 L174 76 L157 69 L157 181 Q157 204 110 212 Q63 204 63 181 L63 69 L46 76 L36 47 Z"
+        fill="url(#jerseyFabric-${String(number).replace(/[^0-9A-Za-z]/g,'')})" stroke="#d7dbe4" stroke-width="1.8" stroke-linejoin="round"/>
+  <path d="M91 22 Q94 38 110 39 Q126 38 129 22" fill="none" stroke="#d7dbe4" stroke-width="1.5"/>
+  <path d="M78 29 Q110 47 142 29" fill="none" stroke="#10152f" stroke-width="3.2" stroke-linecap="round"/>
+  <!-- sleeve piping sits on the sleeve hems, not across the sleeve body -->
+  <path d="M39 55 L48 72" fill="none" stroke="#10152f" stroke-width="3.2" stroke-linecap="butt"/>
+  <path d="M181 55 L172 72" fill="none" stroke="#10152f" stroke-width="3.2" stroke-linecap="butt"/>
+  <path d="M66 72 L66 181 Q66 199 82 204" fill="none" stroke="#eef0f5" stroke-width="1.5"/>
+  <path d="M154 72 L154 181 Q154 199 138 204" fill="none" stroke="#eef0f5" stroke-width="1.5"/>
   ${jerseyNameSVG(name,gold)}
   ${jerseyNumberSVG(number)}
  </svg>`;
