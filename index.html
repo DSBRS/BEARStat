@@ -6847,7 +6847,12 @@ function jerseyNumberSVG(number){
  </g>`;
 }
 function jerseySVG(number,name,gold=false){
- return `<svg class="jersey-icon" viewBox="0 0 220 230" aria-hidden="true" focusable="false"><path class="jersey-ground" d="M58 216Q110 226 162 216" fill="none" stroke="currentColor" opacity=".08" stroke-width="5" stroke-linecap="round"/><path d="M42 31L82 20Q110 31 138 20L178 31L216 49L204 91L174 82V191Q174 213 154 222Q110 238 66 222Q46 213 46 191V82L16 91L4 49Z" fill="#fbfbfa" stroke="#d3d5dc" stroke-width="1.7" stroke-linejoin="round"/><path d="M86 20Q110 32 134 20L130 29Q110 39 90 29Z" fill="#eeeff0" stroke="#c6c8d0" stroke-width="1.1"/><path d="M42 31L46 82M178 31L174 82M52 88V190M168 88V190" stroke="#e8e9ed" fill="none" stroke-width="1"/><path d="M48 192Q52 218 110 228Q168 218 172 192" stroke="#e0e2e7" fill="none" stroke-width="1.2"/>${jerseyNameSVG(name,gold)}${jerseyNumberSVG(number)}</svg>`;
+ return `<svg class="jersey-icon" viewBox="0 0 220 230" aria-hidden="true" focusable="false"><path class="jersey-ground" d="M58 216Q110 226 162 216" fill="none" stroke="currentColor" opacity=".08" stroke-width="5" stroke-linecap="round"/><path d="M42 31L82 20Q110 31 138 20L178 31L216 49L204 91L174 82V191Q174 213 154 222Q110 238 66 222Q46 213 46 191V82L16 91L4 49Z" fill="#fbfbfa" stroke="#d3d5dc" stroke-width="1.7" stroke-linejoin="round"/><path d="M86 20Q110 32 134 20L130 29Q110 39 90 29Z" fill="#eeeff0" stroke="#c6c8d0" stroke-width="1.1"/>
+<!-- Home-uniform navy piping: curved upper-back line and sleeve-end stripes. -->
+<path d="M54 29Q78 43 110 43Q142 43 166 29" fill="none" stroke="#10152f" stroke-width="4.2" stroke-linecap="round"/>
+<path d="M9 66L43 79" fill="none" stroke="#10152f" stroke-width="4.2" stroke-linecap="butt"/>
+<path d="M177 79L211 66" fill="none" stroke="#10152f" stroke-width="4.2" stroke-linecap="butt"/>
+<path d="M42 31L46 82M178 31L174 82M52 88V190M168 88V190" stroke="#e8e9ed" fill="none" stroke-width="1"/><path d="M48 192Q52 218 110 228Q168 218 172 192" stroke="#e0e2e7" fill="none" stroke-width="1.2"/>${jerseyNameSVG(name,gold)}${jerseyNumberSVG(number)}</svg>`;
 }
 function jerseyAssignments(number,season=jerseySeason){
  return jerseyData().records.filter(row=>{
