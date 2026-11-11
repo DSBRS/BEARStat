@@ -1243,12 +1243,15 @@ const BEAR_NATIONAL_MEDALS=[
  {year:2026,category:'medal',name:'최민석',title:'아이치·나고야 아시안게임',medal:'금메달'},
  {year:2026,category:'medal',name:'박준순',title:'아이치·나고야 아시안게임',medal:'금메달'}
 ];
+const BEAR_BUILTIN_AWARDS=[
+ {id:'builtin-2023-kim-taekyeon-highschool-choi-dongwon',year:2023,category:'choi-dongwon',name:'김택연 (인천고)',title:'고교 최동원상'}
+];
 let BEAR_MANAGED_AWARDS=[];
 let bearAwardEditId='';
 let bearAwardEditorOpen=false;
 let bearAwardStatus='';
 const awardStoreKey='bearstat_awards_v1';
-function bearAllAwards(){return BEAR_MANAGED_AWARDS.filter(x=>x&&x.category!=='championship')}
+function bearAllAwards(){return [...BEAR_BUILTIN_AWARDS,...BEAR_MANAGED_AWARDS].filter(x=>x&&x.category!=='championship')}
 async function loadManagedAwards(){
  if(!SB)return;
  const {data,error}=await SB.from('kv').select('body').eq('key',awardStoreKey).maybeSingle();
