@@ -652,6 +652,9 @@ table th button,table td button{ text-align:center }
 @media(min-width:1024px){.schedule-search-section{border-top:1px solid var(--line);padding-top:25px;margin-top:14px}.schedule-search label{font-size:17px}.schedule-search input{height:50px;font-size:15px}.schedule-search button{height:50px}.schedule-search-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.desktop-home-grid{margin-top:24px}}
 @media(min-width:1024px){.desktop-calendar .schedule-search-section{border-top:0;padding-top:0;margin:0 0 22px}.desktop-calendar .schedule-search-grid{grid-template-columns:1fr}}
 </style>
+<style id="bearstat-freshman-font">
+@font-face{font-family:'Freshman';src:url('https://static.wfonts.com/data/2016/05/20/freshman/Freshman.ttf') format('truetype');font-display:swap}
+</style>
 <style id="bearstat-jersey-ui">
 /* Number archive: scoped styles, with separate desktop and mobile arrangements. */
 .jersey-page{color:var(--ink)}
@@ -6827,12 +6830,16 @@ function jerseyNameSVG(name,gold=false){
  >${markName}</text>`;
 }
 function jerseyNumberSVG(number){
- const chars=[...String(number)],scaleX=chars.length===1?.80:chars.length===2?.59:.39,scaleY=.70,step=65,width=(chars.length*58+(chars.length-1)*7)*scaleX,start=110-width/2;
- return `<g transform="translate(${start.toFixed(2)} 98) scale(${scaleX} ${scaleY})">${chars.map((c,i)=>{
-  const path=JERSEY_DIGITS[c];if(!path)return '';
-  // Separate back outline, white extrusion, black face border, and red face.
-  return `<g transform="translate(${i*step} 0)" fill-rule="evenodd" stroke-linejoin="miter"><path d="${path}" transform="translate(6 6)" fill="#fff" stroke="#15151d" stroke-width="4"/><path d="${path}" transform="translate(3 3)" fill="#fff" stroke="#fff" stroke-width="3"/><path d="${path}" fill="#b91634" stroke="#10111b" stroke-width="6" paint-order="stroke fill"/><path d="${path}" fill="none" stroke="#e96370" stroke-width=".55" opacity=".5"/></g>`;
- }).join('')}</g>`;
+ const value=String(number ?? '');
+ const fontSize=value.length===1?104:value.length===2?91:70;
+ const y=181;
+ const common=`text-anchor="middle" font-family="Freshman, Impact, sans-serif" font-size="${fontSize}" font-weight="400" letter-spacing="${value.length>=3?-3:-1}"`;
+ // Uniform-marking stack: navy back edge, white extrusion, then red Freshman face with navy outline.
+ return `<g class="jersey-number" aria-label="등번호 ${value}">
+  <text x="116" y="${y+8}" ${common} fill="#10152f" stroke="#10152f" stroke-width="8" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>
+  <text x="113" y="${y+5}" ${common} fill="#f8f8f5" stroke="#f8f8f5" stroke-width="7" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>
+  <text x="110" y="${y}" ${common} fill="#c8102e" stroke="#10152f" stroke-width="6" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>
+ </g>`;
 }
 function jerseySVG(number,name,gold=false){
  return `<svg class="jersey-icon" viewBox="0 0 220 230" aria-hidden="true" focusable="false"><path class="jersey-ground" d="M58 216Q110 226 162 216" fill="none" stroke="currentColor" opacity=".08" stroke-width="5" stroke-linecap="round"/><path d="M42 31L82 20Q110 31 138 20L178 31L216 49L204 91L174 82V191Q174 213 154 222Q110 238 66 222Q46 213 46 191V82L16 91L4 49Z" fill="#fbfbfa" stroke="#d3d5dc" stroke-width="1.7" stroke-linejoin="round"/><path d="M86 20Q110 32 134 20L130 29Q110 39 90 29Z" fill="#eeeff0" stroke="#c6c8d0" stroke-width="1.1"/><path d="M42 31L46 82M178 31L174 82M52 88V190M168 88V190" stroke="#e8e9ed" fill="none" stroke-width="1"/><path d="M48 192Q52 218 110 228Q168 218 172 192" stroke="#e0e2e7" fill="none" stroke-width="1.2"/>${jerseyNameSVG(name,gold)}${jerseyNumberSVG(number)}</svg>`;
