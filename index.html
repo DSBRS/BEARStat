@@ -6817,7 +6817,7 @@ function jerseyNameSVG(name,gold=false){
 
  return `<text
   x="110"
-  y="72"
+  y="77"
   text-anchor="middle"
   fill="${gold?'#b48b3c':'#111321'}"
   stroke="${gold?'#866222':'#111321'}"
@@ -6843,7 +6843,7 @@ function jerseyNumberSVG(number){
  const totalW=widths.reduce((a,b)=>a+b,0)+Math.max(0,chars.length-1)*gap;
  let x=110-totalW/2;
  // Keep the number vertically centered while reducing it to 70% of its previous size.
- const y=chars.length===1 ? 97.9 : chars.length===2 ? 101.8 : 107.1;
+ const y=chars.length===1 ? 92.9 : chars.length===2 ? 96.8 : 102.1;
  const images=chars.map((ch,i)=>{
    const w=widths[i];
    const tag=`<image href="${JERSEY_DIGIT_PNGS[ch]}" x="${x.toFixed(2)}" y="${y}" width="${w.toFixed(2)}" height="${digitH}" preserveAspectRatio="xMidYMid meet"/>`;
