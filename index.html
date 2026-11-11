@@ -6831,14 +6831,19 @@ function jerseyNameSVG(name,gold=false){
 }
 function jerseyNumberSVG(number){
  const value=String(number ?? '');
- const fontSize=value.length===1?104:value.length===2?91:70;
- const y=181;
+ const fontSize=value.length===1?82:value.length===2?72:58;
+ const y=174;
  const common=`text-anchor="middle" font-family="Freshman, Impact, sans-serif" font-size="${fontSize}" font-weight="400" letter-spacing="${value.length>=3?-3:-1}"`;
- // Uniform-marking stack: navy back edge, white extrusion, then red Freshman face with navy outline.
+ // Continuous sewn/extruded marking: repeated 1px offsets connect the dimensional layer around every corner.
+ const navy="#10152f", white="#f5f4ef", red="#c8102e";
+ const back=[];
+ for(let d=9;d>=6;d--) back.push(`<text x="${110+d}" y="${y+d}" ${common} fill="${navy}" stroke="${navy}" stroke-width="5.2" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>`);
+ const bevel=[];
+ for(let d=5;d>=1;d--) bevel.push(`<text x="${110+d}" y="${y+d}" ${common} fill="${white}" stroke="${navy}" stroke-width="3" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>`);
  return `<g class="jersey-number" aria-label="등번호 ${value}">
-  <text x="116" y="${y+8}" ${common} fill="#10152f" stroke="#10152f" stroke-width="8" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>
-  <text x="113" y="${y+5}" ${common} fill="#f8f8f5" stroke="#f8f8f5" stroke-width="7" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>
-  <text x="110" y="${y}" ${common} fill="#c8102e" stroke="#10152f" stroke-width="6" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>
+  ${back.join('')}
+  ${bevel.join('')}
+  <text x="110" y="${y}" ${common} fill="${red}" stroke="${navy}" stroke-width="4.3" stroke-linejoin="miter" paint-order="stroke fill">${value}</text>
  </g>`;
 }
 function jerseySVG(number,name,gold=false){
