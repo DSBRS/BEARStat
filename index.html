@@ -1737,7 +1737,7 @@ let mergedEventCache=null;
 Repo.all=function(){
  const refs=[CUSTOM,KBO_AUTO,FUTURES_AUTO,HIDDEN_AUTO_IDS];
  if(mergedEventCache&&refs.every((ref,i)=>ref===mergedEventCache.refs[i])){KBO_MERGE_WARNINGS=mergedEventCache.warnings;return mergedEventCache.rows;}
- const rows=(()=>{
+ let rows=(()=>{
   const automatic=new Map();
   for(const e of [...KBO_AUTO,...FUTURES_AUTO])automatic.set(e.type+':'+(e.kboGameId||e.id),e);
   const x=mergeEvents(_manualAll(),[...automatic.values()]);
