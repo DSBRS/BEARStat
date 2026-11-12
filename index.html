@@ -775,8 +775,17 @@ table th button,table td button{ text-align:center }
 </style>
 <style id="bearstat-home-share">
 .home-mobile-actions{display:flex;align-items:center;gap:8px}
-.home-share-toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));z-index:99999;transform:translate(-50%,16px);padding:10px 14px;border-radius:999px;background:var(--ink);color:var(--card);font-size:13px;font-weight:800;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease;box-shadow:0 8px 28px rgba(0,0,0,.18)}
+.home-share-toast{position:fixed;z-index:99999;padding:8px 11px;border:1px solid #d8e0ec;border-radius:10px;background:#fff;color:#142b5f;font-size:12px;font-weight:800;line-height:1.35;white-space:nowrap;opacity:0;pointer-events:none;transform:translate(-50%,-4px);transition:opacity .16s ease,transform .16s ease;box-shadow:0 7px 20px rgba(20,43,95,.14)}
+.home-share-toast::before{content:"";position:absolute;left:50%;top:-6px;width:10px;height:10px;background:#fff;border-left:1px solid #d8e0ec;border-top:1px solid #d8e0ec;transform:translateX(-50%) rotate(45deg)}
 .home-share-toast.show{opacity:1;transform:translate(-50%,0)}
+@media(prefers-color-scheme:dark){
+ .home-share-toast{background:#202b43;color:#f1f2fa;border-color:#3b4964;box-shadow:0 8px 24px rgba(0,0,0,.34)}
+ .home-share-toast::before{background:#202b43;border-color:#3b4964}
+}
+html[data-theme="light"] .home-share-toast{background:#fff;color:#142b5f;border-color:#d8e0ec;box-shadow:0 7px 20px rgba(20,43,95,.14)}
+html[data-theme="light"] .home-share-toast::before{background:#fff;border-color:#d8e0ec}
+html[data-theme="dark"] .home-share-toast{background:#202b43;color:#f1f2fa;border-color:#3b4964;box-shadow:0 8px 24px rgba(0,0,0,.34)}
+html[data-theme="dark"] .home-share-toast::before{background:#202b43;border-color:#3b4964}
 </style>
 <style id="bearstat-notification-home-icon">
 .notification-page-heading>a.notification-home-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 40px;width:40px;height:40px;margin:0;padding:0;border:0;border-radius:12px;background:#e8e9e9;color:#202425;text-decoration:none;box-sizing:border-box}
@@ -2486,16 +2495,19 @@ async function setupPushServer(){
 document.addEventListener('toggle',ev=>{if(ev.target.id==='push_settings')pushState.open=ev.target.open;},true);
 const BEARSTAT_HOME_URL='https://dsbrs.github.io/BEARStat/#/';
 let homeShareToastTimer=0;
-function showHomeShareToast(message='링크가 복사되었습니다'){
+function showHomeShareToast(anchor,message='링크가 복사되었습니다'){
  let toast=document.querySelector('.home-share-toast');
  if(!toast){toast=document.createElement('div');toast.className='home-share-toast';toast.setAttribute('role','status');toast.setAttribute('aria-live','polite');document.body.appendChild(toast);}
- toast.textContent=message;toast.classList.add('show');clearTimeout(homeShareToastTimer);homeShareToastTimer=setTimeout(()=>toast.classList.remove('show'),1600);
+ toast.textContent=message;toast.classList.remove('show');
+ const r=anchor&&anchor.getBoundingClientRect?anchor.getBoundingClientRect():null;
+ if(r){toast.style.left=`${Math.min(innerWidth-12,Math.max(12,r.left+r.width/2))}px`;toast.style.top=`${r.bottom+10}px`;toast.style.bottom='auto';}
+ requestAnimationFrame(()=>toast.classList.add('show'));clearTimeout(homeShareToastTimer);homeShareToastTimer=setTimeout(()=>toast.classList.remove('show'),1800);
 }
-async function copyBearstatHomeLink(){
- try{if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(BEARSTAT_HOME_URL);else{const t=document.createElement('textarea');t.value=BEARSTAT_HOME_URL;t.setAttribute('readonly','');t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();}showHomeShareToast();}
- catch(e){showHomeShareToast('링크를 복사하지 못했어요');}
+async function copyBearstatHomeLink(anchor){
+ try{if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(BEARSTAT_HOME_URL);else{const t=document.createElement('textarea');t.value=BEARSTAT_HOME_URL;t.setAttribute('readonly','');t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();}showHomeShareToast(anchor);}
+ catch(e){showHomeShareToast(anchor,'링크를 복사하지 못했어요');}
 }
-document.addEventListener('click',ev=>{if(ev.target.closest('[data-copy-home-link]'))void copyBearstatHomeLink();if(ev.target.closest('[data-open-push]')){location.hash='#/notifications';}if(ev.target.closest('[data-push-stop-legacy]'))void stopLegacyPush();if(ev.target.closest('[data-push-test]'))void testPushNotification();if(ev.target.closest('[data-push-toggle]'))void togglePush();if(ev.target.closest('[data-push-setup]'))void setupPushServer();});
+document.addEventListener('click',ev=>{const shareButton=ev.target.closest('[data-copy-home-link]');if(shareButton)void copyBearstatHomeLink(shareButton);if(ev.target.closest('[data-open-push]')){location.hash='#/notifications';}if(ev.target.closest('[data-push-stop-legacy]'))void stopLegacyPush();if(ev.target.closest('[data-push-test]'))void testPushNotification();if(ev.target.closest('[data-push-toggle]'))void togglePush();if(ev.target.closest('[data-push-setup]'))void setupPushServer();});
 setTimeout(()=>void preparePush(),0);
 
 function notificationSettingsPage(){
