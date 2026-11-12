@@ -55,7 +55,7 @@ h2{font-size:12px;letter-spacing:1.2px;color:var(--sub);margin:20px 2px 8px;font
 .d{height:52px;padding:0 0 16px;line-height:20px;box-sizing:border-box;border:0;background:none;color:var(--ink);font-size:14px;border-radius:12px;position:relative;font-family:inherit}
 .d.o{color:var(--sub);opacity:.45}.d.sun{color:var(--acc)}
 .d.today{font-weight:800;box-shadow:inset 0 0 0 1.5px var(--navy)}
-.d.sel{background:var(--navy);color:var(--bg);font-weight:800}
+.d.sel{background:#E8EEF9;color:var(--navy);font-weight:800}
 .cal-marks{position:absolute;bottom:3px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:3px;height:11px;pointer-events:none}
 .cal-mark{display:inline-flex;align-items:center;justify-content:center;width:10px;height:11px;font-size:9.5px;line-height:1;font-style:normal}
 .cal-mark svg{display:block;width:10px;height:10px;flex-shrink:0}
@@ -70,7 +70,7 @@ h2{font-size:12px;letter-spacing:1.2px;color:var(--sub);margin:20px 2px 8px;font
 .cal-mark.circle::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 .calendar-letter-mark{font:900 10px/1 Arial,sans-serif;letter-spacing:-.4px}.calendar-letter-legend{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:1.5px solid currentColor;border-radius:50%;font:900 12px/1 Arial,sans-serif}.calendar-legend-item.calendar-category{border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.calendar-legend-item.calendar-category.active{color:var(--navy);font-weight:900}.calendar-legend-item.calendar-category:focus-visible{outline:2px solid var(--navy);outline-offset:2px;border-radius:8px}
 .d i{position:absolute;bottom:5px;left:50%;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--acc)}
-.d.sel i{background:var(--bg)}
+.d.sel i{background:var(--navy)}
 .ev{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line)}.ev:first-child{border-top:0;padding-top:2px}
 .event-start-time{font-size:13px;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums;margin-bottom:6px}
 .ev .tm{width:46px;font-size:13px;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums}
@@ -314,7 +314,7 @@ nav a:last-child{flex:1.35}
 .ev .result-bear{width:28px;height:28px;margin-left:0}
 @media(max-width:640px){.result-bear{width:24px;height:24px}.ev .result-bear{width:24px;height:24px}}
 
-.calendar-legend-extra{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}.calendar-legend-extra>b{display:block;margin-bottom:10px}.calendar-legend-grid.compact{gap:8px 14px}.championship-star svg,.birthday-ball svg,.military-mark svg{width:14px;height:14px;display:block}.championship-v{width:16px;height:16px;display:inline-grid;place-items:center;position:relative}.championship-v svg{width:16px;height:16px;display:block}.championship-v b{position:absolute;inset:0;display:grid;place-items:center;font-size:5.5px;line-height:1;font-weight:900;color:var(--bg);letter-spacing:-.4px}.birthday-ball,.military-mark{color:var(--navy)}.championship-emblem{display:block;max-width:180px;max-height:150px;width:auto;height:auto;object-fit:contain;margin:12px auto 2px}.calendar-legend-icon .championship-v{vertical-align:middle}
+.calendar-legend-extra{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}.calendar-legend-extra>b{display:block;margin-bottom:10px}.calendar-legend-grid.compact{gap:8px 14px}.championship-star svg,.birthday-ball svg,.military-mark svg{width:14px;height:14px;display:block}.championship-v{width:19px;height:19px;display:inline-grid;place-items:center;position:relative}.championship-v svg{width:19px;height:19px;display:block}.championship-v b{position:absolute;inset:0;display:grid;place-items:center;font-size:6.2px;line-height:1;font-weight:900;color:var(--bg);letter-spacing:-.4px}.birthday-ball,.military-mark{color:var(--navy)}.championship-emblem{display:block;max-width:180px;max-height:150px;width:auto;height:auto;object-fit:contain;margin:12px auto 2px}.calendar-legend-icon .championship-v{vertical-align:middle}
 </style>
 
 <style>
@@ -1963,8 +1963,41 @@ function bearsKSTitleEvent(ds){
 const BEARS_CURRENT_BIRTHDAYS=[
  ['박치국','03-10'],['김민석','05-09'],['임종성','03-03'],['김동주','02-14'],['박성재','11-18'],['오명진','09-04'],['박찬호','06-05'],['전다민','08-21'],['김동준','09-03'],['타카다','09-18'],['이유찬','08-05'],['류승민','10-11'],['최주형','08-19'],['김정우','05-15'],['박정수','01-29'],['김민규','05-07'],['김영현','08-18'],['김기연','09-07'],['강승호','02-09'],['양의지','06-05'],['박민준','10-21'],['윤준호','11-14'],['최승용','05-11'],['이병헌','06-04'],['양재훈','05-01'],['정수빈','10-07'],['김대한','12-06'],['김인태','07-03'],['홍성호','07-15'],['세베리노','10-03'],['박지훈','09-07'],['잭로그','04-23'],['최종인','05-01'],['서준오','03-05'],['최지강','07-23'],['이주엽','03-26'],['장규빈','04-21'],['이용찬','01-02'],['곽빈','05-28'],['벤자민','07-26'],['박신지','07-16'],['이영하','11-01'],['조수행','08-30'],['박준순','07-13'],['양석환','07-15'],['김호준','05-17'],['천현재','07-05'],['최준호','06-03'],['최원준','12-21'],['안재석','02-15'],['김택연','06-03'],['윤태호','10-10'],['김주오','09-14'],['류현준','03-25'],['최민석','07-02'],['제환유','09-30'],['김한중','11-03'],['최우인','08-09'],['김문수','03-29'],['신민철','01-13'],['김지윤','01-13'],['지강혁','08-14'],['장우진','03-20'],['황희천','11-06'],['김준상','08-02'],['백승우','01-04'],['엄지민','11-22'],['임종훈','05-07'],['임현철','10-21'],['심건보','11-17'],['남태웅','01-08'],['정성현','09-11'],['안치호','11-30'],['이희성','02-02'],['안민겸','05-17'],['이기석','06-07'],['이종혁','02-22']
 ];
+let _birthdayBearsEntryYears=null;
+function birthdayBearsEntryYears(){
+ if(_birthdayBearsEntryYears)return _birthdayBearsEntryYears;
+ const map=new Map();
+ try{
+  const tpl=document.getElementById('career_catalog_data');
+  const data=JSON.parse(tpl?.textContent||'{}');
+  for(const p of (data.players||[])){
+   const years=(p.bearsSeasons||[]).map(Number).filter(Number.isFinite);
+   if(!years.length)continue;
+   const first=Math.min(...years);
+   if(!map.has(p.name)||first<map.get(p.name))map.set(p.name,first);
+  }
+ }catch(e){}
+ _birthdayBearsEntryYears=map;
+ return map;
+}
 function bearsBirthdayEvents(ds){
- const md=ds.slice(5),names=BEARS_CURRENT_BIRTHDAYS.filter(([,day])=>day===md).map(([name])=>name);
+ const year=+ds.slice(0,4),md=ds.slice(5),names=[];
+ try{
+  const tpl=document.getElementById('career_catalog_data');
+  const data=JSON.parse(tpl?.textContent||'{}');
+  for(const p of (data.players||[])){
+   const seasons=(p.bearsSeasons||[]).map(Number).filter(Number.isFinite);
+   if(!seasons.includes(year))continue;
+   const m=S(p.birth).match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+   if(!m)continue;
+   const playerMd=String(+m[2]).padStart(2,'0')+'-'+String(+m[3]).padStart(2,'0');
+   if(playerMd===md&&p.name&&!names.includes(p.name))names.push(p.name);
+  }
+ }catch(e){}
+ // 2026 현재 선수 중 아카이브에 아직 반영되지 않은 선수만 기존 목록으로 보완
+ if(year===2026){
+  for(const [name,day] of BEARS_CURRENT_BIRTHDAYS)if(day===md&&!names.includes(name))names.push(name);
+ }
  if(!names.length)return [];
  const title=names.length===1?names[0]+' 선수 생일':names.join(' · ')+' 선수 생일';
  const desc=names.length===1?names[0]+' 선수의 생일입니다!':names.join(', ')+' 선수의 생일입니다!';
