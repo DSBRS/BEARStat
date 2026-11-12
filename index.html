@@ -6948,16 +6948,26 @@ function jerseyPersonHistoryHTML(){
  return `<div class="jersey-person-history"><h4>${esc(personName)} · 사용 등번호</h4><p>${rows.length?rows.map(row=>`No. ${esc(row.number)} · ${esc(jerseyPeriod(row))}`).join('<br>'):'확인된 등번호 이력이 없어요.'}${staff.length?`<br><br><b>OB·두산 지도자 경력</b><br>${staff.map(esc).join('<br>')}`:roles.length?`<br><br>스태프 경력 · ${roles.map(esc).join(' · ')}`:''}</p></div>`;
 }
 const JERSEY_FOREIGN_PLAYERS=new Set([
- '타이론 우즈','우즈','에드가 캐세레스','캐세레스','마이크 파머','파머','빅터 콜','콜','셰인 베넷','베넷','마이크 니일','니일',
- '게리 레스','레스','이리키 사토시','이리키','스캇 쿨바','쿨바','마크 키퍼','키퍼','레스 알칸트라','알칸트라',
+ '타이론 우즈','우즈','에드가 캐세레스','캐세레스','마이크 파머','파머','빅터 콜','빅터콜','셰인 베넷','베넷','트로이 닐','마이크 니일','니일',
+ '게리 레스','레스','이리키 사토시','이리키','마이크 쿨바','스캇 쿨바','쿨바','마크 키퍼','키퍼','이지 알칸트라','레스 알칸트라','알칸트라',
  '맷 랜들','랜들','척 스미스','스미스','다니엘 리오스','리오스','저스틴 레이어','레이어','후안 세데뇨','세데뇨','맷 왓슨','왓슨','크리스 니코스키','니코스키',
- '켈빈 히메네스','히메네스','레스 왈론드','왈론드','더스틴 니퍼트','니퍼트','라몬 라미레즈','라미레즈','페르난도 니에베','페르난도','스콧 프록터','프록터',
- '개릿 올슨','올슨','데릭 핸킨스','핸킨스','크리스 볼스테드','볼스테드','유네스키 마야','마야','앤서니 스와잭','스와잭',
- '마이클 보우덴','보우덴','닉 에반스','에반스','조쉬 린드블럼','린드블럼','세스 후랭코프','후랭코프','지미 파레디스','파레디스','스캇 반슬라이크','반슬라이크',
- '호세 미구엘 페르난데스','호세 페르난데스','페르난데스','라울 알칸타라','크리스 플렉센','플렉센','워커 로켓','로켓','아리엘 미란다','미란다',
- '로버트 스탁','스탁','브랜든 와델','브랜든','딜런 파일','딜런','호세 로하스','헨리 라모스','라모스','시라카와 케이쇼','시라카와',
- '조던 발라조빅','발라조빅','제러드 영','제러드','콜 어빈','어빈','제이크 케이브','케이브','잭 로그','잭로그','유니오 세베리노','세베리노','타카다 타쿠토','타카다','웨스 벤자민','벤자민'
+ '켈빈 히메네스','히메네스','레스 왈론드','왈론드','더스틴 니퍼트','니퍼트','라몬 라미레즈','라미레즈','페르난도 니에베','페르난도','스캇 프록터','스콧 프록터','프록터',
+ '개릿 올슨','올슨','데릭 핸킨스','핸킨스','크리스 볼스테드','볼스테드','유네스키 마야','마야','호르헤 칸투','칸투','앤서니 스와잭','스와잭',
+ '데이빈슨 로메로','로메로','잭 루츠','루츠','마이클 보우덴','보우덴','닉 에반스','에반스','조쉬 린드블럼','린드블럼','세스 후랭코프','후랭코프','지미 파레디스','파레디스','스캇 반 슬라이크','반슬라이크',
+ '호세 미구엘 페르난데스','호세 페르난데스','페르난데스','라울 알칸타라','알칸타라','크리스 플렉센','플렉센','워커 로켓','로켓','아리엘 미란다','미란다',
+ '로버트 스탁','스탁','브랜든 와델','브랜든','딜런 파일','딜런','호세 로하스','로하스','헨리 라모스','라모스','시라카와 케이쇼','시라카와',
+ '조던 발라조빅','발라조빅','제러드 영','제러드영','제러드','콜 어빈','콜어빈','어빈','제이크 케이브','케이브','타무라 이치로','타무라',
+ '잭 로그','잭로그','유니오 세베리노','세베리노','타카다 타쿠토','타카다','웨스 벤자민','벤자민'
 ]);
+function jerseyIsForeignRow(row,season=jerseySeason){
+ if(!row||!JERSEY_FOREIGN_PLAYERS.has(row.name))return false;
+ // 2024 니퍼트는 은퇴식 특별 엔트리이므로 시즌 외국인 필터에서 제외.
+ if((row.name==='더스틴 니퍼트'||row.name==='니퍼트')&&String(season)==='2024')return false;
+ return true;
+}
+function jerseyForeignAssignments(number,season=jerseySeason){
+ return jerseyAssignments(number,season).filter(row=>jerseyIsForeignRow(row,season));
+}
 function jerseyNumbers(){
  const usedHigh=[...new Set(jerseyData().records.map(row=>row.number).filter(number=>/^\d+$/.test(number)&&Number(number)>=100))].sort((a,b)=>Number(a)-Number(b));
  return ['0',...Array.from({length:99},(_,i)=>String(i+1)),...usedHigh,...Array.from({length:10},(_,i)=>'0'+i)];
@@ -6973,7 +6983,7 @@ function jerseyRoleForName(name){
 }
 function jerseyMatchesPlayerFilter(number,filter){
  const rows=jerseyAssignments(number);
- if(filter==='foreign')return rows.some(row=>JERSEY_FOREIGN_PLAYERS.has(row.name));
+ if(filter==='foreign')return rows.some(row=>jerseyIsForeignRow(row,jerseySeason));
  if(filter==='pitcher'||filter==='hitter')return rows.some(row=>jerseyRoleForName(row.name).has(filter));
  return true;
 }
@@ -6982,12 +6992,69 @@ function jerseySelectedNumbers(){
  return jerseyNumbers().filter(number=>{
   const n=Number(number),range=jerseyRange==='all'||jerseyRange==='pitcher'&&jerseyMatchesPlayerFilter(number,'pitcher')||jerseyRange==='hitter'&&jerseyMatchesPlayerFilter(number,'hitter')||jerseyRange==='foreign'&&jerseyMatchesPlayerFilter(number,'foreign')||jerseyRange==='retired'&&!!jerseyData().retired[number]||jerseyRange==='low'&&number.length<3&&!number.startsWith('0')&&n<=49||jerseyRange==='mid'&&n>=50&&n<=99||jerseyRange==='high'&&n>=100||jerseyRange==='extra'&&number.startsWith('0');
   if(!range)return false;if(!query)return true;
-  return /^\d+$/.test(query)?number===query:jerseyHistory(number).some(row=>row.name.replace(/\s/g,'').toLowerCase().includes(query))||S(jerseyData().retired[number]?.name).includes(query);
+  return /^\d+$/.test(query)?number===query:jerseyHistory(number).some(row=>row.name.replace(/\s/g,'').toLowerCase().includes(query)||jerseyMarkingName(row.name).replace(/\s/g,'').toLowerCase().includes(query))||S(jerseyData().retired[number]?.name).replace(/\s/g,'').toLowerCase().includes(query);
  });
 }
 function jerseyMarkingName(name){
  const markings={
+  '에드가 캐세레스':'캐세레스',
+  '타이론 우즈':'우즈',
+  '마이크 파머':'파머',
+  '셰인 베넷':'베넷',
+  '빅터 콜':'빅터콜',
+  '트로이 닐':'니일',
+  '마이크 니일':'니일',
+  '게리 레스':'레스',
+  '이리키 사토시':'이리키',
+  '마크 키퍼':'키퍼',
+  '마이크 쿨바':'쿨바',
+  '스캇 쿨바':'쿨바',
+  '이지 알칸트라':'알칸트라',
+  '레스 알칸트라':'알칸트라',
+  '맷 랜들':'랜들',
+  '다니엘 리오스':'리오스',
+  '저스틴 레이어':'레이어',
+  '크리스 니코스키':'니코스키',
+  '후안 세데뇨':'세데뇨',
+  '레스 왈론드':'왈론드',
+  '켈빈 히메네스':'히메네스',
+  '더스틴 니퍼트':'니퍼트',
+  '페르난도 니에베':'페르난도',
+  '스캇 프록터':'프록터',
+  '스콧 프록터':'프록터',
+  '데릭 핸킨스':'핸킨스',
+  '개릿 올슨':'올슨',
+  '유네스키 마야':'마야',
+  '크리스 볼스테드':'볼스테드',
+  '호르헤 칸투':'칸투',
+  '앤서니 스와잭':'스와잭',
+  '데이빈슨 로메로':'로메로',
+  '잭 루츠':'루츠',
+  '마이클 보우덴':'보우덴',
+  '닉 에반스':'에반스',
+  '조쉬 린드블럼':'린드블럼',
+  '세스 후랭코프':'후랭코프',
+  '스캇 반 슬라이크':'반슬라이크',
+  '지미 파레디스':'파레디스',
+  '호세 페르난데스':'페르난데스',
+  '호세 미구엘 페르난데스':'페르난데스',
+  '라울 알칸타라':'알칸타라',
+  '크리스 플렉센':'플렉센',
+  '워커 로켓':'로켓',
+  '아리엘 미란다':'미란다',
+  '로버트 스탁':'스탁',
+  '브랜든 와델':'브랜든',
+  '호세 로하스':'로하스',
+  '딜런 파일':'딜런',
+  '조던 발라조빅':'발라조빅',
+  '제러드 영':'제러드영',
+  '헨리 라모스':'라모스',
+  '시라카와 케이쇼':'시라카와',
+  '콜 어빈':'콜어빈',
+  '제이크 케이브':'케이브',
+  '타무라 이치로':'타무라',
   '잭로그':'잭로그',
+  '잭 로그':'잭로그',
   '유니오 세베리노':'세베리노',
   '타카다 타쿠토':'타카다',
   '웨스 벤자민':'벤자민'
@@ -6995,7 +7062,7 @@ function jerseyMarkingName(name){
  return markings[name]||name;
 }
 function jerseyCardHTML(number){
- const assignments=jerseyRecentFirst(jerseyAssignments(number)),retired=jerseyRetirement(number),row=assignments[0],name=retired?.name||row?.name||'',history=jerseyHistory(number);
+ const allAssignments=jerseyRecentFirst(jerseyAssignments(number)),foreignAssignments=jerseyRecentFirst(jerseyForeignAssignments(number)),assignments=jerseyRange==='foreign'?foreignAssignments:allAssignments,retired=jerseyRetirement(number),row=assignments[0],name=retired?.name||row?.name||'',history=jerseyHistory(number);
  const queryName=jerseyQuery.trim()&&!/^\d+$/.test(jerseyQuery.trim());
  const status=retired?'영구결번':assignments.length>1?'시즌 사용자 '+new Set(assignments.map(r=>r.name)).size+'명':row?(jerseySeason==='current'?'현재 사용자':jerseySeason+' 시즌'):(queryName?'사용 이력 일치':history.length?'배정 기록 미확인':'확인된 이력 없음');
  return `<button type="button" class="jersey-item${retired?' is-retired':''}" data-jersey-open="${number}" aria-label="${number}번 ${name?esc(name)+' · ':''}${esc(status)}, 등번호 역사 보기">${jerseySVG(number,jerseyMarkingName(name),!!retired)}<span class="jersey-item-caption"><span>${esc(status)}</span><span aria-hidden="true">↗</span></span></button>`;
