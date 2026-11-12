@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="BEARStat">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#131230">
+<meta name="theme-color" content="#142B5F">
 <link rel="manifest" href="./manifest.webmanifest">
 <title>BEARStat</title>
 <link rel="icon" type="image/png" href="./favicon.png">
@@ -19,9 +19,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@900&display=swap" rel="stylesheet">
 
 <style>
-:root{box-sizing:border-box;--bg:#f4f5f9;--card:#fff;--ink:#14142b;--sub:#6b6f85;--line:#e6e8ef;--navy:#131230;--acc:#e5322d;--win:#1a7f4b;--lose:#c0392b;--chip:#eceefa;padding-top:env(safe-area-inset-top,0px)}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d0d1a;--card:#181829;--ink:#f1f2fa;--sub:#9a9eb6;--line:#2a2b40;--navy:#8f95ff;--chip:#24253d}}
-:root[data-theme="dark"]{--bg:#0d0d1a;--card:#181829;--ink:#f1f2fa;--sub:#9a9eb6;--line:#2a2b40;--navy:#8f95ff;--chip:#24253d}
+:root{box-sizing:border-box;--bg:#f4f5f9;--card:#fff;--ink:#14142b;--sub:#6b6f85;--line:#e6e8ef;--navy:#142B5F;--acc:#e5322d;--win:#1a7f4b;--lose:#c0392b;--chip:#e8eef9;padding-top:env(safe-area-inset-top,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d0d1a;--card:#181829;--ink:#f1f2fa;--sub:#9a9eb6;--line:#2a2b40;--navy:#8fb6ff;--chip:#202b43}}
+:root[data-theme="dark"]{--bg:#0d0d1a;--card:#181829;--ink:#f1f2fa;--sub:#9a9eb6;--line:#2a2b40;--navy:#8fb6ff;--chip:#202b43}
 *{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;-webkit-tap-highlight-color:transparent}
 #app{max-width:520px;margin:0 auto;padding:12px 16px calc(84px + env(safe-area-inset-bottom,0px))}
@@ -136,7 +136,7 @@ input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border
 .situ-info summary{cursor:pointer;width:fit-content}
 .situ-info p{margin:6px 0 0;overflow-wrap:anywhere}
 
-.calendar-filter{display:flex;gap:7px;overflow-x:auto;padding:2px 1px 10px;margin:0 0 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.calendar-filter::-webkit-scrollbar{display:none}.calendar-filter button{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--sub);border-radius:999px;min-height:36px;padding:7px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}.calendar-filter button.active{background:var(--navy);border-color:var(--navy);color:#fff}.calendar-filter button:focus-visible{outline:2px solid var(--navy);outline-offset:2px}.national-detail{margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--chip)}.national-detail .meta{margin-top:0}
+.calendar-filter{display:flex;gap:7px;overflow-x:auto;padding:2px 1px 10px;margin:0 0 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.calendar-filter::-webkit-scrollbar{display:none}.calendar-filter button{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--sub);border-radius:999px;min-height:36px;padding:7px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}.calendar-filter button.active{background:var(--navy);border-color:var(--navy);color:#fff}.calendar-filter button:focus-visible{outline:2px solid var(--navy);outline-offset:2px}.national-detail{margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--chip)}.national-detail .meta{margin-top:0}.regular-detail{margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--chip)}.regular-detail .meta{margin-top:0}
 .calendar-legend{margin-top:24px;margin-bottom:10px}
 .calendar-legend summary{display:flex;align-items:center;gap:7px;width:fit-content;cursor:pointer;list-style:none;color:var(--sub);font-size:13px;font-weight:800;letter-spacing:1.5px}
 .calendar-legend summary::-webkit-details-marker{display:none}
@@ -2053,7 +2053,7 @@ function detail(e){
     const hr=hrs.length?hrs.map(x=>`${esc(x.player)} ${x.inning}회 ${x.runs}점`).join('<br>'):S(e.homeRuns).split('\n').map(x=>esc(x.trim())).filter(Boolean).join('<br>');
     h+=row('승리투수',e.winP,1)+row('패전투수',e.loseP,1)+row('세이브',e.saveP,1)+row('홀드',e.holdP,1)+row('결승타',e.gwRbi,1)+(hr?`<span>홈런</span><span>${hr}</span>`:'')+row('경기시간',e.duration,1);
   }
-  let out=`<div class="dt">${fin?`<div class="big2">${bearsName} ${resultBearHTML(e)} ${+e.score.d} : ${+e.score.v} ${esc(teamDisplayName(opp))}</div>`:''}<div class="meta">${h}</div></div>`;
+  let out=`<div class="dt">${fin?`<div class="big2">${bearsName} ${resultBearHTML(e)} ${+e.score.d} : ${+e.score.v} ${esc(teamDisplayName(opp))}</div>`:''}<div class="regular-detail"><div class="meta">${h}</div></div></div>`;
   if(fin && e.batting?.length){
   out+=batterTable(e.batting,false,e)
 }
