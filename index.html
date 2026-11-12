@@ -512,6 +512,7 @@ table th button,table td button{ text-align:center }
  .desktop-nav a[aria-current]{color:var(--ink);font-weight:800}
  .desktop-nav a[aria-current]::after{content:'';position:absolute;left:0;right:0;bottom:20px;height:2px;background:var(--acc)}
  .desktop-notification{font-size:14px;color:var(--sub);text-decoration:none;white-space:nowrap}
+ .desktop-header-actions{display:flex;align-items:center;gap:10px}.desktop-share{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink);cursor:pointer}.desktop-share svg{width:18px;height:18px}.desktop-share:hover{background:var(--chip)}
  .desktop-home{display:block}
  .desktop-hero{max-width:840px;margin:0 auto;padding:45px 0 38px;text-align:center}
  .desktop-eyebrow{font-size:12px;font-weight:800;letter-spacing:1.6px;color:var(--acc);margin:0 0 20px}
@@ -771,6 +772,11 @@ table th button,table td button{ text-align:center }
  .mobile-record-related{grid-column:3;justify-self:end;display:flex;flex-direction:column;gap:4px;align-items:flex-end;min-width:0}
  .mobile-record-related a{justify-content:flex-end}
 }
+</style>
+<style id="bearstat-home-share">
+.home-mobile-actions{display:flex;align-items:center;gap:8px}
+.home-share-toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));z-index:99999;transform:translate(-50%,16px);padding:10px 14px;border-radius:999px;background:var(--ink);color:var(--card);font-size:13px;font-weight:800;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease;box-shadow:0 8px 28px rgba(0,0,0,.18)}
+.home-share-toast.show{opacity:1;transform:translate(-50%,0)}
 </style>
 <style id="bearstat-notification-home-icon">
 .notification-page-heading>a.notification-home-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 40px;width:40px;height:40px;margin:0;padding:0;border:0;border-radius:12px;background:#e8e9e9;color:#202425;text-decoration:none;box-sizing:border-box}
@@ -2478,7 +2484,18 @@ async function setupPushServer(){
  finally{pushState.busy=false;refreshPushSettings()}
 }
 document.addEventListener('toggle',ev=>{if(ev.target.id==='push_settings')pushState.open=ev.target.open;},true);
-document.addEventListener('click',ev=>{if(ev.target.closest('[data-open-push]')){location.hash='#/notifications';}if(ev.target.closest('[data-push-stop-legacy]'))void stopLegacyPush();if(ev.target.closest('[data-push-test]'))void testPushNotification();if(ev.target.closest('[data-push-toggle]'))void togglePush();if(ev.target.closest('[data-push-setup]'))void setupPushServer();});
+const BEARSTAT_HOME_URL='https://dsbrs.github.io/BEARStat/#/';
+let homeShareToastTimer=0;
+function showHomeShareToast(message='링크가 복사되었습니다'){
+ let toast=document.querySelector('.home-share-toast');
+ if(!toast){toast=document.createElement('div');toast.className='home-share-toast';toast.setAttribute('role','status');toast.setAttribute('aria-live','polite');document.body.appendChild(toast);}
+ toast.textContent=message;toast.classList.add('show');clearTimeout(homeShareToastTimer);homeShareToastTimer=setTimeout(()=>toast.classList.remove('show'),1600);
+}
+async function copyBearstatHomeLink(){
+ try{if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(BEARSTAT_HOME_URL);else{const t=document.createElement('textarea');t.value=BEARSTAT_HOME_URL;t.setAttribute('readonly','');t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();}showHomeShareToast();}
+ catch(e){showHomeShareToast('링크를 복사하지 못했어요');}
+}
+document.addEventListener('click',ev=>{if(ev.target.closest('[data-copy-home-link]'))void copyBearstatHomeLink();if(ev.target.closest('[data-open-push]')){location.hash='#/notifications';}if(ev.target.closest('[data-push-stop-legacy]'))void stopLegacyPush();if(ev.target.closest('[data-push-test]'))void testPushNotification();if(ev.target.closest('[data-push-toggle]'))void togglePush();if(ev.target.closest('[data-push-setup]'))void setupPushServer();});
 setTimeout(()=>void preparePush(),0);
 
 function notificationSettingsPage(){
@@ -2567,7 +2584,7 @@ document.addEventListener('click',event=>{
 function home(){
   const t=byDate(TS),kbo=t.find(e=>e.type==='kbo');
   const evs=byDate(sel).filter(e=>calendarCategoryMatch(e)),sd=new Date(sel+'T00:00:00');
-  return `${desktopHomeHTML()}<div class="brand home-mobile-brand"><button class="logo admin-secret" id="admin_secret" type="button">BEARS<b>tat</b></button><button type="button" class="ib" data-open-push aria-label="일정 알림 설정"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button></div>
+  return `${desktopHomeHTML()}<div class="brand home-mobile-brand"><button class="logo admin-secret" id="admin_secret" type="button">BEARS<b>tat</b></button><div class="home-mobile-actions"><button type="button" class="ib" data-copy-home-link aria-label="홈페이지 링크 복사" title="링크 복사"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><button type="button" class="ib" data-open-push aria-label="일정 알림 설정"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button></div></div>
   <a class="mobile-player-link" href="#/player-cards">선수 카드 보기 <span aria-hidden="true">→</span></a><div class="mobile-today-schedule">${desktopMedia.matches?'':homeTodayScheduleHTML()}</div>
   <div class="desktop-home-grid"><section class="desktop-calendar"><h2 class="desktop-section-title">베어스 일정</h2>${scheduleSearchHTML()}${calendarLegendHTML()}
   ${calendar()}</section><section class="desktop-day">${desktopMedia.matches?homeTodayScheduleHTML():''}
@@ -6719,7 +6736,7 @@ function desktopHeaderHTML(r){
  if(!desktopMedia.matches)return '';
  const links=[['home','홈'],['player-cards','선수 카드'],['standings','순위'],['h2h','맞대결'],['opponent','상대전적'],['records','개인기록'],['numbers','등번호'],['milestones','달성 기록'],['awards','수상 기록']];
  if(isOwner)links.push(['info','정보 입력']);
- return `<header class="desktop-header"><a class="desktop-wordmark" id="desktop_admin_secret" href="#/" aria-label="BEARStat 홈">BEAR<b>Stat</b></a><div class="desktop-nav" role="navigation" aria-label="주요 메뉴">${links.map(([key,label])=>`<a href="#/${key==='home'?'':key}"${r===key?' aria-current="page"':''}>${label}</a>`).join('')}</div><a href="#/notifications" class="desktop-notification" aria-label="일정 알림 설정">알림 ↗</a></header>`;
+ return `<header class="desktop-header"><a class="desktop-wordmark" id="desktop_admin_secret" href="#/" aria-label="BEARStat 홈">BEAR<b>Stat</b></a><div class="desktop-nav" role="navigation" aria-label="주요 메뉴">${links.map(([key,label])=>`<a href="#/${key==='home'?'':key}"${r===key?' aria-current="page"':''}>${label}</a>`).join('')}</div><div class="desktop-header-actions">${r==='home'?`<button type="button" class="desktop-share" data-copy-home-link aria-label="홈페이지 링크 복사" title="링크 복사"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>`:''}<a href="#/notifications" class="desktop-notification" aria-label="일정 알림 설정">알림 ↗</a></div></header>`;
 }
 function desktopCareerRows(){
  return recordRenderMemo('desktop-career-cards',()=>{
