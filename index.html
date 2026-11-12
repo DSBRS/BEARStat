@@ -1931,6 +1931,41 @@ function queueLiveRefresh(){if(document.hidden)return;clearTimeout(liveRefreshTi
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)queueLiveRefresh()});
 window.addEventListener('focus',queueLiveRefresh);
 setInterval(()=>{if(!document.hidden)refreshLatestData(false)},60000);
+const BEARS_LEAGUE_TITLE_DATES={
+  '1982-06-23':{year:1982,title:'전기리그 우승',desc:'OB 베어스가 1982 전기리그 우승을 확정한 날입니다.'},
+  '1986-10-07':{year:1986,title:'후기리그 우승',desc:'OB 베어스가 1986 후기리그 우승을 확정한 날입니다.'},
+  '1995-09-27':{year:1995,title:'정규시즌 우승',desc:'OB 베어스가 1995 정규시즌 우승을 확정한 날입니다.'},
+  '1999-10-08':{year:1999,title:'드림리그 우승',desc:'두산 베어스가 1999 드림리그 우승을 확정한 날입니다.'},
+  '2016-09-22':{year:2016,title:'정규시즌 우승',desc:'두산 베어스가 2016 정규시즌 우승을 확정한 날입니다.'},
+  '2018-09-25':{year:2018,title:'정규시즌 우승',desc:'두산 베어스가 2018 정규시즌 우승을 확정한 날입니다.'},
+  '2019-10-01':{year:2019,title:'정규시즌 우승',desc:'두산 베어스가 2019 정규시즌 우승을 확정한 날입니다.'}
+};
+function bearsLeagueTitleEvent(ds){
+ const item=BEARS_LEAGUE_TITLE_DATES[ds];
+ return item?{id:'league-title-'+ds,date:ds,time:'',type:'championship',title:item.title,desc:item.desc,place:'',historical:true}:null;
+}
+const BEARS_KS_TITLE_DATES={
+  '1982-10-12':{year:1982,team:'OB 베어스'},
+  '1995-10-22':{year:1995,team:'OB 베어스'},
+  '2001-10-28':{year:2001,team:'두산 베어스'},
+  '2015-10-31':{year:2015,team:'두산 베어스'},
+  '2016-11-02':{year:2016,team:'두산 베어스'},
+  '2019-10-26':{year:2019,team:'두산 베어스'}
+};
+function bearsKSTitleEvent(ds){
+ const item=BEARS_KS_TITLE_DATES[ds];
+ return item?{id:'ks-title-'+ds,date:ds,time:'',type:'ks-championship',title:'한국시리즈 우승',desc:item.team+'가 '+item.year+' 한국시리즈 우승을 확정한 날입니다.',place:'',historical:true}:null;
+}
+const BEARS_CURRENT_BIRTHDAYS=[
+ ['박치국','03-10'],['김민석','05-09'],['임종성','03-03'],['김동주','02-14'],['박성재','11-18'],['오명진','09-04'],['박찬호','06-05'],['전다민','08-21'],['김동준','09-03'],['타카다','09-18'],['이유찬','08-05'],['류승민','10-11'],['최주형','08-19'],['김정우','05-15'],['박정수','01-29'],['김민규','05-07'],['김영현','08-18'],['김기연','09-07'],['강승호','02-09'],['양의지','06-05'],['박민준','10-21'],['윤준호','11-14'],['최승용','05-11'],['이병헌','06-04'],['양재훈','05-01'],['정수빈','10-07'],['김대한','12-06'],['김인태','07-03'],['홍성호','07-15'],['세베리노','10-03'],['박지훈','09-07'],['잭로그','04-23'],['최종인','05-01'],['서준오','03-05'],['최지강','07-23'],['이주엽','03-26'],['장규빈','04-21'],['이용찬','01-02'],['곽빈','05-28'],['벤자민','07-26'],['박신지','07-16'],['이영하','11-01'],['조수행','08-30'],['박준순','07-13'],['양석환','07-15'],['김호준','05-17'],['천현재','07-05'],['최준호','06-03'],['최원준','12-21'],['안재석','02-15'],['김택연','06-03'],['윤태호','10-10'],['김주오','09-14'],['류현준','03-25'],['최민석','07-02'],['제환유','09-30'],['김한중','11-03'],['최우인','08-09'],['김문수','03-29'],['신민철','01-13'],['김지윤','01-13'],['지강혁','08-14'],['장우진','03-20'],['황희천','11-06'],['김준상','08-02'],['백승우','01-04'],['엄지민','11-22'],['임종훈','05-07'],['임현철','10-21'],['심건보','11-17'],['남태웅','01-08'],['정성현','09-11'],['안치호','11-30'],['이희성','02-02'],['안민겸','05-17'],['이기석','06-07'],['이종혁','02-22']
+];
+function bearsBirthdayEvents(ds){
+ const md=ds.slice(5),names=BEARS_CURRENT_BIRTHDAYS.filter(([,day])=>day===md).map(([name])=>name);
+ if(!names.length)return [];
+ const title=names.length===1?names[0]+' 선수 생일':names.join(' · ')+' 선수 생일';
+ const desc=names.length===1?names[0]+' 선수의 생일입니다!':names.join(', ')+' 선수의 생일입니다!';
+ return [{id:'birthday-'+ds,date:ds,time:'',type:'birthday',title,desc,place:'',birthday:true,players:names,notificationCategory:'birthday'}];
+}
 let dateIndexSource=null,dateIndex=new Map();
 function eventsOnDate(ds){
  const events=Repo.all();
@@ -1938,7 +1973,8 @@ function eventsOnDate(ds){
    dateIndexSource=events;dateIndex=new Map();
    for(const event of events){const key=S(event.date);if(!dateIndex.has(key))dateIndex.set(key,[]);dateIndex.get(key).push(event)}
  }
- return dateIndex.get(ds)||[];
+ const rows=dateIndex.get(ds)||[],titleEvent=bearsLeagueTitleEvent(ds),ksEvent=bearsKSTitleEvent(ds),birthdays=bearsBirthdayEvents(ds);
+ return [...rows,...(titleEvent?[titleEvent]:[]),...(ksEvent?[ksEvent]:[]),...birthdays];
 }
 // Ticket sales disappear from public schedules after their individual opening time.
 // Keep the underlying records untouched so the owner can still edit them in admin.
@@ -2319,7 +2355,10 @@ function calendarMarks(events,includeOther=false){
       marks.push(`<span class="cal-mark${icon?'':' circle'}${cancellation[0]?' cancellation':type==='kbo'?' baseball':type==='futures'?' sparkle':type==='handball'?' handball':' heart'}" data-icon="${esc(icon)}" style="color:${color}" title="${title}" aria-label="${title}">${cancellation[0]?cancellationLeagueIcon(icon,type):['K','F','M'].includes(icon)?`<b class="calendar-letter-mark">${icon}</b>`:calendarIconSVG(icon)||icon}</span>`);
     }
   }
-  if(includeOther&&events.some(e=>!['kbo','futures','edu','handball','national'].includes(e.type)&&e.notificationCategory!=='national'))marks.push('<span class="cal-mark circle" style="color:var(--sub)" title="기타 일정" aria-label="기타 일정"></span>');
+  if(events.some(e=>e.type==='championship'))marks.push('<span class="cal-mark" style="font-size:11px" title="베어스 리그 우승 확정일" aria-label="베어스 리그 우승 확정일">🏆</span>');
+  if(events.some(e=>e.type==='ks-championship'))marks.push('<span class="cal-mark" style="font-size:11px" title="베어스 한국시리즈 우승 확정일" aria-label="베어스 한국시리즈 우승 확정일">🏆</span>');
+  if(events.some(e=>e.type==='birthday'))marks.push('<span class="cal-mark" style="font-size:11px" title="선수 생일" aria-label="선수 생일">🎂</span>');
+  if(includeOther&&events.some(e=>!['kbo','futures','edu','handball','national','championship','ks-championship','birthday'].includes(e.type)&&e.notificationCategory!=='national'))marks.push('<span class="cal-mark circle" style="color:var(--sub)" title="기타 일정" aria-label="기타 일정"></span>');
   return marks.length?`<span class="cal-marks">${marks.join('')}</span>`:'';
 }
 let calendarCategory='all';
