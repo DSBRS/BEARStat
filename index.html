@@ -4282,6 +4282,56 @@ function pitcherTotalMarkup(rows,cols){
    Schema: { hitters:{"name":[{pitchType,atBats,hits,homeRuns,strikeouts}]}, pitchers:{"name":[{pitchType,pitches,usageRate,avgVelocity,maxVelocity,hits,homeRuns,strikeouts}]} }
    `pitchTypeRecords` is accepted as an alias for future editor/import compatibility. */
 function pitchTypeRows(role){
+ // 에디터가 삽입한 시즌 통합 구종 JSON이 있으면 우선 사용한다.
+ // 통합 데이터와 경기별 데이터를 동시에 더하면 중복 집계될 수 있으므로,
+ // 해당 연도의 통합 데이터가 존재할 때는 그것을 그대로 표시한다.
+ if(recLeague==='kbo'&&recPeriod==='season'){
+  try{
+   const tpl=document.getElementById('pitch_arsenal_data');
+   const raw=tpl?JSON.parse(tpl.textContent||tpl.innerHTML||'{}'):null;
+   const season=raw?.seasons?.[String(recYear)];
+   if(season){
+    const source=role==='pitcher'?season.pitchers:season.batters;
+    if(Array.isArray(source)&&source.length){
+     return source
+      .filter(player=>S(player?.name)&&S(player.name)!=='두산 전체')
+      .map(player=>({
+       name:S(player.name),
+       items:(Array.isArray(player.pitches)?player.pitches:[]).map(item=>{
+        const pitchType=S(item.pitch||item.pitchType||item.type||item.name).trim();
+        if(role==='pitcher'){
+         return {
+          pitchType,
+          usageRate:Number.isFinite(+item.usage)?+item.usage:Number.isFinite(+item.usageRate)?+item.usageRate:null,
+          avgVelocity:Number.isFinite(+item.avgVelocity)?+item.avgVelocity:null,
+          maxVelocity:Number.isFinite(+item.maxVelocity)?+item.maxVelocity:null,
+          hits:Number.isFinite(+item.hits)?+item.hits:0,
+          homeRuns:Number.isFinite(+item.homeRuns)?+item.homeRuns:0,
+          strikeouts:Number.isFinite(+item.strikeouts)?+item.strikeouts:0,
+          pitches:Number.isFinite(+item.pitches)?+item.pitches:null
+         };
+        }
+        return {
+         pitchType,
+         pitchesSeen:Number.isFinite(+item.pitchesSeen)?+item.pitchesSeen:null,
+         swingRate:Number.isFinite(+item.swingRate)?+item.swingRate:null,
+         whiffRate:item.whiffRate===null||item.whiffRate===undefined?null:(Number.isFinite(+item.whiffRate)?+item.whiffRate:null),
+         ballsInPlay:Number.isFinite(+item.ballsInPlay)?+item.ballsInPlay:null,
+         atBats:Number.isFinite(+item.atBats)?+item.atBats:0,
+         hits:Number.isFinite(+item.hits)?+item.hits:0,
+         homeRuns:Number.isFinite(+item.homeRuns)?+item.homeRuns:0,
+         strikeouts:Number.isFinite(+item.strikeouts)?+item.strikeouts:0,
+         avg:Number.isFinite(+item.avg)?+item.avg:null
+        };
+       }).filter(item=>item.pitchType)
+      }))
+      .filter(player=>player.items.length);
+    }
+   }
+  }catch(err){console.warn('pitch_arsenal_data parse failed',err);}
+ }
+
+ // 통합 JSON이 없는 연도는 기존 경기별 구종 데이터를 그대로 합산한다.
  const namesForRole=recordRoster().filter(p=>p.t===role).map(p=>p.n), out=new Map(namesForRole.map(n=>[n,new Map()]));
  const games=recordFilterGames('season');
  for(const e of games){
