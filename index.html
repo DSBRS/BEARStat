@@ -2423,7 +2423,16 @@ function calendarMarks(events,includeOther=false){
     marks.push(`<span class="cal-mark bear-marker" title="국가대표 ${side==='away'?'원정':'홈'}" aria-label="국가대표 ${side==='away'?'원정':'홈'}">${calendarBearImage(calendarNationalBear(e))}</span>`);
   }
   for(const type of ['kbo','futures','edu']){
-    const games=events.filter(e=>e.type===type);
+    // Some historical/imported games keep their league in `source` even when `type`
+    // is missing or normalized differently. Treat either field as the league so a
+    // special-day marker (championship/birthday/etc.) never makes the game bear vanish.
+    const games=events.filter(e=>{
+      const eventType=S(e&&e.type).toLowerCase();
+      const eventSource=S(e&&e.source).toLowerCase();
+      if(type==='kbo') return eventType==='kbo'||eventSource==='kbo';
+      if(type==='futures') return eventType==='futures'||eventSource==='futures'||eventSource==='future';
+      return eventType==='edu'||eventSource==='edu'||eventSource==='education'||eventSource==='educational';
+    });
     const groups=new Map();
     for(const game of games){
       const stage=type==='kbo'?postseasonCalendarMark(game):'';
