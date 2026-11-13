@@ -319,6 +319,17 @@ nav a:last-child{flex:1.35}
 @media(max-width:640px){.result-bear{width:24px;height:24px}.ev .result-bear{width:24px;height:24px}}
 
 .calendar-legend-extra{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}.calendar-legend-extra>b{display:block;margin-bottom:10px}.calendar-legend-grid.compact{gap:8px 14px}.championship-star svg{width:14px;height:14px;display:block}.birthday-ball img,.military-mark img{width:16px;height:16px;display:block;object-fit:contain;max-width:none}.birthday-ball,.military-mark{width:16px;height:16px;display:inline-grid;place-items:center;overflow:visible}.championship-v{width:19px;height:19px;display:inline-grid;place-items:center;position:relative}.championship-v svg{width:19px;height:19px;display:block}.championship-v b{position:absolute;inset:0;display:grid;place-items:center;font-size:6.2px;line-height:1;font-weight:900;color:var(--bg);letter-spacing:-.4px}.birthday-ball,.military-mark{color:var(--navy)}.championship-emblem{display:block;max-width:180px;max-height:150px;width:auto;height:auto;object-fit:contain;margin:12px auto 2px}.calendar-legend-icon .championship-v{vertical-align:middle}
+
+/* Calendar compact markers: simple league letters + flag postseason/championship markers */
+.cal-mark.calendar-letter-mark{width:13px!important;height:13px!important;border:1.4px solid currentColor;border-radius:50%;font:900 8.5px/1 Arial,sans-serif!important;letter-spacing:-.2px;box-sizing:border-box;background:var(--card)}
+.cal-mark.flag-mark{position:relative;width:21px!important;height:15px!important;font:900 6.5px/1 Arial,sans-serif!important;color:#fff!important;display:inline-flex;align-items:center;justify-content:center;padding-left:2px;box-sizing:border-box;background:var(--navy);border-radius:1px 3px 3px 1px;clip-path:polygon(10% 0,100% 0,82% 50%,100% 100%,10% 100%);letter-spacing:-.35px}
+.cal-mark.flag-mark::before{content:"";position:absolute;left:0;top:-1px;width:1.5px;height:17px;background:var(--ink);border-radius:2px}
+.cal-mark.flag-mark.v-flag{background:#1b3f8b}
+.cal-mark.trophy-mark{width:14px!important;height:14px!important;font-size:12px!important;line-height:14px!important}
+.cal-marks{height:15px!important;gap:3px!important;bottom:3px!important;overflow:visible!important}
+.cal-marks .bear-marker{width:15px!important;height:15px!important;flex-basis:15px!important}
+.cal-marks .birthday-bear,.cal-marks .military-bear{width:16px!important;height:16px!important;flex-basis:16px!important}
+.cal-marks .calendar-bear-img{width:100%!important;height:100%!important;object-fit:contain!important}
 </style>
 
 <style>
@@ -2415,27 +2426,23 @@ function calendarBearEra(e){return +S(e&&e.date).slice(0,4)<=1998?'ob':'doosan';
 function calendarGameBear(e){const era=calendarBearEra(e),side=e&&e.homeAway==='away'?'away':'home';return `cal_${era}_${side}`;}
 function calendarNationalBear(e){return e&&e.homeAway==='away'?'cal_national_away':'cal_national_home';}
 function calendarPostBear(stage){return stage==='WC'?'cal_WC':stage==='준PO'?'cal_jun_PO':stage==='PO'?'cal_PO':stage==='KS'?'cal_KS':'';}
+function calendarFlagMark(text,title,extra=''){return `<span class="cal-mark flag-mark ${extra}" title="${esc(title)}" aria-label="${esc(title)}">${esc(text)}</span>`;}
 function calendarMarks(events,includeOther=false){
   const marks=[];
-  const nationals=events.filter(e=>e.type==='national'||e.notificationCategory==='national');
-  for(const side of [...new Set(nationals.map(e=>e.homeAway==='away'?'away':'home'))]){
-    const e=nationals.find(x=>(x.homeAway==='away'?'away':'home')===side);
-    marks.push(`<span class="cal-mark bear-marker" title="국가대표 ${side==='away'?'원정':'홈'}" aria-label="국가대표 ${side==='away'?'원정':'홈'}">${calendarBearImage(calendarNationalBear(e))}</span>`);
+  // National team keeps the compact flag marker. One marker per event.
+  for(const e of events.filter(e=>e.type==='national'||e.notificationCategory==='national')){
+    marks.push(`<span class="cal-mark national-flag" title="국가대표" aria-label="국가대표">${nationalFlagIcon()}</span>`);
   }
+  // Regular KBO / Futures / education league return to the original simple K/F/M markers.
+  // One event always creates one marker, so simultaneous games are never collapsed.
   for(const type of ['kbo','futures','edu']){
-    // Some historical/imported games keep their league in `source` even when `type`
-    // is missing or normalized differently. Treat either field as the league so a
-    // special-day marker (championship/birthday/etc.) never makes the game bear vanish.
+    const letter=CANCEL_LEAGUE_LETTERS[type];
     const games=events.filter(e=>{
-      const eventType=S(e&&e.type).toLowerCase();
-      const eventSource=S(e&&e.source).toLowerCase();
-      if(type==='kbo') return eventType==='kbo'||eventSource==='kbo';
-      if(type==='futures') return eventType==='futures'||eventSource==='futures'||eventSource==='future';
+      const eventType=S(e&&e.type).toLowerCase(),eventSource=S(e&&e.source).toLowerCase();
+      if(type==='kbo')return eventType==='kbo'||eventSource==='kbo';
+      if(type==='futures')return eventType==='futures'||eventSource==='futures'||eventSource==='future';
       return eventType==='edu'||eventSource==='edu'||eventSource==='education'||eventSource==='educational';
     });
-    // One event = one marker. KBO, Futures and education league intentionally
-    // share the same era/home-away bear artwork, but simultaneous games must
-    // remain separate markers instead of being collapsed by image/side.
     for(const game of games){
       const stage=type==='kbo'?postseasonCalendarMark(game):'';
       const reason=S(game.cancelReason);
@@ -2443,27 +2450,25 @@ function calendarMarks(events,includeOther=false){
         const icon=cancellationIcon(reason),title=(TYPES[type]||type)+' '+(reason?reason+' 취소':'경기 취소 (사유 미지정)');
         marks.push(`<span class="cal-mark cancellation" data-icon="${esc(icon)}" title="${esc(title)}" aria-label="${esc(title)}">${cancellationLeagueIcon(icon,type)}</span>`);
       }else if(stage){
-        marks.push(`<span class="cal-mark bear-marker postseason-bear" title="${stage}" aria-label="${stage}">${calendarBearImage(calendarPostBear(stage))}</span>`);
+        marks.push(calendarFlagMark(stage,stage+' 경기','postseason-flag'));
       }else{
-        const side=game.homeAway==='away'?'원정':'홈';
-        marks.push(`<span class="cal-mark bear-marker" title="${TYPES[type]||type} ${side}" aria-label="${TYPES[type]||type} ${side}">${calendarBearImage(calendarGameBear(game))}</span>`);
+        marks.push(`<span class="cal-mark calendar-letter-mark" title="${esc(TYPES[type]||type)}" aria-label="${esc(TYPES[type]||type)}">${letter}</span>`);
       }
     }
   }
   const handball=events.filter(e=>e.type==='handball');
   if(handball.length)marks.push(`<span class="cal-mark handball" title="핸드볼" aria-label="핸드볼">${calendarIconSVG('handball')||'H'}</span>`);
-  for(const e of events.filter(e=>e.type==='championship')){
-    const era=calendarBearEra(e),name=era==='ob'?'cal_trophy_ob':'cal_trophy_doosan';
-    marks.push(`<span class="cal-mark bear-marker trophy-bear" title="정규시즌·리그 우승" aria-label="정규시즌·리그 우승">${calendarBearImage(name)}</span>`);
+  for(const e of events.filter(e=>e.type==='championship'))marks.push(`<span class="cal-mark trophy-mark" title="정규시즌·리그 우승" aria-label="정규시즌·리그 우승">🏆</span>`);
+  for(const ks of events.filter(e=>e.type==='ks-championship')){
+    const order={1982:1,1995:2,2001:3,2015:4,2016:5,2019:6},v=order[+S(ks.date).slice(0,4)];
+    if(v)marks.push(calendarFlagMark('V'+v,'한국시리즈 V'+v,'v-flag'));
   }
-  const ks=events.find(e=>e.type==='ks-championship');
-  if(ks){const order={1982:1,1995:2,2001:3,2015:4,2016:5,2019:6},v=order[+S(ks.date).slice(0,4)];if(v)marks.push(`<span class="cal-mark bear-marker v-bear" title="한국시리즈 V${v}" aria-label="한국시리즈 V${v}">${calendarBearImage('cal_V'+v)}</span>`);}
   if(events.some(e=>e.type==='birthday'))marks.push(`<span class="cal-mark bear-marker birthday-bear" title="선수 생일" aria-label="선수 생일">${calendarBearImage('cal_birthday')}</span>`);
   if(events.some(e=>e.type==='military'))marks.push(`<span class="cal-mark bear-marker military-bear" title="군복무" aria-label="군복무">${calendarBearImage('cal_military')}</span>`);
   if(includeOther&&events.some(e=>!['kbo','futures','edu','handball','national','championship','ks-championship','birthday','military'].includes(e.type)&&e.notificationCategory!=='national'))marks.push('<span class="cal-mark circle" style="color:var(--sub)" title="기타 일정" aria-label="기타 일정"></span>');
-  const count=marks.length;
-  return count?`<span class="cal-marks bear-count-${Math.min(count,4)}">${marks.join('')}</span>`:'';
+  return marks.length?`<span class="cal-marks">${marks.join('')}</span>`:'';
 }
+
 let calendarCategory='all';
 const CALENDAR_FILTERS=[['all','전체'],['kbo','KBO'],['wc','와일드카드'],['jpo','준플레이오프'],['po','플레이오프'],['ks','한국시리즈'],['futures','퓨처스'],['national','국가대표'],['edu','교육리그'],['championship','정규시즌 우승'],['ks-championship','한국시리즈 우승'],['birthday','선수 생일'],['military','군복무'],['media','방송·라디오'],['ticket','티켓팅'],['other','기타']];
 function calendarCategoryMatch(e,category=calendarCategory){
@@ -2504,22 +2509,21 @@ let calendarLegendOpen=false;
 function calendarLegendBear(name,label){return `<span class="calendar-legend-icon bear-legend-icon" aria-hidden="true">${calendarBearImage(name,label)}</span>`;}
 function calendarLegendIcon(symbol){return `<span class="calendar-legend-icon" aria-hidden="true">${symbol==='handball'?(calendarIconSVG(symbol)||symbol):symbol}</span>`;}
 function calendarLegendHTML(){
- const games=[['kbo','cal_doosan_home','KBO'],['futures','cal_doosan_home','퓨처스리그'],['edu','cal_doosan_home','교육리그'],['national','cal_national_home','국가대표'],['handball','handball','핸드볼']];
- const stages=[['wc','cal_WC','와일드카드'],['jpo','cal_jun_PO','준플레이오프'],['po','cal_PO','플레이오프'],['ks','cal_KS','한국시리즈']];
- const special=[['championship','cal_trophy_doosan','정규시즌 우승'],['ks-championship','cal_V6','한국시리즈 우승'],['birthday','cal_birthday','선수 생일'],['military','cal_military','군복무']];
  const cancellations=[...Object.entries(CANCEL_ICONS).map(([label,symbol])=>[symbol,label+' 취소']),['⊘','기타 사유 또는 사유 미지정 취소']];
  const leagues=[['kbo','KBO'],['futures','퓨처스'],['edu','교육리그']];
+ const letterIcon=(letter)=>`<span class="calendar-letter-legend">${letter}</span>`;
+ const flagIcon=(text,extra='')=>`<span class="cal-mark flag-mark ${extra}" aria-hidden="true">${text}</span>`;
  const filterButton=(key,icon,label)=>`<button type="button" class="calendar-legend-item calendar-category${calendarCategory===key?' active':''}" data-calfilter="${key}" aria-pressed="${calendarCategory===key}">${icon}<span>${label}</span></button>`;
  return `<details class="calendar-legend" id="calendar_legend"${calendarLegendOpen?' open':''}>
  <summary>CALENDAR <span class="calendar-legend-arrow" aria-hidden="true">▼</span></summary>
  <div class="calendar-legend-panel">
-  <div class="calendar-legend-grid"><button type="button" class="calendar-legend-item calendar-category${calendarCategory==='all'?' active':''}" data-calfilter="all">전체 일정</button>${games.map(([key,symbol,label])=>filterButton(key,symbol==='handball'?calendarLegendIcon(symbol):calendarLegendBear(symbol,label),label)).join('')}</div>
-  <div class="calendar-legend-extra"><b>포스트시즌</b><div class="calendar-legend-grid compact">${stages.map(([key,symbol,label])=>filterButton(key,calendarLegendBear(symbol,label),label)).join('')}</div></div>
-  <div class="calendar-legend-extra"><b>기념일</b><div class="calendar-legend-grid compact">${special.map(([key,symbol,label])=>filterButton(key,calendarLegendBear(symbol,label),label)).join('')}</div></div>
-  <div class="calendar-legend-colors"><span>${calendarLegendBear('cal_doosan_home','홈')} 홈</span><span>${calendarLegendBear('cal_doosan_away','원정')} 원정</span></div>
+  <div class="calendar-legend-grid"><button type="button" class="calendar-legend-item calendar-category${calendarCategory==='all'?' active':''}" data-calfilter="all">전체 일정</button>${filterButton('kbo',letterIcon('K'),'KBO')}${filterButton('futures',letterIcon('F'),'퓨처스리그')}${filterButton('edu',letterIcon('M'),'교육리그')}${filterButton('national',`<span class="calendar-legend-icon national-flag">${nationalFlagIcon()}</span>`,'국가대표')}${filterButton('handball',calendarLegendIcon('handball'),'핸드볼')}</div>
+  <div class="calendar-legend-extra"><b>포스트시즌</b><div class="calendar-legend-grid compact">${filterButton('wc',flagIcon('WC'),'와일드카드')}${filterButton('jpo',flagIcon('준PO'),'준플레이오프')}${filterButton('po',flagIcon('PO'),'플레이오프')}${filterButton('ks',flagIcon('KS'),'한국시리즈')}</div></div>
+  <div class="calendar-legend-extra"><b>기념일</b><div class="calendar-legend-grid compact">${filterButton('championship','<span class="cal-mark trophy-mark">🏆</span>','정규시즌 우승')}${filterButton('ks-championship',flagIcon('V6','v-flag'),'한국시리즈 우승')}${filterButton('birthday',calendarLegendBear('cal_birthday','선수 생일'),'선수 생일')}${filterButton('military',calendarLegendBear('cal_military','군복무'),'군복무')}</div></div>
   <div class="calendar-legend-cancel"><b>취소 아이콘의 글자로 리그를 구분해요.</b><div class="calendar-cancel-leagues">${leagues.map(([type,label])=>`<span><b>${CANCEL_LEAGUE_LETTERS[type]}</b> ${label}</span>`).join('')}</div><div class="calendar-cancel-list">${cancellations.map(([symbol,label])=>`<div class="calendar-cancel-row"><span>${label}</span><span class="calendar-cancel-examples">${leagues.map(([type,league])=>`<span class="calendar-cancel-example" title="${league} · ${label}" aria-label="${league} · ${label}">${cancellationLeagueIcon(symbol,type)}</span>`).join('')}</span></div>`).join('')}</div></div>
  </div></details>`;
 }
+
 document.addEventListener('toggle',ev=>{if(ev.target.id==='calendar_legend')calendarLegendOpen=ev.target.open;},true);
 function homeScheduleTime(event){
  const match=S(event.time).match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
