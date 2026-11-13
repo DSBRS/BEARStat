@@ -2433,20 +2433,21 @@ function calendarMarks(events,includeOther=false){
       if(type==='futures') return eventType==='futures'||eventSource==='futures'||eventSource==='future';
       return eventType==='edu'||eventSource==='edu'||eventSource==='education'||eventSource==='educational';
     });
-    const groups=new Map();
+    // One event = one marker. KBO, Futures and education league intentionally
+    // share the same era/home-away bear artwork, but simultaneous games must
+    // remain separate markers instead of being collapsed by image/side.
     for(const game of games){
       const stage=type==='kbo'?postseasonCalendarMark(game):'';
       const reason=S(game.cancelReason);
       if(isCancelled(game)){
         const icon=cancellationIcon(reason),title=(TYPES[type]||type)+' '+(reason?reason+' 취소':'경기 취소 (사유 미지정)');
-        groups.set('cancel:'+reason,{kind:'cancel',icon,title,type});
-      }else if(stage){groups.set('post:'+stage,{kind:'post',stage});}
-      else {const side=game.homeAway==='away'?'away':'home',era=calendarBearEra(game);groups.set('game:'+era+':'+side,{kind:'game',game});}
-    }
-    for(const g of groups.values()){
-      if(g.kind==='cancel') marks.push(`<span class="cal-mark cancellation" data-icon="${esc(g.icon)}" title="${esc(g.title)}" aria-label="${esc(g.title)}">${cancellationLeagueIcon(g.icon,g.type)}</span>`);
-      if(g.kind==='post') marks.push(`<span class="cal-mark bear-marker postseason-bear" title="${g.stage}" aria-label="${g.stage}">${calendarBearImage(calendarPostBear(g.stage))}</span>`);
-      if(g.kind==='game') {const side=g.game.homeAway==='away'?'원정':'홈';marks.push(`<span class="cal-mark bear-marker" title="${TYPES[type]||type} ${side}" aria-label="${TYPES[type]||type} ${side}">${calendarBearImage(calendarGameBear(g.game))}</span>`);}
+        marks.push(`<span class="cal-mark cancellation" data-icon="${esc(icon)}" title="${esc(title)}" aria-label="${esc(title)}">${cancellationLeagueIcon(icon,type)}</span>`);
+      }else if(stage){
+        marks.push(`<span class="cal-mark bear-marker postseason-bear" title="${stage}" aria-label="${stage}">${calendarBearImage(calendarPostBear(stage))}</span>`);
+      }else{
+        const side=game.homeAway==='away'?'원정':'홈';
+        marks.push(`<span class="cal-mark bear-marker" title="${TYPES[type]||type} ${side}" aria-label="${TYPES[type]||type} ${side}">${calendarBearImage(calendarGameBear(game))}</span>`);
+      }
     }
   }
   const handball=events.filter(e=>e.type==='handball');
