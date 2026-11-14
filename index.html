@@ -626,7 +626,6 @@ table th button,table td button{ text-align:center }
 /* Shared controls adapt to the desktop and mobile layouts. */
 .reschedule-notice{font-size:12px;line-height:1.6;margin-top:8px;color:var(--sub)}
 .reschedule-notice a{color:var(--navy);font-weight:700;text-decoration:none;display:inline-block;padding:4px 0}
-.reschedule-dot{position:absolute;top:4px;right:5px;font-size:11px;color:var(--navy);font-weight:800}
 .reschedule-arrivals{padding:14px;margin-bottom:12px;border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:10px;background:var(--card);font-size:13px;line-height:1.6}
 .reschedule-arrivals>div{display:flex;flex-direction:column;gap:3px;margin-top:10px}
 .reschedule-arrivals a{color:var(--sub);font-size:12px;text-underline-offset:3px}
@@ -817,14 +816,14 @@ html[data-theme="dark"] .home-share-toast::before{background:#202b43;border-colo
 </style>
 
 <style id="calendar-marker-polish">
-.cal-marks{left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:calc(100% - 6px);justify-content:center;gap:2px;bottom:4px;height:16px}
-.cal-mark.national-flag{width:15px;height:16px}
+.cal-marks{left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:calc(100% - 6px);justify-content:center;gap:4px;bottom:4px;height:16px}
+.cal-mark.national-flag{width:13px;height:16px}
 .cal-mark.national-flag .national-flag-img{width:21px;height:15px;max-width:none;flex:0 0 auto;object-fit:contain;transform:translateY(-2px)}
 .cal-mark.birthday-ball img,.cal-mark.military-mark img{transform:translateY(-2px)}
 </style>
 
 <style id="calendar-marker-compact-fix">
-.calendar-day .cal-marks,.calendar-cell .cal-marks,.cal-day .cal-marks{justify-content:center!important;gap:2px!important;}
+.calendar-day .cal-marks,.calendar-cell .cal-marks,.cal-day .cal-marks{justify-content:center!important;gap:4px!important;}
 .cal-mark{flex:0 0 auto!important;margin-left:0!important;margin-right:0!important;}
 </style>
 
@@ -2470,7 +2469,7 @@ function calendar(){
   for(let i=0;i<42;i++){
     const d=addDays(start,i),ds=ymd(d);
     const dot=calendarMarks(calendarEventsOnDate(ds),true);
-    cells+=`<button class="d${d.getMonth()!==m?' o':''}${d.getDay()===0?' sun':''}${ds===TS?' today':''}${ds===sel?' sel':''}" data-d="${ds}"${reschedulesOnDate(ds).length?' aria-label="'+ds+' 재편성 경기 안내"':''}>${d.getDate()}${dot}${reschedulesOnDate(ds).length?'<span class="reschedule-dot" aria-hidden="true">↻</span>':''}</button>`;
+    cells+=`<button class="d${d.getMonth()!==m?' o':''}${d.getDay()===0?' sun':''}${ds===TS?' today':''}${ds===sel?' sel':''}" data-d="${ds}">${d.getDate()}${dot}</button>`;
   }
   return `<div class="card"><div class="calhead"><button class="ib" data-m="-1">‹</button><div class="calendar-period"><label class="calendar-period-select"><select id="calendar_jump_year" aria-label="캘린더 연도">${Array.from({length:Math.max(y,TODAY.getFullYear()+1)-Math.min(1982,y)+1},(_,i)=>Math.max(y,TODAY.getFullYear()+1)-i).map(v=>`<option value="${v}"${v===y?' selected':''}>${v}년</option>`).join('')}</select><span aria-hidden="true">⌄</span></label><span class="calendar-period-divider" aria-hidden="true"></span><label class="calendar-period-select"><select id="calendar_jump_month" aria-label="캘린더 월">${Array.from({length:12},(_,i)=>`<option value="${i+1}"${i===m?' selected':''}>${i+1}월</option>`).join('')}</select><span aria-hidden="true">⌄</span></label></div><span><button class="ib" data-m="0">오늘</button> <button class="ib" data-m="1">›</button></span></div>
   <div class="grid">${'일월화수목금토'.split('').map(x=>`<div class="dow">${x}</div>`).join('')}${cells}</div></div>`;
