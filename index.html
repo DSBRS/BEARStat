@@ -2327,7 +2327,7 @@ function gameCard(e,kind){
   ${rescheduleNoticeHTML(e)}${isCancelled(e)?'':`<div class="meta"><span>경기장</span><span>${e.venue||'미정'}</span>${st?`<span>${bearsName} 선발</span><span>${esc(st)}</span>`:''}${ost?`<span>${esc(teamDisplayName(e.opp)||'상대팀')} 선발</span><span>${esc(ost)}</span>`:''}</div>`}</div>`;
 }
 function showUpcomingScheduleTime(e){
- if(!e||['birthday','championship','ks-championship','military'].includes(e.type)||!/^\d{4}-\d{2}-\d{2}$/.test(S(e.date))||S(e.date)<TS||isCancelled(e))return false;
+ if(!e||S(e.title).replace(/\s+/g,'').includes('곰들의모임')||['birthday','championship','ks-championship','military'].includes(e.type)||!/^\d{4}-\d{2}-\d{2}$/.test(S(e.date))||S(e.date)<TS||isCancelled(e))return false;
  if(['final','finished','completed','live','inprogress','in_progress','playing'].includes(S(e.status).toLowerCase()))return false;
  if(['kbo','futures','edu'].includes(e.type)&&(hasScore(e)||isLiveGame(e)))return false;
  if(S(e.date)===TS){const m=S(e.time).match(/^(\d{1,2}):(\d{2})/);if(m){const now=new Date();if(+m[1]*60+(+m[2])<=now.getHours()*60+now.getMinutes())return false;}}
@@ -3286,7 +3286,7 @@ function pitcherDetail(name,roleFilter='all'){
     r.fourBalls+=val(['fourBalls']);r.hits+=val(['hits','hitsAllowed','h']);r.homeRuns+=val(['homeRuns','homeRunsAllowed','hr']);r.strikeouts+=val(['strikeouts','strikeOuts','so','k']);r.walks+=val(['walks','basesOnBalls','bb']);r.hitByPitch+=val(['hitByPitch','hitBatters','hbp']);r.runs+=val(['runs','runsAllowed','r']);r.earnedRuns+=val(['earnedRuns','er']);
   });
   const season=recStats().find(x=>S(x.n)===S(name))||{w:0,l:0,h:0,s:0};r.w=+season.w||0;r.l=+season.l||0;r.h=+season.h||0;r.s=+season.s||0;if(roleFilter!=='all'){for(const k of ['w','l','h','s'])r[k]=pitcherStatHistory(name,k,roleFilter).length;}
-  const whole=Math.floor(r.ipOuts/3),rem=r.ipOuts%3;r.ip=rem?`${whole}.${rem}`:String(whole);r.era=r.ipOuts?((r.earnedRuns*27)/r.ipOuts).toFixed(2):(roleFilter!=='all'?'—':'0.00');Object.assign(r,pitcherRoleERA(name));return r;
+  const whole=Math.floor(r.ipOuts/3),rem=r.ipOuts%3;r.ip=rem?`${whole}.${rem}`:String(whole);r.era=r.ipOuts?((r.earnedRuns*27)/r.ipOuts).toFixed(2):(roleFilter!=='all'?'—':'0.00');Object.assign(r,pitcherRoleERA(name),pitcherHomeAwayERA(name,roleFilter));return r;
 }
 function pitcherStatHistory(name,stat,roleFilter='all'){
   const yr=String(recYear),out=[];
@@ -3555,11 +3555,11 @@ function playerSheetBaseHTML(){
     const r=pitcherDetail(playerSheet,pitcherHistoryRole);
     const boxes=recPitchTab==='result'
       ? [['games','경기수',r.g],['w','승',r.w],['l','패',r.l],['s','세이브',r.s],['h','홀드',r.h]]
-      : [['w','승리',r.w],['l','패전',r.l],['h','홀드',r.h],['s','세이브',r.s],['ip','이닝',r.ip],['era','평균자책점',r.era],['hits','피안타',r.hits],['homeRuns','피홈런',r.homeRuns],['strikeouts','탈삼진',r.strikeouts],...(recLeague==='futures'?[['fourBalls','4사구',r.fourBalls]]:[['walks','볼넷',r.walks],['hitByPitch','사구',r.hitByPitch]]),['runs','실점',r.runs],['earnedRuns','자책',r.earnedRuns]];
+      : [['w','승리',r.w],['l','패전',r.l],['h','홀드',r.h],['s','세이브',r.s],['ip','이닝',r.ip],['era','평균자책점',r.era],['homeEra','홈 평자',r.homeEra],['awayEra','원정 평자',r.awayEra],['hits','피안타',r.hits],['homeRuns','피홈런',r.homeRuns],['strikeouts','탈삼진',r.strikeouts],...(recLeague==='futures'?[['fourBalls','4사구',r.fourBalls]]:[['walks','볼넷',r.walks],['hitByPitch','사구',r.hitByPitch]]),['runs','실점',r.runs],['earnedRuns','자책',r.earnedRuns]];
     return `<div class="sheetback" data-sheetback><div class="sheet"><div class="sheetbar"></div>
       <div class="sheethead"><div><b>${esc(playerSheet)}</b><div class="sb">${recYear}년 ${recordLeagueLabel()}${recordSeasonLabel()?' · '+recordSeasonLabel():''} · ${recPitchTab==='result'?'승패 기록':'투구 기록'}${recPeriod==='season'?'':' · '+esc(recordPeriodLabel())}</div></div><button class="sheetclose" data-sheetclose>×</button></div>
       <div class="chips" style="margin-top:14px;margin-bottom:12px">${[['all','전체'],['start','선발'],['relief','구원']].map(([key,label])=>`<button type="button" class="chip${pitcherHistoryRole===key?' on':''}" data-prole="${key}" aria-pressed="${pitcherHistoryRole===key}">${label}</button>`).join('')}</div>
-      <div class="ordergrid">${advancedCards(playerSheet,'pitcher')}${boxes.map(([k,l,v])=>`<button type="button" class="orderbox statclick${pitcherHistoryStat===k?' on':''}" data-pstat="${k}" aria-pressed="${pitcherHistoryStat===k}"><b>${v}</b><span>${l}</span></button>`).join('')}</div>${pitcherHistoryHTML(playerSheet)}${pitcherCalculationHTML()}${playerPitchTypeSheetSection(playerSheet,'pitcher')}</div></div>`;
+      <div class="ordergrid">${advancedCards(playerSheet,'pitcher')}${boxes.map(([k,l,v])=>['homeEra','awayEra'].includes(k)?`<div class="orderbox"><b>${v}</b><span>${l}</span></div>`:`<button type="button" class="orderbox statclick${pitcherHistoryStat===k?' on':''}" data-pstat="${k}" aria-pressed="${pitcherHistoryStat===k}"><b>${v}</b><span>${l}</span></button>`).join('')}</div>${pitcherHistoryHTML(playerSheet)}${pitcherCalculationHTML()}${playerPitchTypeSheetSection(playerSheet,'pitcher')}</div></div>`;
   }
   if(recBatTab==='defense'){
     const positions=defensePositions(playerSheet),errors=defenseErrorSummary(playerSheet);
@@ -4203,6 +4203,21 @@ function appearanceRole(p,e){
   const starters=names(e.starter);if(starters.length===1)return starters[0]===S(p.name)?'start':'relief';
   return null;
 }
+function pitcherHomeAwayERA(name,roleFilter='all'){
+  const buckets={home:{g:0,outs:0,er:0,complete:true},away:{g:0,outs:0,er:0,complete:true}};
+  for(const e of Repo.all().filter(e=>e.type===recLeague&&!isCancelled(e)&&recordSeasonMatches(e)&&hasScore(e)&&S(e.date).slice(0,4)===String(recYear))){
+    const side=e.homeAway==='home'?'home':e.homeAway==='away'?'away':null;if(!side)continue;
+    for(const p of Array.isArray(e.pitching)?e.pitching:[]){
+      if(S(p.name)!==S(name))continue;
+      if(roleFilter!=='all'&&appearanceRole(p,e)!==roleFilter)continue;
+      const b=buckets[side],outs=appearanceOuts(p),er=recordNumber(p,['earnedRuns','er']);b.g++;
+      if(outs===null||er===null)b.complete=false;else{b.outs+=outs;b.er+=er}
+    }
+  }
+  const era=b=>b.g&&b.complete&&b.outs>0?(b.er*27/b.outs).toFixed(2):'—';
+  return {homeEra:era(buckets.home),awayEra:era(buckets.away)};
+}
+
 function pitcherRoleERA(name){
   const buckets={start:{g:0,outs:0,er:0,complete:true},relief:{g:0,outs:0,er:0,complete:true}};
   let unknown=false;
@@ -7188,7 +7203,7 @@ const JERSEY_FOREIGN_PLAYERS=new Set([
  '호세 미구엘 페르난데스','호세 페르난데스','페르난데스','라울 알칸타라','알칸타라','크리스 플렉센','플렉센','워커 로켓','로켓','아리엘 미란다','미란다',
  '로버트 스탁','스탁','브랜든 와델','브랜든','딜런 파일','딜런','호세 로하스','로하스','헨리 라모스','라모스','시라카와 케이쇼','시라카와',
  '조던 발라조빅','발라조빅','제러드 영','제러드영','제러드','콜 어빈','콜어빈','어빈','제이크 케이브','케이브','타무라 이치로','타무라',
- '잭 로그','잭로그','유니오 세베리노','세베리노','타카다 타쿠토','타카다','웨스 벤자민','벤자민'
+ '잭 로그','잭로그','유니오 세베리노','세베리노','타카다 타쿠토','타카다','웨스 벤자민','벤자민','다즈 카메론','카메론'
 ]);
 function jerseyIsForeignRow(row,season=jerseySeason){
  if(!row||!JERSEY_FOREIGN_PLAYERS.has(row.name))return false;
@@ -7203,19 +7218,33 @@ function jerseyNumbers(){
  const usedHigh=[...new Set(jerseyData().records.map(row=>row.number).filter(number=>/^\d+$/.test(number)&&Number(number)>=100))].sort((a,b)=>Number(a)-Number(b));
  return ['0',...Array.from({length:99},(_,i)=>String(i+1)),...usedHigh,...Array.from({length:10},(_,i)=>'0'+i)];
 }
-function jerseyRoleForName(name){
- const roles=new Set();
- careerCatalog().players.forEach(player=>{if(player.name===name||(player.aliases||[]).includes(name))roles.add(player.role)});
- jerseyData().records.filter(row=>row.name===name&&row.role).forEach(row=>{
-  if(/투수/.test(row.role))roles.add('pitcher');
-  if(/포수|내야|외야|타자|지명/.test(row.role))roles.add('hitter');
- });
+function jerseyRoleForRow(row){
+ const roles=new Set();if(!row)return roles;
+ if(/투수/.test(row.role||''))roles.add('pitcher');
+ if(/포수|내야|외야|타자|지명/.test(row.role||''))roles.add('hitter');
+ if(roles.size)return roles;
+ // 동명이인 김동주는 등번호 사용 연도로 타자(1998~2014)와 투수(2021~)를 분리한다.
+ if(row.name==='김동주'){
+  const year=Number(String(row.start||'').slice(0,4));
+  roles.add(year&&year<=2014?'hitter':'pitcher');return roles;
+ }
+ const matches=careerCatalog().players.filter(player=>player.name===row.name||(player.aliases||[]).includes(row.name));
+ const meaningful=matches.filter(player=>player.hasRecord!==false);
+ const source=meaningful.length?meaningful:matches;
+ source.forEach(player=>roles.add(player.role));
+ // 투수가 타석 기록에 0타석으로 잡혀 생긴 가짜 hitter 항목은 투수 분류에 섞지 않는다.
+ if(roles.has('pitcher')&&roles.has('hitter')){
+  const pitcher=matches.some(player=>player.role==='pitcher'&&player.hasRecord!==false);
+  const hitter=matches.some(player=>player.role==='hitter'&&player.hasRecord!==false);
+  if(pitcher&&!hitter)return new Set(['pitcher']);
+  if(hitter&&!pitcher)return new Set(['hitter']);
+ }
  return roles;
 }
 function jerseyMatchesPlayerFilter(number,filter){
  const rows=jerseyAssignments(number);
  if(filter==='foreign')return rows.some(row=>jerseyIsForeignRow(row,jerseySeason));
- if(filter==='pitcher'||filter==='hitter')return rows.some(row=>jerseyRoleForName(row.name).has(filter));
+ if(filter==='pitcher'||filter==='hitter')return rows.some(row=>jerseyRoleForRow(row).has(filter));
  return true;
 }
 function jerseySelectedNumbers(){
@@ -7288,7 +7317,8 @@ function jerseyMarkingName(name){
   '잭 로그':'잭로그',
   '유니오 세베리노':'세베리노',
   '타카다 타쿠토':'타카다',
-  '웨스 벤자민':'벤자민'
+  '웨스 벤자민':'벤자민',
+  '다즈 카메론':'카메론'
  };
  return markings[name]||name;
 }
