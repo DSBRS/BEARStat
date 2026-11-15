@@ -418,14 +418,14 @@ nav a:last-child{flex:1.35}
 <style>nav div{display:flex;box-sizing:border-box;padding-inline:8px}nav a,nav a:last-child{flex:1 1 auto;min-width:max-content;padding:12px 4px;white-space:nowrap;font-size:12px}@media(max-width:380px){nav a,nav a:last-child{font-size:11px}}</style><style>.record-menu-row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:0 0 12px}
 .record-menu-slot{flex:0 1 auto;min-width:0}
 .choice-dropdown{position:relative;width:max-content;min-width:90px;max-width:100%;color:var(--navy);font-size:14px;text-align:left}
-.choice-dropdown[open]{z-index:25}
-.choice-dropdown summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:44px;padding:10px 13px;background:var(--card,#fff);border:1px solid var(--line,#dedee8);border-radius:10px;cursor:pointer;box-sizing:border-box;font-weight:600}
-.choice-dropdown summary::-webkit-details-marker{display:none}
-.choice-dropdown summary:focus-visible,.choice-option:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
+.choice-dropdown.open{z-index:25}
+.choice-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-height:44px;padding:10px 13px;background:var(--card,#fff);border:1px solid var(--line,#dedee8);border-radius:10px;color:inherit;cursor:pointer;box-sizing:border-box;font:inherit;font-weight:600;text-align:left;appearance:none;-webkit-appearance:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.choice-summary:focus-visible,.choice-option:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
 .choice-chevron{width:8px;height:8px;border-right:2px solid var(--sub);border-bottom:2px solid var(--sub);transform:rotate(45deg);flex-shrink:0;margin-top:-4px}
-.choice-dropdown[open] .choice-chevron{transform:rotate(225deg);margin-top:4px}
-.choice-options{position:absolute;top:calc(100% + 4px);left:0;min-width:100%;width:max-content;max-width:min(280px,85vw);max-height:240px;overflow-y:auto;overscroll-behavior:contain;padding:5px;background:var(--card,#fff);border:1px solid var(--line,#dedee8);border-radius:10px;box-shadow:0 8px 22px #14132e16;box-sizing:border-box}
-.choice-option{display:block;width:100%;padding:11px 14px;border:0;border-radius:6px;background:transparent;color:var(--navy);text-align:left;white-space:nowrap;font:inherit;cursor:pointer;min-height:42px}
+.choice-dropdown.open .choice-chevron{transform:rotate(225deg);margin-top:4px}
+.choice-options{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:100%;width:max-content;max-width:min(280px,85vw);max-height:240px;overflow-y:auto;overscroll-behavior:contain;padding:5px;background:var(--card,#fff);border:1px solid var(--line,#dedee8);border-radius:10px;box-shadow:0 8px 22px #14132e16;box-sizing:border-box;touch-action:manipulation}
+.choice-dropdown.open>.choice-options{display:block}
+.choice-option{display:block;width:100%;touch-action:manipulation;padding:11px 14px;border:0;border-radius:6px;background:transparent;color:var(--navy);text-align:left;white-space:nowrap;font:inherit;cursor:pointer;min-height:42px}
 .choice-option:hover,.choice-option.selected{background:var(--light,#eeeef9)}
 .record-limit-control{display:flex;gap:8px;align-items:center;margin:0 0 10px}
 .record-limit-caption,.record-limit-note{color:var(--sub);font-size:12px}
@@ -6534,7 +6534,46 @@ function rankedOpponentTeams(year=TODAY.getFullYear()){
 function ensureSeasonOpponentSelection(year){const valid=seasonOpponentTeams(year);if(!valid.includes(h2h))h2h='';}
 
 function choiceDropdown(label,buttons,aria='선택'){
- return `<details class="choice-dropdown"><summary aria-label="${esc(aria)}"><span>${label}</span><span class="choice-chevron" aria-hidden="true"></span></summary><div class="choice-options">${buttons}</div></details>`;
+ return `<div class="choice-dropdown"><button type="button" class="choice-summary" aria-haspopup="true" aria-expanded="false" aria-label="${esc(aria)}"><span>${label}</span><span class="choice-chevron" aria-hidden="true"></span></button><div class="choice-options">${buttons}</div><!--/choices--></div>`;
+}
+// Controlled filter menu: no native <details> toggle, so iOS taps cannot double-toggle it,
+// and an open menu is restored after a background re-render instead of vanishing.
+let openChoiceDropdown=null,choiceOpenedAt=0,choiceSelectedAt=0;
+function choiceMenusOpen(){return [...document.querySelectorAll('.choice-dropdown.open')]}
+function setChoiceDropdown(menu,open,focusTrigger=false){
+ if(!menu)return;
+ if(open&&!menu.isConnected)return;
+ if(open)for(const other of choiceMenusOpen())if(other!==menu)setChoiceDropdown(other,false);
+ menu.classList.toggle('open',open);
+ const trigger=menu.querySelector('.choice-summary');
+ if(trigger)trigger.setAttribute('aria-expanded',String(!!open));
+ if(open){
+  openChoiceDropdown=menu;choiceOpenedAt=Date.now();
+  const options=menu.querySelector('.choice-options');
+  if(options){options.style.left='0';options.style.right='auto';if(options.getBoundingClientRect().right>innerWidth-8){options.style.left='auto';options.style.right='0'}}
+ }else{
+  if(openChoiceDropdown===menu)openChoiceDropdown=null;
+  if(focusTrigger&&trigger&&trigger.focus)trigger.focus();
+ }
+}
+function captureChoiceMenu(){
+ const menu=openChoiceDropdown;
+ if(!menu||!menu.isConnected)return null;
+ if(Date.now()-choiceSelectedAt<1200)return null;
+ const all=[...document.querySelectorAll('.choice-dropdown')],index=all.indexOf(menu);
+ if(index<0)return null;
+ const trigger=menu.querySelector('.choice-summary');
+ return {route:(document.body&&document.body.dataset.r)||'',index,label:trigger?trigger.textContent.trim():'',aria:trigger?(trigger.getAttribute('aria-label')||''):''};
+}
+function restoreChoiceMenu(state,route){
+ openChoiceDropdown=null;
+ if(!state)return;
+ if(state.route&&route&&state.route!==route)return;
+ const menu=[...document.querySelectorAll('.choice-dropdown')][state.index];
+ if(!menu)return;
+ const trigger=menu.querySelector('.choice-summary');
+ if(!trigger||trigger.textContent.trim()!==state.label||(trigger.getAttribute('aria-label')||'')!==state.aria)return;
+ setChoiceDropdown(menu,true);
 }
 function recordLimitMenu(context,role){
  const options=recordLimitOptions(context,role),key=recordSelectedLimit(context,role),label=options.find(([k])=>k===key)[1],unit=role==='pitcher'&&!(context==='opponent'&&typeof isOpponentPlayerMatchup==='function'&&isOpponentPlayerMatchup())?'이닝':'타석';
@@ -6600,7 +6639,7 @@ function recordMenuLayout(html,route){
   return `<select ${attrs} class="native-choice-source" style="display:none" aria-hidden="true" tabindex="-1">${inside}</select><div class="record-menu-slot">${choiceDropdown(chosen[2],buttons,'선택')}</div>`;
  });
  // Keep consecutive menus together and let small screens wrap.
- html=html.replace(/(?:<div class="record-menu-slot">[\s\S]*?<\/details><\/div>\s*)+/g,group=>`<div class="record-menu-row">${group}</div>`);
+ html=html.replace(/(?:<div class="record-menu-slot">[\s\S]*?<!--\/choices--><\/div><\/div>\s*)+/g,group=>`<div class="record-menu-row">${group}</div>`);
  if(['standings','h2h','records'].includes(route)&&window.matchMedia('(max-width:1023px)').matches){
   if(route==='standings'){
    html=html.replace(`<div class="brand"><div class="logo">순위</div></div>`,`<header class="mobile-record-page-header" aria-label="순위 페이지 이동"><a class="mobile-record-home" href="#/">‹ 홈</a><h1>순위</h1><div class="mobile-record-related"><a href="#/career-standings">통산순위 ›</a></div></header>`);
@@ -6614,22 +6653,22 @@ function recordMenuLayout(html,route){
 if(typeof document!=='undefined'){
 document.addEventListener('input',ev=>{if(ev.target.matches('[data-careerinput]'))updateCareerRates()});
 document.addEventListener('click',ev=>{
+ const trigger=ev.target.closest('.choice-summary');
+ if(trigger){const menu=trigger.closest('.choice-dropdown');
+  if(menu){const isOpen=menu.classList.contains('open');if(isOpen&&Date.now()-choiceOpenedAt<250)return;setChoiceDropdown(menu,!isOpen)}
+  return}
  const native=ev.target.closest('[data-nativechoice]');
  if(native){const select=document.getElementById(native.dataset.nativechoice),menu=native.closest('.choice-dropdown');
-  if(select&&menu){select.value=native.dataset.choicevalue;menu.querySelector('summary span').textContent=native.textContent;menu.querySelectorAll('.choice-option').forEach(option=>{const selected=option===native;option.classList.toggle('selected',selected);option.setAttribute('aria-pressed',String(selected))});menu.open=false;select.dispatchEvent(new Event('change',{bubbles:true}))}return;
+  if(select&&menu){select.value=native.dataset.choicevalue;const label=menu.querySelector('.choice-summary>span');if(label)label.textContent=native.textContent;menu.querySelectorAll('.choice-option').forEach(option=>{const selected=option===native;option.classList.toggle('selected',selected);option.setAttribute('aria-pressed',String(selected))});choiceSelectedAt=Date.now();setChoiceDropdown(menu,false);select.dispatchEvent(new Event('change',{bubbles:true}))}return;
  }
+ if(ev.target.closest('.choice-option'))choiceSelectedAt=Date.now();
  const target=ev.target.closest('[data-recordlimit]');
  if(target){const {recordlimit:key,limitcontext:context,limitrole:role}=target.dataset;if(RECORD_LIMITS[context]&&recordLimitOptions(context,role).some(([k])=>k===key)){RECORD_LIMITS[context][role]=key;rerender()}return}
- document.querySelectorAll('.choice-dropdown[open]').forEach(menu=>{if(!menu.contains(ev.target)||ev.target.closest('.choice-option'))menu.open=false});
+ const opened=choiceMenusOpen();if(!opened.length)return;
+ if(Date.now()-choiceOpenedAt<350)return;
+ for(const menu of opened)if(!menu.contains(ev.target))setChoiceDropdown(menu,false);
 });
-document.addEventListener('keydown',ev=>{if(ev.key==='Escape')document.querySelectorAll('.choice-dropdown[open]').forEach(menu=>{menu.open=false;menu.querySelector('summary')?.focus()})});
-document.addEventListener('toggle',ev=>{
- if(!ev.target.matches?.('.choice-dropdown[open]'))return;
- document.querySelectorAll('.choice-dropdown[open]').forEach(menu=>{if(menu!==ev.target)menu.open=false});
- const options=ev.target.querySelector('.choice-options');if(!options)return;
- options.style.left='0';options.style.right='auto';
- if(options.getBoundingClientRect().right>innerWidth-8){options.style.left='auto';options.style.right='0'}
-},true);
+document.addEventListener('keydown',ev=>{if(ev.key!=='Escape')return;for(const menu of choiceMenusOpen())setChoiceDropdown(menu,false,true)});
 
 }
 
@@ -7434,9 +7473,11 @@ function route(){
     if(r==='opponent'){opponentPlayerTarget=null;opponentMatchupJob=null;opponentMatchupSort=null;opponentKind='hitter';oppSort='avg';oppSortDir='desc';oppHistorySheet=null;}
   }
   applyDesktopRecordIntent(r);
+  const choiceMenu=captureChoiceMenu();
   $('#app').innerHTML=desktopHeaderHTML(r)+renderWithRecordCache(()=>recordMenuLayout(r==='numbers'?jerseyView():r==='player-cards'?desktopCardsPageHTML():r==='standings'?standings():r==='career-standings'?careerStandingsPage():r==='awards'?awardsView():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));
   updateNavigation(r);
   document.body.dataset.r=r;window.scrollTo(0,0);
+  restoreChoiceMenu(choiceMenu,r);
 }
 document.addEventListener('input',ev=>{if(ev.target.matches('[data-careerinput]'))updateCareerRates()});
 document.addEventListener('click',ev=>{
@@ -7711,8 +7752,10 @@ function route2(){
  const r=document.body.dataset.r,x=window.scrollX,y=window.scrollY;
  const scrollGroups=['.sheet','.historybox','.opp-scroll,.record-scroll','.recscroll'];
  const positions=scrollGroups.map(selector=>[selector,[...document.querySelectorAll(selector)].map(el=>({top:el.scrollTop,left:el.scrollLeft}))]);
+ const choiceMenu=captureChoiceMenu();
  updateNavigation(r);
  $('#app').innerHTML=desktopHeaderHTML(r)+renderWithRecordCache(()=>recordMenuLayout(r==='numbers'?jerseyView():r==='player-cards'?desktopCardsPageHTML():r==='standings'?standings():r==='career-standings'?careerStandingsPage():r==='awards'?awardsView():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));
+ restoreChoiceMenu(choiceMenu,r);
  for(const [selector,saved] of positions)document.querySelectorAll(selector).forEach((el,i)=>{if(saved[i]){el.scrollTop=saved[i].top;el.scrollLeft=saved[i].left;}});
  window.scrollTo({left:x,top:y,behavior:'instant'});
 }
