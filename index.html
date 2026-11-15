@@ -4794,7 +4794,8 @@ function opponentPlayerGames(name,opp=''){
   return opponentGames(opp).filter(e=>Array.isArray(e.batting)).map(e=>{
     const players=e.batting.filter(p=>S(p.name)===S(name));if(!players.length)return null;
     const stats={};for(const [key,fields] of Object.entries(keys))stats[key]=players.reduce((sum,p)=>sum+(recordNumber(p,fields)??(key==='so'?verifiedRelayBattingStat(e,p.name,'so'):0)??0),0);
-    const line=sumOpsLines(players.map(p=>opsBattingLine(e,p)));return {event:e,...stats,_opsLine:line,ops:formatOPS(battingRates(line).ops),avg:opponentAverage(stats.ab,stats.hit)};
+    const line=sumOpsLines(players.map(p=>opsBattingLine(e,p))),bbh=[line.bb,line.hbp].every(Number.isFinite)?line.bb+line.hbp:null;
+    return {event:e,...stats,_opsLine:line,bbh,ops:formatOPS(battingRates(line).ops),avg:opponentAverage(stats.ab,stats.hit)};
   }).filter(Boolean).sort((a,b)=>S(b.event.date).localeCompare(S(a.event.date))||(+b.event.headerNo||0)-(+a.event.headerNo||0)||S(b.event.time).localeCompare(S(a.event.time)));
 }
 function opponentBattingSplits(name){
@@ -4806,7 +4807,7 @@ function opponentBattingSplits(name){
     const side=S(game.event.homeAway);
     if(side==='home'||side==='away'){row[side+'Ab']+=game.ab;row[side+'Hit']+=game.hit;}
   }
-  return [...byTeam.values()].map(r=>({...r,ops:formatOPS(battingRates(r._opsLine).ops),avg:opponentAverage(r.ab,r.hit),homeAvg:opponentAverage(r.homeAb,r.homeHit),awayAvg:opponentAverage(r.awayAb,r.awayHit)}));
+  return [...byTeam.values()].map(r=>{const bbh=[r._opsLine.bb,r._opsLine.hbp].every(Number.isFinite)?r._opsLine.bb+r._opsLine.hbp:null;return {...r,bbh,ops:formatOPS(battingRates(r._opsLine).ops),avg:opponentAverage(r.ab,r.hit),homeAvg:opponentAverage(r.homeAb,r.homeHit),awayAvg:opponentAverage(r.awayAb,r.awayHit)}});
 }
 function opponentBattingSheetHTML(name){
   scheduleSacrificeFlies({games:opponentPlayerGames(name).map(g=>g.event),includePH:false});
@@ -4819,7 +4820,7 @@ function opponentBattingSheetHTML(name){
 }
 
 let opponentRelayJob=null;
-const OPP_RELAY_STATS=new Set(['ab','hit','d2','d3','hr','so','avg']);
+const OPP_RELAY_STATS=new Set(['ab','hit','d2','d3','hr','so','bbh','avg']);
 function startOpponentRelay(){
  const selected=oppHistorySheet;
  const stat=selected?.stat==='avgdetail'?selected.detailStat:selected?.stat;
@@ -4835,8 +4836,25 @@ function startOpponentRelay(){
   }
  }))).finally(()=>{job.running=false;if(opponentRelayJob===job&&oppHistorySheet===selected)rerender()});
 }
+function plateAppearanceOnBaseKind(p){
+ const stats=p?.stats||{},result=S(p?.result);
+ if(Number(stats.hbp)>0||/몸에 맞는 볼|사구/.test(result))return '몸에 맞는 볼';
+ if(Number(stats.ibb)>0||/고의사구/.test(result))return '고의사구';
+ return '볼넷';
+}
 function opponentPlayDetails(e,name,stat){
  if(!OPP_RELAY_STATS.has(stat))return null;
+ if(stat==='bbh'){
+  let plays=verifiedGameBattingFields(e,name)?.plays;
+  if(Array.isArray(plays))plays=plays.filter(p=>Number(p.stats?.bb)>0||Number(p.stats?.hbp)>0);
+  if(!Array.isArray(plays)){
+   const relay=cachedPlayerRelay(e.kboGameId,name,'hitter');
+   if(!relay||!relayPlayerAvailable(relay,e.kboGameId,name,'hitter'))return null;
+   const side=S(e.kboGameId).slice(8,10)==='OB'?'away':'home';
+   plays=relay.plays.filter(p=>p.side===side&&p.batter===name&&(Number(p.stats?.bb)>0||Number(p.stats?.hbp)>0));
+  }
+  return plays.map(p=>`${p.inning}회${p.side==='away'?'초':'말'}${S(p.pitcher)?' · '+S(p.pitcher):''} · ${plateAppearanceOnBaseKind(p)}`);
+ }
  const final=finalBoxBattingPlays(e,name,stat);
  let plays=final;
  if(plays===null){
@@ -4850,7 +4868,7 @@ function opponentPlayDetails(e,name,stat){
 
 function opponentDetailHistoryHTML(name,opp,stat){
  if(stat==='errors')return opponentErrorHistoryHTML(name,opp);
- const labels={ab:'타수',hit:'안타',rbi:'타점',runs:'득점',avg:'타율',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루',gw:'결승타'},label=labels[stat];
+ const labels={ab:'타수',hit:'안타',rbi:'타점',runs:'득점',avg:'타율',d2:'2루타',d3:'3루타',hr:'홈런',sb:'도루',so:'삼진',bbh:'사사구',gw:'결승타'},label=labels[stat];
  if(!label)return '';
  const games=stat==='gw'?opponentWinningHitGames(name,opp):opponentPlayerGames(name,opp).filter(g=>stat==='avg'?g.ab>0:g[stat]>0),job=OPP_RELAY_STATS.has(stat)?opponentRelayJob:null;
  const progress=job?.running?`${job.done}/${job.total}경기 확인 중`:job?.failed?`${job.failed}경기 내역 조회 실패`:'';
@@ -4859,7 +4877,7 @@ function opponentDetailHistoryHTML(name,opp,stat){
   ${games.length?games.map(g=>{
    const e=g.event,side=historyHomeAwayLabel(e);
    const gameLabel=[S(e.date).slice(5).replace('-','.'),+e.headerNo>0?'더블헤더 '+e.headerNo+'차전':''].filter(Boolean).join(' · ');
-   const value=stat==='avg'?g.avg:`${g[stat]}${stat==='rbi'?'타점':stat==='ab'?'타수':'개'}`;
+   const value=stat==='avg'?g.avg:`${g[stat]}${stat==='rbi'?'타점':stat==='ab'?'타수':stat==='bbh'?'사사구':'개'}`;
    let details=stat==='gw'?(g.winningHitDescription?[g.winningHitDescription]:null):opponentPlayDetails(e,name,stat);
    if(details===null&&stat==='hr'){const hrs=parseHrEntries(e).filter(x=>S(x.player)===S(name));if(hrs.length)details=hrs.map(x=>`${x.inning}회 · ${x.runs}점 홈런`);}
    return `<div class="historyrow"><div class="situ-game-body">
@@ -4873,14 +4891,14 @@ function opponentDetailHistoryHTML(name,opp,stat){
 
 function opponentBattingDetailSheetHTML(name,opp){
   scheduleSacrificeFlies({games:opponentPlayerGames(name,opp).map(g=>g.event),includePH:false});
-  const row=opponentBattingSplits(name).find(r=>r.opp===opp)||{ab:0,hit:0,rbi:0,runs:0,d2:0,d3:0,hr:0,sb:0,so:0,avg:'—'};
+  const row=opponentBattingSplits(name).find(r=>r.opp===opp)||{ab:0,hit:0,rbi:0,runs:0,d2:0,d3:0,hr:0,sb:0,so:0,bbh:0,avg:'—'};
   row.gw=opponentWinningHitGames(name,opp).length;
   row.errors=opponentErrorSummary(name,opp).total??'—';
   const selected=oppHistorySheet?.detailStat||null;
-  const cards=[['ab','타수'],['hit','안타'],['rbi','타점'],['runs','득점'],['avg','타율'],['ops','OPS'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['sb','도루'],['so','삼진'],['gw','결승타'],['errors','실책']];
+  const cards=[['ab','타수'],['hit','안타'],['rbi','타점'],['runs','득점'],['avg','타율'],['ops','OPS'],['bbh','사사구'],['d2','2루타'],['d3','3루타'],['hr','홈런'],['sb','도루'],['so','삼진'],['gw','결승타'],['errors','실책']];
   return `<div class="sheetback" data-oppback><div class="sheet"><div class="sheetbar"></div>
     <div class="sheethead"><div><b>${esc(name)}</b><div class="sb">${opponentYear}년 KBO ${opponentSeasonLabel()} · ${esc(teamDisplayName(opp))}전 타격 기록</div></div><button class="sheetclose" data-oppclose>×</button></div>
-    <div class="ordergrid">${cards.map(([key,label])=>key==='ops'?`<div class="orderbox"><b>${row.ops??'—'}</b><span>OPS</span></div>`:`<button type="button" class="orderbox statclick${selected===key?' on':''}" data-oppdetail-stat="${key}" aria-pressed="${selected===key}" aria-controls="opponent-detail-history"><b>${row[key]}</b><span>${label}</span></button>`).join('')}</div>
+    <div class="ordergrid">${cards.map(([key,label])=>key==='ops'?`<div class="orderbox"><b>${row.ops??'—'}</b><span>OPS</span></div>`:`<button type="button" class="orderbox statclick${selected===key?' on':''}" data-oppdetail-stat="${key}" aria-pressed="${selected===key}" aria-controls="opponent-detail-history"><b>${row[key]==null?'—':row[key]}</b><span>${label}</span></button>`).join('')}</div>
     ${selected?opponentDetailHistoryHTML(name,opp,selected):'<div class="note" style="margin-top:14px">기록 카드를 누르면 어느 경기에서 기록했는지 확인할 수 있습니다.</div>'}
     <button class="link" style="margin-top:12px" data-opphist="avg" data-oppplayer="${esc(name)}" data-oppteam="${esc(opp)}">← 상대 구단별 타율</button>
   </div></div>`;
