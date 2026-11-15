@@ -3112,7 +3112,7 @@ function personalKindTabs(){
 function recordSeasonTabsHTML(){
   const maxYear=TODAY.getFullYear()+1;
   return `${recordYearMenu()}${recLeague==='kbo'?recordCompetitionMenus():''}
-  <div class="chips" style="margin-bottom:12px">${[['kbo','KBO'],['futures','퓨처스리그'],['edu','교육리그']].map(([k,l])=>`<button class="chip${recLeague===k?' on':''}" data-rleague="${k}">${l}</button>`).join('')}</div>
+  <div class="chips" style="margin-bottom:12px">${[['kbo','KBO'],['futures','퓨처스리그']].map(([k,l])=>`<button class="chip${recLeague===k?' on':''}" data-rleague="${k}">${l}</button>`).join('')}</div>
 
   ${recordPeriodMenus()}
   ${recKind==='pitcher'?`<div class="chips" style="margin-bottom:12px">${[['pitching','투구 기록'],['result','투수 기록'],...(recPeriod==='season'?[['pitchmix','구종 분석']]:[]),...(recLeague==='kbo'&&recPeriod==='season'?[['situational','상황별 기록']]:[])].map(([k,l])=>`<button class="chip${recPitchTab===k?' on':''}" data-rptab="${k}">${l}</button>`).join('')}</div>`:''}
@@ -4398,6 +4398,7 @@ function pitchTypeRecordsView(){
  return `<div class="brand"><div class="logo">개인기록</div></div>${recordTabs()}${historyCollectionNote()}<div class="card"><b>${title}</b>${body||`<div class="empty" style="padding:30px 0">${recYear}년 ${recordLeagueLabel()}${recordSeasonLabel()?' · '+recordSeasonLabel():''} 구종 데이터가 아직 없습니다.<br><span style="font-size:12px">구종 데이터가 등록되면 이 화면에 자동으로 표시돼요.</span></div>`}</div><details class="phnote record-guide"><summary>안내</summary><div class="record-guide-content"><p>${role==='pitcher'?'구종별 구사율과 평균구속을 표시합니다.':'구종별 상대투구수, 스윙률, 헛스윙률, 인플레이 타구 수를 표시합니다.'} 없는 값은 추측하지 않고 —로 표시해요.</p></div></details>`;
 }
 function records(){
+  if(recLeague==='edu')recLeague='kbo';
   scheduleSacrificeFlies();
   scheduleDefenseSource();
   if(recBatTab==='onbase'){recBatTab='main';recSort=null}
@@ -6829,7 +6830,7 @@ function nonKboCareerRows(role=recKind){
   return {n:p.n,stats,rates:careerRates(stats,role),missingBaseline:false,league,appeared};
  }).filter(r=>r.appeared||['w','l','s','h'].some(k=>r.stats[k]>0));
 }
-function careerLeagueTabs(){return `<div class="chips" style="margin-bottom:12px">${[['kbo','KBO'],['futures','퓨처스 통산'],['edu','교육리그 통산']].map(([k,l])=>`<button class="chip${recLeague===k?' on':''}" data-rleague="${k}" aria-pressed="${recLeague===k}">${l}</button>`).join('')}</div>`}
+function careerLeagueTabs(){return `<div class="chips" style="margin-bottom:12px">${[['kbo','KBO'],['futures','퓨처스 통산']].map(([k,l])=>`<button class="chip${recLeague===k?' on':''}" data-rleague="${k}" aria-pressed="${recLeague===k}">${l}</button>`).join('')}</div>`}
 function personalCareerRows(role=recKind){
  if(recLeague!=='kbo')return nonKboCareerRows(role);
  if(recSeason==='regular')return personalRegularCareerRows(role);
@@ -7582,7 +7583,7 @@ document.addEventListener('click',ev=>{
   else if(t.dataset.rbtab){recBatTab=t.dataset.rbtab;recSort=null;playerSheet=null;playerHistoryStat=null;playerOrderHistory=null;keep()}
   else if(t.dataset.sdimension){const d=t.dataset.sdimension;if(SITUATION_OPTIONS[recKind][d]){recSituation[recKind]={dimension:d,value:SITUATION_OPTIONS[recKind][d][0]};recSort=null;playerSheet=null;keep()}}
   else if(t.dataset.svalue){const state=recSituation[recKind];if(SITUATION_OPTIONS[recKind][state.dimension].includes(t.dataset.svalue)){state.value=t.dataset.svalue;recSort=null;keep()}}
-  else if(t.dataset.rleague){if(['kbo','futures','edu'].includes(t.dataset.rleague)){recLeague=t.dataset.rleague;if(recLeague!=='kbo'&&recScope==='bears')recScope='career';recSort=null;playerSheet=null;playerHistoryStat=null;playerOrderHistory=null;pitcherHistoryStat=null;pitcherHistoryRole='all';playerDefensePosition=null;}keep()}
+  else if(t.dataset.rleague){if(['kbo','futures'].includes(t.dataset.rleague)){recLeague=t.dataset.rleague;if(recLeague!=='kbo'&&recScope==='bears')recScope='career';recSort=null;playerSheet=null;playerHistoryStat=null;playerOrderHistory=null;pitcherHistoryStat=null;pitcherHistoryRole='all';playerDefensePosition=null;}keep()}
   else if(t.dataset.sstat){situationHistoryStat=situationHistoryStat===t.dataset.sstat?null:t.dataset.sstat;startSituationRelay();keep()}
   else if(t.dataset.phretry!==undefined){startPinchHitHistory(true);keep()}
   else if(t.dataset.hstat){playerHistoryStat=playerHistoryStat===t.dataset.hstat?null:t.dataset.hstat;if(playerHistoryStat==='phAvg')startPinchHitHistory();keep()}
