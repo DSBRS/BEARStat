@@ -6396,7 +6396,11 @@ function scheduleSacrificeFlies({games:requestedGames=null,includePH=true}={}){
  const ids=[...new Set(needed.map(e=>e.kboGameId))].sort();
  const job={running:true,at:Date.now(),done:0,total:0};SACRIFICE_FLY_JOBS.set(key,job);
  Promise.resolve().then(async()=>{
-  for(let i=0;i<ids.length;i+=40){const chunk=ids.slice(i,i+40);try{const query=new URLSearchParams({select:'key,body',key:'in.('+chunk.map(id=>'kbo_relay_'+id).join(',')+')'}),rows=await relayJSON(SUPABASE_URL+'/rest/v1/kv?'+query,20000,'background','sf-cache:'+chunk.join(','));for(const row of rows){const b=row.body;if(b?.schemaVersion===1&&chunk.includes(b.gameId)&&Array.isArray(b.plays))SITUATION_RELAY_CACHE.set(b.gameId,b);}}catch{} }
+  // The per-year static relay file answers most games without a server round trip and is the only source while the Supabase relay is unavailable.
+  try{await primeStaticRelays(ids)}catch{}
+  const queued=eligible.filter(needs),queuedIds=[...new Set(queued.map(e=>e.kboGameId))].sort();
+  if(queuedIds.length<ids.length)rerender();
+  for(let i=0;i<queuedIds.length;i+=40){const chunk=queuedIds.slice(i,i+40);try{const query=new URLSearchParams({select:'key,body',key:'in.('+chunk.map(id=>'kbo_relay_'+id).join(',')+')'}),rows=await relayJSON(SUPABASE_URL+'/rest/v1/kv?'+query,20000,'background','sf-cache:'+chunk.join(','));for(const row of rows){const b=row.body;if(b?.schemaVersion===1&&chunk.includes(b.gameId)&&Array.isArray(b.plays))SITUATION_RELAY_CACHE.set(b.gameId,b);}}catch{} }
   const missing=eligible.filter(needs);job.total=missing.length;rerender();let next=0;
   await Promise.all(Array.from({length:2},async()=>{while(next<missing.length){const e=missing[next++];try{await readSituationRelay(e.kboGameId,'','hitter','background',true);}catch{}job.done++;rerender();}}));
  }).catch(()=>{}).finally(()=>{job.running=false;job.at=Date.now();rerender();});
