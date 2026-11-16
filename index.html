@@ -54,6 +54,13 @@ h2{font-size:12px;letter-spacing:1.2px;color:var(--sub);margin:20px 2px 8px;font
 .tbd{color:var(--sub)}
 .calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .calhead b{font-size:16px}.ib{border:0;background:var(--chip);color:var(--navy);border-radius:10px;height:34px;min-width:34px;font-size:15px;font-weight:700;padding:0 10px}
+/* Theme toggle icon shows the mode it switches to: moon in light, sun in dark. */
+.theme-toggle .theme-icon-sun{display:none}
+:root[data-theme="dark"] .theme-toggle .theme-icon-sun{display:inline}
+:root[data-theme="dark"] .theme-toggle .theme-icon-moon{display:none}
+.theme-toggle svg{width:18px;height:18px}
+@media(prefers-color-scheme:dark){:root:not([data-theme]) .theme-toggle .theme-icon-sun{display:inline}:root:not([data-theme]) .theme-toggle .theme-icon-moon{display:none}}
+
 .push-settings{margin-top:18px}.push-settings>details>summary{display:flex;align-items:center;gap:9px;cursor:pointer;list-style:none;font-size:14px;font-weight:800}.push-settings>details>summary::-webkit-details-marker{display:none}.push-state{margin-left:auto;padding:4px 9px;border-radius:99px;background:var(--chip);color:var(--sub);font-size:11px}.push-bell{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;background:var(--chip);color:var(--navy)}.push-admin{margin-top:16px;font-size:12px;color:var(--sub)}
 .calendar-period{display:flex;align-items:center;gap:0;padding:0 3px;background:var(--bg);border-radius:11px;height:36px}
 .calendar-period-select{position:relative;display:flex;align-items:center;margin:0!important;min-width:0;color:var(--ink)}
@@ -539,15 +546,7 @@ table th button,table td button{ text-align:center }
  .desktop-nav a[aria-current]{color:var(--ink);font-weight:800}
  .desktop-nav a[aria-current]::after{content:'';position:absolute;left:0;right:0;bottom:20px;height:2px;background:var(--acc)}
  .desktop-notification{font-size:14px;color:var(--sub);text-decoration:none;white-space:nowrap}
- .desktop-header-actions{display:flex;align-items:center;gap:10px}.desktop-share{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink);cursor:pointer}.desktop-share svg{width:18px;height:18px}.desktop-share:hover{background:var(--chip)}
-.theme-toggle .theme-icon-sun{display:none}
-:root[data-theme="dark"] .theme-toggle .theme-icon-sun{display:block}
-:root[data-theme="dark"] .theme-toggle .theme-icon-moon{display:none}
-:root[data-theme="light"] .theme-toggle .theme-icon-moon{display:block}
-:root[data-theme="light"] .theme-toggle .theme-icon-sun{display:none}
-@media(prefers-color-scheme:dark){:root:not([data-theme]) .theme-toggle .theme-icon-sun{display:block}:root:not([data-theme]) .theme-toggle .theme-icon-moon{display:none}}
-.ib.theme-toggle svg{width:18px;height:18px}
- .desktop-home{display:block}
+ .desktop-header-actions{display:flex;align-items:center;gap:10px}.desktop-share{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink);cursor:pointer}.desktop-share svg{width:18px;height:18px}.desktop-share:hover{background:var(--chip)} .desktop-home{display:block}
  .desktop-hero{max-width:840px;margin:0 auto;padding:45px 0 38px;text-align:center}
  .desktop-eyebrow{font-size:12px;font-weight:800;letter-spacing:1.6px;color:var(--acc);margin:0 0 20px}
  .desktop-hero h1{font-size:clamp(40px,3.9vw,54px);font-weight:850;letter-spacing:-2.5px;line-height:1.24;margin:0 0 18px;color:var(--ink)}
