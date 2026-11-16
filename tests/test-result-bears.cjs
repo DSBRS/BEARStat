@@ -61,6 +61,14 @@ assert.match(ctx.nationalDetail(japanGame), /^<div class="dt"><div class="big2">
 checks++;
 assert.ok(!ctx.nationalDetail({ type: 'national', score: '5-3', cancelled: true, opp: '일본' }).includes('big2'), 'A cancelled national game keeps no scoreboard');
 checks++;
+// Regression: the scoreboard row keeps only the win/loss mascot, like KBO — no second name mascot.
+assert.equal((ctx.nationalDetail(japanGame).match(/<img/g) || []).length, 1, 'the national scoreboard row holds exactly one mascot');
+checks++;
+// The national name mascot decoration must skip the scoreboard row while the title keeps it.
+const nationalNameScript = html.slice(html.indexOf('const NATIONAL_BEAR_IMAGES'), html.lastIndexOf('scan(document.body);'));
+assert.ok(nationalNameScript.includes('.dt .big2'), 'the national name mascot skips the scoreboard row');
+assert.ok(nationalNameScript.includes('.national-bear-name'), 'the national name mascot is still applied elsewhere');
+checks++;
 const gameCardSource = html.slice(html.indexOf('function gameCard('), html.indexOf('function showUpcomingScheduleTime('));
 assert.ok(gameCardSource.includes('${RL[r]||esc(e.statusText||\'진행 중\')}</span>${resultBearHTML(e)}'), 'Doosan mascot follows the result label');
 console.log(`Passed ${checks} checks and all inline JavaScript syntax checks`);
