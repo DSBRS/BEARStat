@@ -7119,7 +7119,8 @@ const themeMedia=matchMedia('(prefers-color-scheme: dark)');
 const THEME_ICONS=`<svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.7 1.7M16.9 16.9l1.7 1.7M18.6 5.4l-1.7 1.7M7.1 16.9l-1.7 1.7"/></svg><svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.9 14.6A8.5 8.5 0 1 1 9.4 3.1a6.7 6.7 0 0 0 11.5 11.5Z"/></svg>`;
 const BELL_ICON=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>`;
 function savedTheme(){try{const value=localStorage.getItem('bearstat-theme');return value==='light'||value==='dark'?value:''}catch(e){return ''}}
-function effectiveTheme(){return savedTheme()||(themeMedia.matches?'dark':'light')}
+/* What the page actually paints: a stored choice, otherwise the OS preference. */
+function effectiveTheme(){return document.documentElement.getAttribute('data-theme')||(themeMedia.matches?'dark':'light')}
 function syncThemeMeta(){const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute('content',effectiveTheme()==='dark'?'#0d0d1a':'#142B5F')}
 function syncThemeControls(){
  const label=effectiveTheme()==='dark'?'라이트 모드로 전환':'다크 모드로 전환';
@@ -7132,6 +7133,7 @@ function setTheme(theme){
  syncThemeControls();
 }
 themeMedia.addEventListener('change',()=>{if(!savedTheme())syncThemeControls()});
+addEventListener('storage',event=>{if(event.key!=='bearstat-theme')return;const theme=event.newValue==='light'||event.newValue==='dark'?event.newValue:'';if(theme)document.documentElement.setAttribute('data-theme',theme);else document.documentElement.removeAttribute('data-theme');syncThemeControls()});
 document.addEventListener('click',event=>{
  const button=event.target.closest('[data-toggle-theme]');if(!button)return;
  event.preventDefault();
