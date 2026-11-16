@@ -2345,14 +2345,18 @@ function resultBearHTML(e,league='doosan'){
   const src=outcome==='draw'?DRAW_BEAR_IMAGES[team]:(team==='ob'?OB_BEAR_IMAGES[`${outcome}_${resultSide}`]:`./assets/result-bears/${team}-${outcome}-${resultSide}.svg`);
   return `<img class="result-bear${team==='national'?' national-result-bear':''}" src="${src}" alt="" aria-hidden="true" title="${label}" width="40" height="40" decoding="async">`;
 }
-function nationalScoreHTML(e){
-  if(isCancelled(e))return '';
-  const m=S(e?.score).match(/(\d+)\s*[-:]\s*(\d+)/);
+function nationalScorePoints(e){
+  if(!e||isCancelled(e))return null;
+  const m=S(e.score).match(/(\d+)\s*[-:]\s*(\d+)/);
   const points=hasScore(e)?[Number(e.score.d),Number(e.score.v)]:m?[Number(m[1]),Number(m[2])]:null;
-  if(!points||!points.every(n=>Number.isFinite(n)&&Number.isInteger(n)&&n>=0))return '';
+  return points&&points.every(n=>Number.isFinite(n)&&Number.isInteger(n)&&n>=0)?points:null;
+}
+function nationalScoreHTML(e){
+  const points=nationalScorePoints(e);
+  if(!points)return '';
   const [korea,opponent]=points;
   const label=isLiveGame(e)?esc(S(e.statusText)||'진행 중'):RL[korea>opponent?'W':korea<opponent?'L':'D'];
-  return `<span class="result-bear-wrap"><span>${korea}:${opponent} ${label}</span>${resultBearHTML(e,'national')}</span>`;
+  return `${korea}:${opponent} ${label}`;
 }
 function gameCard(e,kind){
   if(!e)return `<div class="card"><div class="empty">오늘 경기가 없습니다.</div></div>`;
@@ -2376,7 +2380,9 @@ function nationalDetail(e){
  const row=(label,value)=>S(value)?`<span>${label}</span><span>${esc(value)}</span>`:'';
  const decisions=row('승리투수',e.winP)+row('패전투수',e.loseP)+row('세이브',e.saveP);
  const info=row('대회',e.comp)+row('단계',e.stage)+row('경기장',e.venue||e.place);
- return `<div class="national-detail"><div class="meta">${info}${decisions}</div></div>`;
+ const points=nationalScorePoints(e);
+ const board=points?`<div class="big2">한국 ${resultBearHTML(e,'national')} ${points[0]} : ${points[1]} ${esc(S(e.opp)||'상대팀')}</div>`:'';
+ return `<div class="dt">${board}<div class="national-detail"><div class="meta">${info}${decisions}</div></div></div>`;
 }
 function evRow(e){
   let sb='';
