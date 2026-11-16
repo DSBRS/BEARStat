@@ -599,9 +599,8 @@ table th button,table td button{ text-align:center }
 }
 
 .mobile-card-header{display:none}
-.mobile-player-link{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;margin:0 0 16px;background:var(--card);border:1px solid var(--line);border-radius:12px;font-size:13px;font-weight:700;color:var(--ink);text-decoration:none}
 @media(min-width:1024px){
- .mobile-player-link,.mobile-today-schedule{display:none}
+ .mobile-today-schedule{display:none}
  .desktop-day>h2{font-size:18px;color:var(--ink);letter-spacing:-.4px}
  .desktop-day>h2:first-child{margin-top:0}
 }
@@ -2570,7 +2569,7 @@ function pushSettingsHTML(){
  <div class="push-preference-footer"><button type="button" class="btn" data-push-save-preferences${disabled}>${s.busy?'저장 중…':'선택한 알림 설정 저장'}</button><p class="note">${s.dirty?'변경한 설정을 저장해주세요.':!s.enabled?'선택을 저장한 뒤 이 기기 알림을 켜주세요.':'저장한 항목만 알림을 받아요.'}</p></div>
  <div class="note" role="status" aria-live="polite">${esc(s.message||(!s.ready&&s.supported?'알림 서버 연결을 확인하고 있어요.':''))}</div>
  <p class="note">지난 일정과 진행·종료·취소된 경기는 알리지 않아요. 기기와 네트워크 상태에 따라 도착이 늦어질 수 있어요.</p>
- ${isOwner?`<details class="push-admin"><summary>관리자 · 알림 관리</summary><p class="note">새 기능을 공개한 뒤 안내를 등록하면 ‘기능 추가 알림’을 켠 기기에만 보내요.</p><label for="push-feature-title">안내 제목</label><input id="push-feature-title" maxlength="80" placeholder="예: 등번호 탐색 기능이 추가됐어요"><label for="push-feature-body">안내 내용</label><textarea id="push-feature-body" maxlength="280" placeholder="새로 사용할 수 있는 기능을 알려주세요."></textarea><label for="push-feature-route">연결 화면</label><select id="push-feature-route"><option value="#/">홈</option><option value="#/numbers">등번호</option><option value="#/records">개인 기록</option><option value="#/player-cards">선수 카드</option><option value="#/awards">수상 기록</option><option value="#/standings">순위</option><option value="#/h2h">상대 전적</option><option value="#/milestones">기록 달성</option></select><button type="button" class="btn g" data-push-announce${disabled}>안내 등록하고 알림 보내기</button><p class="note">서버 설정 파일을 적용한 뒤 한 번만 연결해주세요.</p><button type="button" class="btn g" data-push-setup${disabled}>알림 서버 연결하기</button></details>`:''}
+ ${isOwner?`<details class="push-admin"><summary>관리자 · 알림 관리</summary><p class="note">새 기능을 공개한 뒤 안내를 등록하면 ‘기능 추가 알림’을 켠 기기에만 보내요.</p><label for="push-feature-title">안내 제목</label><input id="push-feature-title" maxlength="80" placeholder="예: 등번호 탐색 기능이 추가됐어요"><label for="push-feature-body">안내 내용</label><textarea id="push-feature-body" maxlength="280" placeholder="새로 사용할 수 있는 기능을 알려주세요."></textarea><label for="push-feature-route">연결 화면</label><select id="push-feature-route"><option value="#/">홈</option><option value="#/numbers">등번호</option><option value="#/records">개인 기록</option><option value="#/awards">수상 기록</option><option value="#/standings">순위</option><option value="#/h2h">상대 전적</option><option value="#/milestones">기록 달성</option></select><button type="button" class="btn g" data-push-announce${disabled}>안내 등록하고 알림 보내기</button><p class="note">서버 설정 파일을 적용한 뒤 한 번만 연결해주세요.</p><button type="button" class="btn g" data-push-setup${disabled}>알림 서버 연결하기</button></details>`:''}
  </details></div></div>`;
 }
 function refreshPushSettings(){const active=document.activeElement,key=active?.dataset?.pushCategory;const slot=document.getElementById('push_settings_slot');if(slot)slot.outerHTML=pushSettingsHTML();if(key)document.querySelector('[data-push-category="'+key+'"]')?.focus({preventScroll:true});}
@@ -2753,7 +2752,7 @@ function home(){
   const t=byDate(TS),kbo=t.find(e=>e.type==='kbo');
   const evs=byDate(sel).filter(e=>calendarCategoryMatch(e)),sd=new Date(sel+'T00:00:00');
   return `${desktopHomeHTML()}<div class="brand home-mobile-brand"><button class="logo admin-secret" id="admin_secret" type="button">BEARS<b>tat</b></button><div class="home-mobile-actions"><button type="button" class="ib" data-copy-home-link aria-label="홈페이지 링크 복사" title="링크 복사"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><button type="button" class="ib" data-open-push aria-label="일정 알림 설정"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button></div></div>
-  <a class="mobile-player-link" href="#/player-cards">선수 카드 보기 <span aria-hidden="true">→</span></a><div class="mobile-today-schedule">${desktopMedia.matches?'':homeTodayScheduleHTML()}</div>
+  <div class="mobile-today-schedule">${desktopMedia.matches?'':homeTodayScheduleHTML()}</div>
   <div class="desktop-home-grid"><section class="desktop-calendar"><h2 class="desktop-section-title">베어스 일정</h2>${scheduleSearchHTML()}${calendarLegendHTML()}
   ${calendar()}</section><section class="desktop-day">${desktopMedia.matches?homeTodayScheduleHTML():''}
   <h2>${sd.getMonth()+1}월 ${sd.getDate()}일 (${'일월화수목금토'[sd.getDay()]}) 일정</h2>
@@ -6665,7 +6664,7 @@ function mobileRecordPageHeader(route){
  return `<header class="mobile-record-page-header" aria-label="${title} 페이지 이동"><a class="mobile-record-home" href="#/">‹ 홈</a><h1>${title}</h1><div class="mobile-record-related">${links.map(([path,label])=>`<a href="#/${path}">${label}</a>`).join('')}</div></header>`;
 }
 function recordMenuLayout(html,route){
- if(['admin','players','home','info','player-cards','numbers'].includes(route))return html;
+ if(['admin','players','home','info','numbers'].includes(route))return html;
  if(Object.hasOwn(playerTableSearch,route)){html=html.replace(/(<div class="brand">[\s\S]*?<\/div><\/div>)/,brand=>brand+playerSearchHTML(route));requestAnimationFrame(applyPlayerTableSearch)}
  html=html.replace(/<div class="chips"[^>]*>([\s\S]*?)<\/div>/g,(whole,inside)=>{
   if(!inside.includes('class="chip')||inside.includes('data-recordscope=')||inside.includes('data-milescope='))return whole;
@@ -7009,8 +7008,9 @@ function careerActivityPeriod(name,role,scope,appearancesOnly=false){
  if(entries.some(p=>p.ambiguous)||new Set(entries.map(p=>p.playerId)).size>1)return {text:'동명이인 확인 필요',basis:''};
  const entry=entries[0],years=new Set(scope==='bears'?entry?.bearsSeasons||[]:[...(entry?.careerSeasons||[]),...(entry?.bearsSeasons||[])]);
  const membership=(entry?.bearsMembershipRanges||[]).filter(([a,b])=>a<=TODAY.getFullYear()&&b>=a);
+ // A player on this year's roster stays active: the last stint must not close at today's year.
+ const current=rosterForYear(TODAY.getFullYear()).some(p=>p.n===name&&p.t===role);
  if(scope==='bears'&&!appearancesOnly&&membership.length){
-  const current=rosterForYear(TODAY.getFullYear()).some(p=>p.n===name&&p.t===role);
   return {text:membership.map(([a,b],i)=>current&&i===membership.length-1?a+'년~':b===9999?a+'년~':a===b?a+'년':a+'~'+Math.min(b,TODAY.getFullYear())+'년').join(' · '),basis:'OB·두산 소속 경력 기준'};
  }
  if(scope!=='bears'&&!appearancesOnly&&entry?.active&&membership.some(([,b])=>b===9999))return {text:Math.min(...membership.map(([a])=>a))+'년~현재',basis:'KBO 소속 경력 기준'};
@@ -7023,8 +7023,11 @@ function careerActivityPeriod(name,role,scope,appearancesOnly=false){
   }
  }
  if(scope==='bears'&&!appearancesOnly&&entry?.clubCareer){
-  const stints=[...entry.clubCareer.matchAll(/(?:OB\s*(?:-\s*두산\s*)?|두산\s*)베어스\s*\((\d{4})(?:\s*~\s*(\d{4})?)?\)/g)].map(match=>{
+  const matches=[...entry.clubCareer.matchAll(/(?:OB\s*(?:-\s*두산\s*)?|두산\s*)베어스\s*\((\d{4})(?:\s*~\s*(\d{4})?)?\)/g)];
+  const stints=matches.map((match,index)=>{
    const a=Number(match[1]),b=match[0].includes('~')?Number(match[2]||TODAY.getFullYear()):a;
+   // Keep a stint open when the source says it is (2024~) or when it is the last stint of a current player.
+   if((match[0].includes('~')&&!match[2])||(current&&index===matches.length-1))return a+'년~';
    return a===b?a+'년':a+'~'+Math.min(b,TODAY.getFullYear())+'년';
   });
   if(stints.length)return {text:stints.join(' · '),basis:'OB·두산 소속 경력 기준'};
@@ -7034,7 +7037,7 @@ function careerActivityPeriod(name,role,scope,appearancesOnly=false){
   if(scope!=='bears')return {text:sorted[0]===sorted.at(-1)?sorted[0]+'년':sorted[0]+'~'+sorted.at(-1)+'년',basis:membership.length?'KBO 소속·출전 이력 기준':'KBO 1군 출전 기록 기준'};
   const ranges=[];let first=sorted[0],last=first;
   for(const year of sorted.slice(1)){if(year===last+1){last=year;continue}ranges.push([first,last]);first=last=year}ranges.push([first,last]);
-  return {text:ranges.map(([a,b])=>a===b?a+'년':a+'~'+b+'년').join(' · '),basis:'OB·두산 1군 출전 기록 기준'};
+  return {text:ranges.map(([a,b],i)=>!appearancesOnly&&current&&i===ranges.length-1?a+'년~':a===b?a+'년':a+'~'+b+'년').join(' · '),basis:'OB·두산 1군 출전 기록 기준'};
  }
  return {text:'확인된 기간 정보 없음',basis:''};
 }
@@ -7102,54 +7105,13 @@ const desktopMedia=matchMedia('(min-width:1024px)');
 let desktopQuery='',desktopRole='all',desktopRecordIntent=null;
 function desktopHeaderHTML(r){
  if(!desktopMedia.matches)return '';
- const links=[['home','홈'],['player-cards','선수 카드'],['standings','순위'],['h2h','맞대결'],['opponent','상대전적'],['records','개인기록'],['numbers','등번호'],['milestones','달성 기록'],['awards','수상 기록']];
+ const links=[['home','홈'],['standings','순위'],['h2h','맞대결'],['opponent','상대전적'],['records','개인기록'],['numbers','등번호'],['milestones','달성 기록'],['awards','수상 기록']];
  if(isOwner)links.push(['info','정보 입력']);
  return `<header class="desktop-header"><a class="desktop-wordmark" id="desktop_admin_secret" href="#/" aria-label="BEARStat 홈">BEAR<b>Stat</b></a><div class="desktop-nav" role="navigation" aria-label="주요 메뉴">${links.map(([key,label])=>`<a href="#/${key==='home'?'':key}"${r===key?' aria-current="page"':''}>${label}</a>`).join('')}</div><div class="desktop-header-actions">${r==='home'?`<button type="button" class="desktop-share" data-copy-home-link aria-label="홈페이지 링크 복사" title="링크 복사"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>`:''}<a href="#/notifications" class="desktop-notification" aria-label="일정 알림 설정">알림 ↗</a></div></header>`;
-}
-function desktopCareerRows(){
- return recordRenderMemo('desktop-career-cards',()=>{
-  const previous=[recScope,recSeason,recKind,recLeague];
-  try{
-   recScope='bears';recSeason='regular';recLeague='kbo';
-   return ['hitter','pitcher'].flatMap(role=>{recKind=role;return displayRecordRows(personalCareerRows(role)).map(row=>({...row,role}))});
-  }finally{[recScope,recSeason,recKind,recLeague]=previous}
- });
-}
-function desktopPlayerCardsHTML(){
- const query=desktopQuery.trim().replace(/\s+/g,'').toLowerCase();
- const all=desktopCareerRows().filter(row=>desktopRole==='all'||row.role===desktopRole);
- const matches=all.filter(row=>!query||row.n.replace(/\s+/g,'').toLowerCase().includes(query));
- const featuredByRole={
-  all:['pitcher:곽빈','pitcher:김택연','hitter:정수빈','hitter:박준순'],
-  pitcher:['pitcher:니퍼트','pitcher:곽빈','pitcher:이병헌','pitcher:김택연'],
-  hitter:['hitter:양의지','hitter:정수빈','hitter:조수행','hitter:박준순']
- };
- const featured=featuredByRole[desktopRole]||featuredByRole.all;
- const sorted=query?matches.slice().sort((a,b)=>a.n.localeCompare(b.n,'ko')):matches.slice().sort((a,b)=>{
-  const order=row=>{const key=row.role+':'+row.n;return featured.includes(key)?featured.indexOf(key):featured.length};
-  return order(a)-order(b)||a.n.localeCompare(b.n,'ko');
- });
- const shown=sorted.slice(0,query?12:4);
- return `<div class="desktop-player-grid">${shown.length?shown.map(row=>{
-  const candidates=row.role==='hitter'?[['hit','안타'],['hr','홈런'],['sb','도루']]:[['w','승'],['h','홀드'],['s','세이브']];
-  const preferred=({'hitter:조수행':['sb','도루'],'hitter:정수빈':['hit','안타'],'pitcher:이병헌':['h','홀드'],'pitcher:김택연':['s','세이브']})[row.role+':'+row.n];
-  const [key,label]=preferred||candidates.reduce((best,item)=>{const value=Number(personalCareerValue(row,item[0]));const bestValue=Number(personalCareerValue(row,best[0]));return Number.isFinite(value)&&(!Number.isFinite(bestValue)||value>bestValue)?item:best},candidates[0]);
-  const period=careerActivityPeriod(row.n,row.role,'bears').text;
-  return `<button type="button" class="desktop-player-card" data-desktop-player="${esc(row.n)}" data-desktop-player-role="${row.role}" aria-label="${esc(row.n)} 베어스통산 기록 보기"><span class="desktop-player-role">${row.role==='hitter'?'타자':'투수'} · ${esc(period||'OB·두산')}</span><span class="desktop-player-name">${esc(row.n)}</span><span class="desktop-player-value">${personalCareerDisplay(row,key)}<small>${label}</small></span><span class="desktop-player-footer"><span>OB·두산 소속 기록</span><i aria-hidden="true">↗</i></span></button>`;
- }).join(''):'<div class="empty">일치하는 선수가 없어요. 이름이나 타자·투수 조건을 확인해 주세요.</div>'}</div><div class="desktop-player-status" role="status" aria-live="polite">${query?`${matches.length}명 검색${matches.length>shown.length?' · 먼저 '+shown.length+'명 표시':''}`:'베어스 유니폼과 함께한 선수들의 기록을 만나보세요.'}</div><div class="desktop-browse"><span>정규시즌 · 기존 베어스통산 집계 기준</span><button type="button" data-desktop-browse>전체 기록 보기 →</button></div>`;
 }
 function desktopHomeHTML(){
  if(!desktopMedia.matches)return '';
  return `<div class="desktop-home"><section class="desktop-hero" aria-labelledby="desktop-home-title"><p class="desktop-eyebrow">OB · DOOSAN BEARS / 1982–${TODAY.getFullYear()}</p><h1 id="desktop-home-title">베어스 유니폼을 입은<br>순간만 모아 보는 기록</h1><p>이름 하나로 만나는, 우리가 기억하는 베어스.</p><form class="desktop-search" id="desktop-search"><label for="desktop-player-search">두산 베어스 선수 기록</label><div class="desktop-search-line"><input id="desktop-player-search" type="search" placeholder="선수 이름을 입력하세요" autocomplete="off" value="${esc(desktopQuery)}"><button type="submit" aria-label="선수 검색">↗</button></div><div class="desktop-search-meta"><span>OB·두산 소속 기간의 누적 기록</span><span>Enter ↵</span></div></form></section></div>`;
-}
-function desktopCardsPageHTML(){
- return `<div class="desktop-home desktop-card-page"><div class="mobile-card-header"><a href="#/">‹ 홈</a><h1>선수 카드</h1></div><section class="desktop-card-intro"><p class="desktop-eyebrow">BEARS PLAYER ARCHIVE</p><h1>선수 카드</h1><p>이름으로 찾고, 카드로 만나는 베어스의 기록.</p><form class="desktop-search" id="desktop-search"><label for="desktop-player-search">두산 베어스 선수 기록</label><div class="desktop-search-line"><input id="desktop-player-search" type="search" placeholder="선수 이름을 입력하세요" autocomplete="off" value="${esc(desktopQuery)}" aria-controls="desktop-player-results"><button type="submit" aria-label="선수 검색">↗</button></div><div class="desktop-search-meta"><span>OB·두산 소속 기간의 누적 기록</span><span>Enter ↵</span></div></form></section><section class="desktop-players" aria-labelledby="desktop-players-title"><div class="desktop-player-heading"><div><h2 id="desktop-players-title">선수 카드</h2><p>기록 속 이름, 한눈에.</p></div><div class="desktop-filters" role="group" aria-label="선수 역할 필터">${[['all','전체'],['hitter','타자'],['pitcher','투수']].map(([key,label])=>`<button type="button" data-desktop-role="${key}" aria-pressed="${desktopRole===key}">${label}</button>`).join('')}</div></div><div id="desktop-player-results">${desktopPlayerCardsHTML()}</div></section></div>`;
-}
-function refreshDesktopPlayers(){
- const slot=document.getElementById('desktop-player-results');if(!slot)return;
- const previous=recordRenderCache;recordRenderCache=new Map();
- try{slot.innerHTML=desktopPlayerCardsHTML()}finally{recordRenderCache=previous}
- document.querySelectorAll('[data-desktop-role]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.desktopRole===desktopRole)));
 }
 function desktopOpenRecords(name,role){
  desktopRecordIntent={name,role};
@@ -7164,22 +7126,12 @@ function applyDesktopRecordIntent(r){
 }
 document.addEventListener('submit',event=>{
  if(event.target.id!=='desktop-search')return;
- event.preventDefault();desktopQuery=document.getElementById('desktop-player-search').value;
- if(document.body.dataset.r!=='player-cards'){location.hash='#/player-cards';return;}
- refreshDesktopPlayers();
- document.getElementById('desktop-players-title')?.scrollIntoView({block:'nearest'});
-});
-document.addEventListener('input',event=>{
- if(event.target.id!=='desktop-player-search')return;
- desktopQuery=event.target.value;
- if(!desktopQuery)refreshDesktopPlayers();
-});
-document.addEventListener('click',event=>{
- const filter=event.target.closest('[data-desktop-role]');
- if(filter){desktopRole=filter.dataset.desktopRole;desktopQuery=document.getElementById('desktop-player-search')?.value||'';refreshDesktopPlayers();return;}
- const card=event.target.closest('[data-desktop-player]');
- if(card){desktopOpenRecords(card.dataset.desktopPlayer,card.dataset.desktopPlayerRole);return;}
- if(event.target.closest('[data-desktop-browse]'))desktopOpenRecords('',desktopRole);
+ event.preventDefault();
+ const query=(document.getElementById('desktop-player-search')?.value||'').trim();
+ desktopQuery=query;
+ const hits=careerCatalog().players.filter(p=>p.name===query.replace(/\s+/g,'')&&p.hasRecord===true);
+ desktopRecordIntent={name:hits.length===1?hits[0].name:'',role:hits.length===1?hits[0].role:(desktopRole==='all'?'':desktopRole)};
+ if(location.hash==='#/records')route();else location.hash='#/records';
 });
 desktopMedia.addEventListener('change',()=>route2());
 
@@ -7502,7 +7454,8 @@ document.addEventListener('keydown',event=>{
 });
 
 function route(){
-  const r=location.hash.replace('#/','').split('?')[0]||'home';
+  let r=location.hash.replace('#/','').split('?')[0]||'home';
+  if(r==='player-cards')r='home';
   const routeParams=new URLSearchParams(location.hash.split('?')[1]||'');
   const alertDate=routeParams.get('date');if(r==='home'&&/^\d{4}-\d{2}-\d{2}$/.test(alertDate||'')){sel=alertDate;view=new Date(alertDate.slice(0,7)+'-01T00:00:00');}
   opponentRouteLockedTeam='';
@@ -7518,7 +7471,7 @@ function route(){
   }
   applyDesktopRecordIntent(r);
   const choiceMenu=captureChoiceMenu();
-  $('#app').innerHTML=desktopHeaderHTML(r)+renderWithRecordCache(()=>recordMenuLayout(r==='numbers'?jerseyView():r==='player-cards'?desktopCardsPageHTML():r==='standings'?standings():r==='career-standings'?careerStandingsPage():r==='awards'?awardsView():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));
+  $('#app').innerHTML=desktopHeaderHTML(r)+renderWithRecordCache(()=>recordMenuLayout(r==='numbers'?jerseyView():r==='standings'?standings():r==='career-standings'?careerStandingsPage():r==='awards'?awardsView():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));
   updateNavigation(r);
   document.body.dataset.r=r;window.scrollTo(0,0);
   restoreChoiceMenu(choiceMenu,r);
@@ -7798,7 +7751,7 @@ function route2(){
  const positions=scrollGroups.map(selector=>[selector,[...document.querySelectorAll(selector)].map(el=>({top:el.scrollTop,left:el.scrollLeft}))]);
  const choiceMenu=captureChoiceMenu();
  updateNavigation(r);
- $('#app').innerHTML=desktopHeaderHTML(r)+renderWithRecordCache(()=>recordMenuLayout(r==='numbers'?jerseyView():r==='player-cards'?desktopCardsPageHTML():r==='standings'?standings():r==='career-standings'?careerStandingsPage():r==='awards'?awardsView():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));
+ $('#app').innerHTML=desktopHeaderHTML(r)+renderWithRecordCache(()=>recordMenuLayout(r==='numbers'?jerseyView():r==='standings'?standings():r==='career-standings'?careerStandingsPage():r==='awards'?awardsView():r==='records'?records():r==='h2h'?h2hView():r==='opponent'?opponentStatsView():r==='milestones'?milestonesView():r==='admin'?admin():r==='info'?informationPage():r==='players'?playerManagement():r==='notifications'?notificationSettingsPage():home(),r));
  restoreChoiceMenu(choiceMenu,r);
  for(const [selector,saved] of positions)document.querySelectorAll(selector).forEach((el,i)=>{if(saved[i]){el.scrollTop=saved[i].top;el.scrollLeft=saved[i].left;}});
  window.scrollTo({left:x,top:y,behavior:'instant'});
