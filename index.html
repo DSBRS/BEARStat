@@ -2871,8 +2871,8 @@ function faYangConfetti(canvas){
  const dpr=Math.min(2,window.devicePixelRatio||1);
  canvas.width=Math.round(innerWidth*dpr);canvas.height=Math.round(innerHeight*dpr);
  ctx.setTransform(dpr,0,0,dpr,0,0);
- const colors=['#1A1748','#D81921','#ffffff','#F4C430','#9fb4ff'],count=innerWidth<600?80:140,pieces=[];
- for(let i=0;i<count;i++)pieces.push({x:Math.random()*innerWidth,y:-20-Math.random()*innerHeight*0.8,vx:(Math.random()-.5)*1.6,vy:1.4+Math.random()*2.4,w:5+Math.random()*7,h:4+Math.random()*6,rot:Math.random()*Math.PI,vr:(Math.random()-.5)*.2,sway:Math.random()*Math.PI*2,color:colors[i%colors.length],round:i%4===0});
+ const colors=['#1A1748','#D81921','#ffffff','#F4C430','#9fb4ff'],count=innerWidth<600?110:190,pieces=[];
+ for(let i=0;i<count;i++)pieces.push({x:Math.random()*innerWidth,y:-innerHeight*0.55+Math.random()*innerHeight*0.8,vx:(Math.random()-.5)*1.8,vy:1.2+Math.random()*2.6,w:5+Math.random()*8,h:4+Math.random()*7,rot:Math.random()*Math.PI,vr:(Math.random()-.5)*.2,sway:Math.random()*Math.PI*2,color:colors[i%colors.length],round:i%4===0});
  let start=0;
  const step=now=>{
   if(!start)start=now;
