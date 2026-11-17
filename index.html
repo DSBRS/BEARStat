@@ -866,7 +866,7 @@ html[data-theme="dark"] .home-share-toast::before{background:#202b43;border-colo
 .fa-banner-badge{align-self:flex-start;display:inline-flex;align-items:center;background:#D81921;color:#fff;font-size:10px;font-weight:800;letter-spacing:.6px;line-height:1.2;padding:3px 7px;border-radius:4px}
 .fa-banner-title{font-size:15px;font-weight:800;letter-spacing:-.35px;line-height:1.32;color:#fff}
 .fa-banner-go{flex:0 0 auto;font-size:18px;font-weight:700;line-height:1;color:rgba(255,255,255,.42);transition:transform .15s ease,color .15s ease}
-.fa-banner-sub{font-size:11.5px;font-weight:600;letter-spacing:-.1px;line-height:1.5;color:rgba(255,255,255,.68)}
+.fa-banner-sub{font-size:11.5px;font-weight:600;letter-spacing:-.1px;line-height:1.5;color:rgba(255,255,255,.68);word-break:keep-all}
 .fa-banner-close{position:absolute;top:7px;right:7px;width:28px;height:28px;display:grid;place-items:center;margin:0;padding:0;border:0;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);font-family:inherit;font-size:16px;line-height:1;cursor:pointer}
 .fa-banner-close:hover,.fa-banner-close:focus-visible{background:rgba(255,255,255,.12);color:#fff}
 .fa-banner-main:focus-visible{outline:2px solid #fff;outline-offset:-3px}
@@ -2803,7 +2803,7 @@ function faYangBannerDismissed(){
 }
 function faYangBannerHTML(){
  if(faYangBannerDismissed())return '';
- return `<aside class="fa-banner" aria-label="양의지 FA 계약 소식"><button type="button" class="fa-banner-main" data-fa-yang-open aria-label="양의지 2년 최대 55억 원 두산 베어스 잔류 · 개인 기록 열기"><img class="fa-banner-photo" src="assets/fa-yang-20261117.jpg" alt="양의지 선수" width="360" height="480" decoding="async"><span class="fa-banner-body"><span class="fa-banner-badge">2027 FA 1호</span><span class="fa-banner-title">양의지, 두산 베어스 잔류</span><span class="fa-banner-sub">2년 최대 55억 원 · 계약금 40억 · 연봉 10억 · 인센티브 5억</span></span><span class="fa-banner-go" aria-hidden="true">›</span></button><button type="button" class="fa-banner-close" data-fa-yang-close aria-label="축하 배너 닫기">×</button></aside>`;
+ return `<aside class="fa-banner" aria-label="양의지 FA 계약 소식"><button type="button" class="fa-banner-main" data-fa-yang-open aria-label="양의지 2년 최대 55억 원 두산 베어스 잔류 · 개인 기록 열기"><img class="fa-banner-photo" src="assets/fa-yang-20261117.jpg" alt="양의지 선수" width="360" height="480" decoding="async"><span class="fa-banner-body"><span class="fa-banner-badge">2027 FA 1호</span><span class="fa-banner-title">양의지, 두산 베어스 잔류</span><span class="fa-banner-sub">2년 최대 55억 원 · 계약금 40억 · 연봉 10억 · 인센티브 5억</span></span><span class="fa-banner-go" aria-hidden="true">›</span></button><button type="button" class="fa-banner-close" data-fa-yang-close aria-label="축하 배너 닫기">×</button></aside>`;
 }
 
 function home(){
