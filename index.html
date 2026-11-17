@@ -912,7 +912,9 @@ html.fa-modal-open{overflow:hidden}
 .fa-modal-primary:hover,.fa-modal-primary:focus-visible{background:#c11119}
 .fa-modal-secondary{border:1px solid rgba(255,255,255,.28);background:transparent;color:rgba(255,255,255,.82)}
 .fa-modal-secondary:hover,.fa-modal-secondary:focus-visible{border-color:rgba(255,255,255,.5);color:#fff}
-.fa-modal-primary:focus-visible,.fa-modal-secondary:focus-visible,.fa-modal-close:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.fa-modal-snooze{align-self:center;margin:0;padding:6px 4px;border:0;background:transparent;color:rgba(255,255,255,.5);font-family:inherit;font-size:12px;font-weight:700;letter-spacing:-.1px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.fa-modal-snooze:hover,.fa-modal-snooze:focus-visible{color:#fff}
+.fa-modal-primary:focus-visible,.fa-modal-secondary:focus-visible,.fa-modal-close:focus-visible,.fa-modal-snooze:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .fa-confetti{position:fixed;inset:0;z-index:9999;pointer-events:none}
 @keyframes fa-fade{from{opacity:0}to{opacity:1}}
 @keyframes fa-pop{from{opacity:0;transform:translateY(14px) scale(.965)}to{opacity:1;transform:none}}
@@ -931,6 +933,7 @@ html.fa-modal-open{overflow:hidden}
  .fa-modal-primary{flex:1 1 auto;width:auto;padding:14px 20px;font-size:15px}
  .fa-modal-secondary{flex:0 0 auto;width:auto;min-width:104px;padding:14px 20px;font-size:15px}
  .fa-modal-close{top:12px;right:12px}
+ .fa-modal-snooze{align-self:flex-start;margin-top:-2px}
 }
 @media(prefers-reduced-motion:reduce){.fa-modal-backdrop,.fa-modal{animation:none}}
 </style>
@@ -2857,12 +2860,14 @@ function faYangBannerHTML(){
 
 /* 2027 FA 1호 양의지 잔류 축하 팝업: 홈에 처음 들어오면 한 번 크게 열리고,
  * 닫으면 다시 뜨지 않는다. 상단 배너는 닫은 뒤에도 눌러서 다시 볼 수 있다. */
-const FA_YANG_MODAL_KEY='bearstat_dismiss_fa_yang_modal_2026_11_17';
+const FA_YANG_SNOOZE_KEY='bearstat_fa_yang_snooze_date';
 let faYangModalHost=null,faYangConfettiRaf=0;
-function faYangModalDismissed(){try{return localStorage.getItem(FA_YANG_MODAL_KEY)==='1'}catch(e){return false}}
+function faYangTodayKey(){const d=new Date(),p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())}
+/* 새로고침하면 다시 뜨는 팝업이라 닫기는 저장하지 않는다. '오늘 그만 보기'만 오늘 날짜를 남긴다. */
+function faYangSnoozedToday(){try{return localStorage.getItem(FA_YANG_SNOOZE_KEY)===faYangTodayKey()}catch(e){return false}}
 function faYangOnHome(){const h=S(location.hash).replace(/^#\/?/,'').split(/[?&]/)[0];return h===''||h==='home'}
 function faYangModalHTML(){
- return `<div class="fa-modal-backdrop" data-fa-modal-backdrop><div class="fa-modal" role="dialog" aria-modal="true" aria-labelledby="fa_modal_title" tabindex="-1"><button type="button" class="fa-modal-close" data-fa-modal-close aria-label="축하 팝업 닫기">×</button><div class="fa-modal-photo"><img src="assets/fa-yang-20261117.jpg" alt="양의지 선수" width="360" height="480" decoding="async"></div><div class="fa-modal-body"><span class="fa-modal-badge">2027 FA 1호 · 공식 계약</span><h2 class="fa-modal-title" id="fa_modal_title">양의지, 두산 베어스 잔류!</h2><p class="fa-modal-contract">양의지 선수의 FA 계약을 축하합니다. 🎉</p><blockquote class="fa-modal-quote">“두산 유니폼을 입은 채 은퇴하고 싶었다”</blockquote><div class="fa-modal-actions"><button type="button" class="fa-modal-primary" data-fa-modal-record>양의지 개인기록 보기</button><button type="button" class="fa-modal-secondary" data-fa-modal-close>닫기</button></div></div></div><canvas class="fa-confetti" aria-hidden="true"></canvas></div>`;
+ return `<div class="fa-modal-backdrop" data-fa-modal-backdrop><div class="fa-modal" role="dialog" aria-modal="true" aria-labelledby="fa_modal_title" tabindex="-1"><button type="button" class="fa-modal-close" data-fa-modal-close aria-label="축하 팝업 닫기">×</button><div class="fa-modal-photo"><img src="assets/fa-yang-20261117.jpg" alt="양의지 선수" width="360" height="480" decoding="async"></div><div class="fa-modal-body"><span class="fa-modal-badge">2027 FA 1호 · 공식 계약</span><h2 class="fa-modal-title" id="fa_modal_title">양의지, 두산 베어스 잔류!</h2><p class="fa-modal-contract">양의지 선수의 FA 계약을 축하합니다. 🎉</p><blockquote class="fa-modal-quote">“두산 유니폼을 입은 채 은퇴하고 싶었다”</blockquote><div class="fa-modal-actions"><button type="button" class="fa-modal-primary" data-fa-modal-record>양의지 개인기록 보기</button><button type="button" class="fa-modal-secondary" data-fa-modal-close>닫기</button></div><button type="button" class="fa-modal-snooze" data-fa-modal-snooze>오늘 그만 보기</button></div></div><canvas class="fa-confetti" aria-hidden="true"></canvas></div>`;
 }
 function faYangConfetti(canvas){
  const ctx=canvas.getContext('2d');
@@ -2892,7 +2897,7 @@ function faYangConfetti(canvas){
 }
 function openFaYangModal(force){
  if(faYangModalHost)return;
- if(!force&&faYangModalDismissed())return;
+ if(!force&&faYangSnoozedToday())return;
  if(!faYangOnHome())return;
  const template=document.createElement('template');template.innerHTML=faYangModalHTML();
  const node=template.content.firstElementChild;if(!node)return;
@@ -2906,7 +2911,8 @@ function closeFaYangModal(){
  if(faYangModalHost){faYangModalHost.remove();faYangModalHost=null}
  document.documentElement.classList.remove('fa-modal-open');
 }
-function dismissFaYangModal(){try{localStorage.setItem(FA_YANG_MODAL_KEY,'1')}catch(e){}closeFaYangModal()}
+function dismissFaYangModal(){closeFaYangModal()}
+function snoozeFaYangModal(){try{localStorage.setItem(FA_YANG_SNOOZE_KEY,faYangTodayKey())}catch(e){}closeFaYangModal()}
 addEventListener('hashchange',()=>{if(faYangOnHome())openFaYangModal();else closeFaYangModal()});
 addEventListener('load',()=>openFaYangModal());
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&faYangModalHost&&!event.isComposing){event.preventDefault();dismissFaYangModal()}});
@@ -7293,6 +7299,7 @@ document.addEventListener('click',event=>{
  setTheme(effectiveTheme()==='dark'?'light':'dark');
 });
 document.addEventListener('click',event=>{
+ if(event.target.closest('[data-fa-modal-snooze]')){event.preventDefault();snoozeFaYangModal();return}
  if(event.target.closest('[data-fa-modal-record]')){event.preventDefault();dismissFaYangModal();desktopOpenRecords('양의지','hitter');return}
  const backdrop=event.target.closest('[data-fa-modal-backdrop]');
  if(backdrop&&(event.target===backdrop||event.target.closest('[data-fa-modal-close]'))){event.preventDefault();dismissFaYangModal();return}
