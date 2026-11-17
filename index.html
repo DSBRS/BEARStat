@@ -6955,6 +6955,12 @@ function resolvedCareerBaseline(role,name,scope){
  for(const [key,value] of Object.entries(saved.baseline||{}))if(value!==null&&value!==undefined&&value!=='')baseline[key]=value;
  return {...catalog,...saved,baselineYear:Math.max(Number(catalog.baselineYear)||0,Number(saved.baselineYear)||0),baseline};
 }
+// 2026 KBO box scores carry no per-batter CS, SO or E, so the career totals read
+// SO from the verified play-by-play and CS/E from the box summary lines.
+function careerBoxExtras(e,name){
+ const etc=e&&e.kbo?e.kbo.etc:null,parsed=!!etc&&typeof etc==='object';
+ return {strikeouts:verifiedRelayBattingStat(e,name,'so'),cs:parsed?recordEtcCount(etc['도루자'],name):null,errors:parsed?recordEtcCount(etc['실책'],name):null};
+}
 function personalRegularCareerRows(role=recKind,post=false){
  const games=Repo.all().filter(e=>!e.demo&&e.type==='kbo'&&!isCancelled(e)&&!isExhibition(e)&&hasScore(e)&&S(e.date)<=TS&&(post?(isPostseasonRecord(e)&&recordPostStageMatches(e)):(!isPostseasonRecord(e)&&recordRegularGame(e))));
  const roster=new Map(rosterForYear(TODAY.getFullYear()).filter(p=>p.t===role).map(p=>[p.n,p]));
@@ -6975,6 +6981,7 @@ function personalRegularCareerRows(role=recKind,post=false){
    if(!Array.isArray(all)||!all.length){for(const field of fields)if(!['w','l','s','h'].includes(field.key)||role==='hitter')stats[field.key]=null;continue}
    const appearances=all.filter(a=>S(a.name)===p.n);if(!appearances.length)continue;
    if(stats.g!==null)stats.g++;
+   const boxExtras=role==='hitter'?careerBoxExtras(e,p.n):null;
    for(const field of fields){
     const key=field.key;if(key==='g'||role==='pitcher'&&['w','l','s','h'].includes(key)||stats[key]===null)continue;
     const values=appearances.map(a=>{
@@ -6987,7 +6994,8 @@ function personalRegularCareerRows(role=recKind,post=false){
      if(role==='hitter'&&key==='tb'&&value===null){const parts=[recordNumber(a,['hits','hit']),recordNumber(a,['doubles']),recordNumber(a,['triples']),recordNumber(a,['homeRuns','hr'])];if(parts.every(Number.isFinite))value=parts[0]+parts[1]+parts[2]*2+parts[3]*3}
      return value;
     });
-    stats[key]=values.every(Number.isFinite)?stats[key]+values.reduce((a,b)=>a+b,0):null;
+    const total=values.every(Number.isFinite)?values.reduce((a,b)=>a+b,0):null,extra=boxExtras?boxExtras[key]:null;
+    stats[key]=total!==null?stats[key]+total:Number.isFinite(extra)?stats[key]+extra:null;
    }
   }
   return {n:p.n,stats,rates:careerRates(stats,role),baselineYear:entry.baselineYear,missingBaseline:false,savedOnly};
