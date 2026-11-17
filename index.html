@@ -876,14 +876,12 @@ html[data-theme="dark"] .home-share-toast::before{background:#202b43;border-colo
 .fa-banner-wreath{position:absolute;inset:0;width:100%;height:100%}
 .fa-banner-stamp-glyph{position:relative;color:#dc2626;font-family:'Black Han Sans',-apple-system,BlinkMacSystemFont,sans-serif;
  font-size:23px;font-weight:400;line-height:1;padding-top:1px}
-.fa-banner-body{position:relative;display:flex;flex:0 1 auto;flex-direction:column;align-items:center;gap:2px;min-width:0;text-align:center}
+.fa-banner-body{position:relative;display:flex;flex:0 1 auto;flex-direction:column;align-items:center;gap:4px;min-width:0;text-align:center}
 .fa-banner-sub{font-size:9.5px;font-weight:800;letter-spacing:.01em;color:#14181f;line-height:1.4;word-break:keep-all}
 .fa-banner-title{font-family:'Black Han Sans',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
  font-size:17px;font-weight:400;letter-spacing:-.1px;line-height:1.2;color:#1A1748;word-break:keep-all}
-.fa-banner-more{font-size:9.5px;font-weight:700;letter-spacing:-.02em;color:#4b5563;line-height:1.4}
 .fa-banner-main:focus-visible{outline:2px solid #15803d;outline-offset:2px}
 @media(max-width:640px){.fa-banner-title-2{display:block}}
-@media(hover:hover){.fa-banner-main:hover .fa-banner-more{color:#1A1748}}
 @media(min-width:1024px){
  .fa-banner{max-width:840px;margin:0 auto 16px;box-shadow:0 12px 28px rgba(16,20,50,.2),0 1px 2px rgba(16,20,50,.12)}
  .fa-banner-main{min-height:108px;gap:16px;padding:13px 22px}
@@ -892,7 +890,6 @@ html[data-theme="dark"] .home-share-toast::before{background:#202b43;border-colo
  .fa-banner-body{gap:3px}
  .fa-banner-sub{font-size:12px;letter-spacing:.02em}
  .fa-banner-title{font-size:30px;letter-spacing:-.3px}
- .fa-banner-more{font-size:11px}
 }
 </style>
 
@@ -2881,7 +2878,7 @@ const FA_YANG_DAY='2026-11-17';
 const FA_YANG_WREATH='<svg class="fa-banner-wreath" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><g fill="currentColor"><path d="M0 0C4.30 -4.40 4.30 -9.60 0 -14.00C-4.30 -9.60 -4.30 -4.40 0 0Z" transform="translate(38.01 20.33) rotate(-2.0)"/><path d="M0 0C3.35 -3.43 3.35 -7.49 0 -10.92C-3.35 -7.49 -3.35 -3.43 0 0Z" transform="translate(29.54 25.40) rotate(-59.7)"/><path d="M0 0C4.30 -4.40 4.30 -9.60 0 -14.00C-4.30 -9.60 -4.30 -4.40 0 0Z" transform="translate(23.01 32.81) rotate(-37.5)"/><path d="M0 0C3.35 -3.43 3.35 -7.49 0 -10.92C-3.35 -7.49 -3.35 -3.43 0 0Z" transform="translate(19.05 41.85) rotate(-95.2)"/><path d="M0 0C4.30 -4.40 4.30 -9.60 0 -14.00C-4.30 -9.60 -4.30 -4.40 0 0Z" transform="translate(18.04 51.67) rotate(-73.0)"/><path d="M0 0C3.35 -3.43 3.35 -7.49 0 -10.92C-3.35 -7.49 -3.35 -3.43 0 0Z" transform="translate(20.08 61.34) rotate(-130.8)"/><path d="M0 0C4.30 -4.40 4.30 -9.60 0 -14.00C-4.30 -9.60 -4.30 -4.40 0 0Z" transform="translate(24.96 69.92) rotate(-108.5)"/><path d="M0 0C3.35 -3.43 3.35 -7.49 0 -10.92C-3.35 -7.49 -3.35 -3.43 0 0Z" transform="translate(32.22 76.61) rotate(-166.2)"/><path d="M0 0C4.30 -4.40 4.30 -9.60 0 -14.00C-4.30 -9.60 -4.30 -4.40 0 0Z" transform="translate(41.18 80.76) rotate(-144.0)"/><path d="M0 0C4.30 -4.40 4.30 -9.60 0 -14.00C-4.30 -9.60 -4.30 -4.40 0 0Z" transform="translate(61.99 20.33) rotate(42.0)"/><path d="M0 0C3.35 -3.43 3.35 -7.49 0 -10.92C-3.35 -7.49 -3.35 -3.43 0 0Z" transform="translate(70.46 25.40) rotate(19.7)"/><path d="M0 0C4.30 -4.40 4.30 -9.60 0 -14.00C-4.30 -9.60 -4.30 -4.40 0 0Z" transform="translate(76.99 32.81) rotate(77.5)"/><path d="M0 0C3.35 -3.43 3.35 -7.49 0 -10.92C-3.35 -7.49 -3.35 -3.43 0 0Z" transform="translate(80.95 41.85) rotate(55.2)"/><path d="M0 0C4.30 -4.40 4.30 -9.60 0 -14.00C-4.30 -9.60 -4.30 -4.40 0 0Z" transform="translate(81.96 51.67) rotate(113.0)"/><path d="M0 0C3.35 -3.43 3.35 -7.49 0 -10.92C-3.35 -7.49 -3.35 -3.43 0 0Z" transform="translate(79.92 61.34) rotate(90.8)"/><path d="M0 0C4.30 -4.40 4.30 -9.60 0 -14.00C-4.30 -9.60 -4.30 -4.40 0 0Z" transform="translate(75.04 69.92) rotate(148.5)"/><path d="M0 0C3.35 -3.43 3.35 -7.49 0 -10.92C-3.35 -7.49 -3.35 -3.43 0 0Z" transform="translate(67.78 76.61) rotate(126.2)"/><path d="M0 0C4.30 -4.40 4.30 -9.60 0 -14.00C-4.30 -9.60 -4.30 -4.40 0 0Z" transform="translate(58.82 80.76) rotate(184.0)"/></g><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity=".9"><path d="M39.06 19.93A32 32 0 0 0 40.11 80.43"/><path d="M60.94 19.93A32 32 0 0 1 59.89 80.43"/></g></svg>';
 function faYangBannerHTML(){
  if(TS!==FA_YANG_DAY)return '';
- return `<aside class="fa-banner" aria-label="양의지 FA 계약 소식"><button type="button" class="fa-banner-main" data-fa-yang-open aria-label="양의지 FA 계약 축하 팝업 열기"><span class="fa-banner-stamp" aria-hidden="true">${FA_YANG_WREATH}<span class="fa-banner-stamp-glyph">경</span></span><span class="fa-banner-body"><span class="fa-banner-sub">2026.11.17 · 두산 베어스 FA 1호</span><span class="fa-banner-title">양의지 선수 <span class="fa-banner-title-2">FA 계약을 축하합니다!</span></span><span class="fa-banner-more">눌러서 개인기록 보기 ›</span></span><span class="fa-banner-stamp" aria-hidden="true">${FA_YANG_WREATH}<span class="fa-banner-stamp-glyph">축</span></span></button></aside>`;
+ return `<aside class="fa-banner" aria-label="양의지 FA 계약 소식"><button type="button" class="fa-banner-main" data-fa-yang-open aria-label="양의지 FA 계약 축하 팝업 열기"><span class="fa-banner-stamp" aria-hidden="true">${FA_YANG_WREATH}<span class="fa-banner-stamp-glyph">경</span></span><span class="fa-banner-body"><span class="fa-banner-sub">2026.11.17 · 두산 베어스 FA 1호</span><span class="fa-banner-title">양의지 선수 <span class="fa-banner-title-2">FA 계약을 축하합니다!</span></span></span><span class="fa-banner-stamp" aria-hidden="true">${FA_YANG_WREATH}<span class="fa-banner-stamp-glyph">축</span></span></button></aside>`;
 }
 
 /* 2027 FA 1호 양의지 잔류 축하 팝업: 홈에 처음 들어오면 한 번 크게 열리고,
