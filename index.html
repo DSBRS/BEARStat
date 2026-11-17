@@ -3503,7 +3503,7 @@ function pitcherDetail(name,roleFilter='all'){
     const p=e.pitching.find(x=>S(x.name)===S(name));if(!p)return;if(roleFilter!=='all'&&appearanceRole(p,e)!==roleFilter)return;r.g++;
     if(Number.isFinite(+p.outs))r.ipOuts+=+p.outs;else{const ip=S(p.innings??p.inningsPitched??p.ip);if(ip){const frac=ip.match(/^(?:(\d+)\s+)?([12])\/3$/);const dec=ip.match(/^(\d+)(?:\.([012]))?$/);r.ipOuts+=frac?((+frac[1]||0)*3)+(+frac[2]):dec?(+dec[1]*3)+(+dec[2]||0):0}}
     const val=ks=>{for(const k of ks)if(p[k]!==undefined&&p[k]!==null&&p[k]!=='')return +p[k]||0;return 0};
-    r.fourBalls+=val(['fourBalls']);r.hits+=val(['hits','hitsAllowed','h']);r.homeRuns+=val(['homeRuns','homeRunsAllowed','hr']);r.strikeouts+=val(['strikeouts','strikeOuts','so','k']);r.walks+=val(['walks','basesOnBalls','bb']);r.hitByPitch+=val(['hitByPitch','hitBatters','hbp']);r.runs+=val(['runs','runsAllowed','r']);r.earnedRuns+=val(['earnedRuns','er']);
+    r.fourBalls+=val(['fourBalls']);r.hits+=val(['hits','hitsAllowed','h']);r.homeRuns+=val(['homeRuns','homeRunsAllowed','hr']);r.strikeouts+=val(['strikeouts','strikeOuts','so','k']);const thrown=pitcherWalksAllowed(p,e,name);r.walks+=thrown.walks??0;if(thrown.hbp!==null)r.hitByPitch+=thrown.hbp;r.runs+=val(['runs','runsAllowed','r']);r.earnedRuns+=val(['earnedRuns','er']);
   });
   const season=recStats().find(x=>S(x.n)===S(name))||{w:0,l:0,h:0,s:0};r.w=+season.w||0;r.l=+season.l||0;r.h=+season.h||0;r.s=+season.s||0;if(roleFilter!=='all'){for(const k of ['w','l','h','s'])r[k]=pitcherStatHistory(name,k,roleFilter).length;}
   const whole=Math.floor(r.ipOuts/3),rem=r.ipOuts%3;r.ip=rem?`${whole}.${rem}`:String(whole);r.era=r.ipOuts?((r.earnedRuns*27)/r.ipOuts).toFixed(2):(roleFilter!=='all'?'—':'0.00');Object.assign(r,pitcherRoleERA(name),pitcherHomeAwayERA(name,roleFilter));return r;
@@ -3769,6 +3769,7 @@ function playerPitchTypeSheetSection(name,role){
 
 function playerSheetBaseHTML(){
   scheduleSacrificeFlies();
+  schedulePitcherRelays();
   if(!playerSheet)return '';
   if((recKind==='pitcher'?recPitchTab:recBatTab)==='situational')return situationPlayerSheetHTML();
   if(recKind==='pitcher'){
@@ -4596,6 +4597,7 @@ function pitchTypeRecordsView(){
 function records(){
   if(recLeague==='edu')recLeague='kbo';
   scheduleSacrificeFlies();
+  schedulePitcherRelays();
   scheduleDefenseSource();
   if(recBatTab==='onbase'){recBatTab='main';recSort=null}
   if(!recSort&&recKind==='hitter'&&recBatTab==='main')recSort={k:'avg',dir:'desc'};
@@ -6961,8 +6963,80 @@ function careerBoxExtras(e,name){
  const etc=e&&e.kbo?e.kbo.etc:null,parsed=!!etc&&typeof etc==='object';
  return {strikeouts:verifiedRelayBattingStat(e,name,'so'),cs:parsed?recordEtcCount(etc['도루자'],name):null,errors:parsed?recordEtcCount(etc['실책'],name):null};
 }
+// 2026 KBO pitching boxes carry no per-pitcher HBP, CG or SHO either. HBP is read from
+// the verified play-by-play (every batter faced and pitch listed) and CG/SHO from the
+// team's own pitching line in that game.
+function verifiedPitcherPlays(e,name){
+ if(!e||e.manualOverride||e.type!=='kbo'||e.status!=='final')return null;
+ const relay=SITUATION_RELAY_CACHE.get(S(e.kboGameId));if(!relay||!Array.isArray(relay.plays))return null;
+ return verifiedMatchupPlays(e,relay,name,'pitcher');
+}
+function verifiedPitcherHitBatters(e,name){
+ const plays=verifiedPitcherPlays(e,name);if(!plays)return null;
+ const parts=plays.map(p=>recordNumber(p.stats,['hbp']));
+ return parts.every(Number.isFinite)?parts.reduce((a,b)=>a+b,0):null;
+}
+// The 2026 pitching box folds hit batters into its 볼넷 column and lists no HBP of its
+// own (곽빈 2026 box 44 = official BB 39 + HBP 5), so the verified HBP comes back out.
+function pitcherWalksAllowed(p,e,name){
+ const walks=recordNumber(p,['walks','basesOnBalls','bb']);if(walks===null)return {walks:null,hbp:null};
+ const explicit=recordNumber(p,['hitByPitch','hitBatters','hbp']);if(explicit!==null)return {walks,hbp:explicit};
+ const hbp=verifiedPitcherHitBatters(e,name);
+ return {walks:hbp===null?walks:Math.max(0,walks-hbp),hbp};
+}
+// Outs the team pitched in the game. An away team can finish on 24 outs when the home
+// team leads after the top of the ninth, and extra innings push the total past 27.
+function pitcherDefensiveOuts(e){
+ const list=Array.isArray(e.pitching)?e.pitching:[];if(!list.length)return null;
+ const outs=list.map(appearanceOuts);
+ return outs.some(v=>v===null)?null:outs.reduce((a,b)=>a+b,0);
+}
+// A complete game is the starter recording every out his team pitched in that game.
+function pitcherCompleteGame(e,name){
+ const list=Array.isArray(e.pitching)?e.pitching:[],i=list.findIndex(p=>S(p.name)===S(name));
+ if(i<0||e.status!=='final')return null;
+ const outs=pitcherDefensiveOuts(e);if(outs===null)return null;
+ return list.length===1&&!!list[0].starter&&outs>=24?1:0;
+}
+// A shutout is a complete game of at least nine innings with no run allowed.
+function pitcherShutout(e,name){
+ const complete=pitcherCompleteGame(e,name);if(complete===null)return null;if(!complete)return 0;
+ const outs=pitcherDefensiveOuts(e),row=(e.pitching||[]).find(p=>S(p.name)===S(name)),runs=recordNumber(row,['runs','runsAllowed','r']);
+ return outs>=27&&runs===0?1:0;
+}
+function careerPitcherBoxExtras(e,name){
+ return {hbp:verifiedPitcherHitBatters(e,name),cg:pitcherCompleteGame(e,name),sho:pitcherShutout(e,name)};
+}
+// The box total (타수+볼넷+사구+고의4구) leaves out sacrifice bunts and flies, so the
+// verified play-by-play count is the exact plate-appearance total for those games.
+function verifiedRelayPlateAppearances(e,name){const plays=verifiedBattingPlays(e,name);return plays?plays.length:null;}
+function careerPlateAppearances(e,p,name,appearances=1){
+ const base=recordPlateAppearances(p,e),relay=appearances===1?verifiedRelayPlateAppearances(e,name):null;
+ return relay!==null&&(base===null||relay>=base)?relay:base;
+}
+function regularCareerGames(post=false){
+ return Repo.all().filter(e=>!e.demo&&e.type==='kbo'&&!isCancelled(e)&&!isExhibition(e)&&hasScore(e)&&S(e.date)<=TS&&(post?(isPostseasonRecord(e)&&recordPostStageMatches(e)):(!isPostseasonRecord(e)&&recordRegularGame(e))));
+}
+// The play-by-play files answer pitcher HBP for the games a career total adds up.
+const PITCHER_RELAY_JOBS=new Map();
+function careerPitcherRelayGames(){
+ const years=Object.values(CAREER_BASELINES).filter(entry=>entry?.role==='pitcher').map(entry=>+entry.baselineYear||0);
+ const since=years.length?Math.min(...years):TODAY.getFullYear()-1;
+ return regularCareerGames().filter(e=>+S(e.date).slice(0,4)>since);
+}
+function schedulePitcherRelays(){
+ if(recKind!=='pitcher'||recLeague!=='kbo')return;
+ const source=isCareerScope()?careerPitcherRelayGames():recordFilterGames('season');
+ const ids=[...new Set(source.filter(e=>e.status==='final'&&!e.manualOverride&&/^\d{8}[A-Z]{4}\d$/.test(S(e.kboGameId))&&!SITUATION_RELAY_CACHE.has(S(e.kboGameId))).map(e=>S(e.kboGameId)))].sort();
+ if(!ids.length)return;
+ const years=[...new Set(ids.map(id=>id.slice(0,4)))];
+ if(years.every(year=>STATIC_RELAY_YEARS.has(year)))return;
+ const key=ids.join(','),prior=PITCHER_RELAY_JOBS.get(key);if(prior?.running||prior&&Date.now()-prior.at<60000)return;
+ const job={running:true,at:Date.now()};PITCHER_RELAY_JOBS.set(key,job);
+ Promise.resolve().then(()=>primeStaticRelays(ids)).catch(()=>{}).finally(()=>{job.running=false;job.at=Date.now();rerender();});
+}
 function personalRegularCareerRows(role=recKind,post=false){
- const games=Repo.all().filter(e=>!e.demo&&e.type==='kbo'&&!isCancelled(e)&&!isExhibition(e)&&hasScore(e)&&S(e.date)<=TS&&(post?(isPostseasonRecord(e)&&recordPostStageMatches(e)):(!isPostseasonRecord(e)&&recordRegularGame(e))));
+ const games=regularCareerGames(post);
  const roster=new Map(rosterForYear(TODAY.getFullYear()).filter(p=>p.t===role).map(p=>[p.n,p]));
  for(const e of games)for(const p of e[role==='hitter'?'batting':'pitching']||[])if(S(p.name)&&!roster.has(S(p.name)))roster.set(S(p.name),{n:S(p.name),t:role});
  const scope=recScope==='bears'?'bears':'career';
@@ -6981,12 +7055,13 @@ function personalRegularCareerRows(role=recKind,post=false){
    if(!Array.isArray(all)||!all.length){for(const field of fields)if(!['w','l','s','h'].includes(field.key)||role==='hitter')stats[field.key]=null;continue}
    const appearances=all.filter(a=>S(a.name)===p.n);if(!appearances.length)continue;
    if(stats.g!==null)stats.g++;
-   const boxExtras=role==='hitter'?careerBoxExtras(e,p.n):null;
+   const boxExtras=role==='hitter'?careerBoxExtras(e,p.n):careerPitcherBoxExtras(e,p.n);
    for(const field of fields){
     const key=field.key;if(key==='g'||role==='pitcher'&&['w','l','s','h'].includes(key)||stats[key]===null)continue;
     const values=appearances.map(a=>{
      if(key==='ipOuts')return appearanceOuts(a);
-     if(role==='hitter'&&key==='pa')return recordPlateAppearances(a,e);
+     if(role==='hitter'&&key==='pa')return careerPlateAppearances(e,a,p.n,appearances.length);
+     if(role==='pitcher'&&key==='bb'){const walks=recordNumber(a,['walks','bb']);if(walks===null||recordNumber(a,['hitByPitch','hitBatters','hbp'])!==null)return walks;const hbp=boxExtras?boxExtras.hbp:null;return hbp===null?walks:Math.max(0,walks-hbp);}
      if(role==='hitter'&&['ab','hit','d2','d3','hr','tb','bb','hbp','sf'].includes(key))return opsBattingLine(e,a)[key];
      let value=recordNumber(a,CAREER_GAME_FIELDS[role][key]||[]);
      if(role==='hitter'&&key==='bb'&&value!==null)value+=(recordNumber(a,['intentionalWalks','ibb'])||0);
