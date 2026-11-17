@@ -6967,7 +6967,7 @@ function careerBoxExtras(e,name){
 // the verified play-by-play (every batter faced and pitch listed) and CG/SHO from the
 // team's own pitching line in that game.
 function verifiedPitcherPlays(e,name){
- if(!e||e.manualOverride||e.type!=='kbo'||e.status!=='final')return null;
+ if(!e||e.type!=='kbo'||e.status!=='final')return null;
  const relay=SITUATION_RELAY_CACHE.get(S(e.kboGameId));if(!relay||!Array.isArray(relay.plays))return null;
  return verifiedMatchupPlays(e,relay,name,'pitcher');
 }
