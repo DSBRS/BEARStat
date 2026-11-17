@@ -854,6 +854,35 @@ html[data-theme="dark"] .home-share-toast::before{background:#202b43;border-colo
 <style id="national-result-bear-spacing-fix">
 .result-bear.national-result-bear{margin-left:-2px !important;}
 </style>
+
+<style id="bearstat-fa-yang-banner">
+/* 2027 FA 1호 양의지 잔류 축하 배너. 홈 상단에만 서고, 닫으면 다시 뜨지 않는다. */
+.fa-banner{position:relative;display:flex;align-items:stretch;margin:0 0 14px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:linear-gradient(135deg,#1A1748 0%,#161338 58%,#1f1b52 100%);box-shadow:0 10px 24px rgba(20,20,60,.16);overflow:hidden;isolation:isolate}
+.fa-banner::before{content:"";position:absolute;top:0;bottom:0;left:0;width:3px;background:#D81921}
+.fa-banner::after{content:"";position:absolute;top:-40%;right:-14%;width:56%;height:160%;background:radial-gradient(circle at 32% 32%,rgba(255,255,255,.13),transparent 62%);pointer-events:none}
+.fa-banner-main{position:relative;display:flex;align-items:center;gap:12px;width:100%;margin:0;padding:12px 40px 12px 14px;border:0;background:transparent;color:#fff;font:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.fa-banner-photo{display:block;flex:0 0 auto;width:62px;height:82px;object-fit:cover;object-position:50% 28%;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:#12102c}
+.fa-banner-body{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fa-banner-badge{align-self:flex-start;display:inline-flex;align-items:center;background:#D81921;color:#fff;font-size:10px;font-weight:800;letter-spacing:.6px;line-height:1.2;padding:3px 7px;border-radius:4px}
+.fa-banner-title{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:800;letter-spacing:-.35px;line-height:1.32;color:#fff}
+.fa-banner-go{margin-left:auto;font-size:15px;font-weight:700;line-height:1;color:rgba(255,255,255,.42);transition:transform .15s ease,color .15s ease}
+.fa-banner-sub{font-size:11.5px;font-weight:600;letter-spacing:-.1px;line-height:1.5;color:rgba(255,255,255,.68)}
+.fa-banner-close{position:absolute;top:7px;right:7px;width:28px;height:28px;display:grid;place-items:center;margin:0;padding:0;border:0;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);font-family:inherit;font-size:16px;line-height:1;cursor:pointer}
+.fa-banner-close:hover,.fa-banner-close:focus-visible{background:rgba(255,255,255,.12);color:#fff}
+.fa-banner-main:focus-visible{outline:2px solid #fff;outline-offset:-3px}
+@media(hover:hover){.fa-banner-main:hover .fa-banner-go{color:#fff;transform:translateX(2px)}}
+@media(min-width:1024px){
+ .fa-banner{max-width:840px;margin:0 auto;border-radius:16px}
+ .fa-banner-main{gap:16px;padding:16px 52px 16px 20px}
+ .fa-banner-photo{width:92px;height:120px;border-radius:12px}
+ .fa-banner-body{gap:5px}
+ .fa-banner-badge{font-size:10.5px;padding:4px 8px}
+ .fa-banner-title{font-size:19px;letter-spacing:-.5px}
+ .fa-banner-sub{font-size:13px}
+ .fa-banner-close{top:10px;right:10px;width:30px;height:30px;font-size:17px}
+}
+@media(prefers-reduced-motion:reduce){.fa-banner-go{transition:none}}
+</style>
 </head>
 <body>
 <div id="app"></div>
@@ -901,7 +930,7 @@ function teamDisplayText(value){
    (_,prefix,name)=>prefix+teamDisplayName(name));
 }
 
-const TYPES={national:'국가대표',kbo:'KBO',futures:'퓨처스리그',edu:'교육리그',handball:'핸드볼',club:'구단 행사',fan:'팬 행사',broadcast:'방송',radio:'라디오/유튜브',ticket:'티켓 예매',championship:'우승','ks-championship':'우승',birthday:'생일',military:'군복무',etc:'기타'};
+const TYPES={national:'국가대표',kbo:'KBO',futures:'퓨처스리그',edu:'교육리그',handball:'핸드볼',club:'구단 행사',fan:'팬 행사',broadcast:'방송',radio:'라디오/유튜브',ticket:'티켓 예매',championship:'우승','ks-championship':'우승',birthday:'생일',military:'군복무',contract:'계약',etc:'기타'};
 const EXISTING_VENUES=['서울종합운동장 야구장','수원 케이티 위즈 파크','인천 SSG 랜더스필드','창원NC파크','광주-기아 챔피언스 필드','사직 야구장','대구 삼성 라이온즈 파크','대전 한화생명 볼파크','고척 스카이돔','이천 베어스 파크','고양 국가대표 야구 훈련장','서산 전용 연습구장','LG 챔피언스 파크','문경 상무 야구장','상동 야구장','삼성 라이온즈 볼파크','울산 문수 야구장','기아 챌린저스 필드','익산 국가대표 야구훈련장','마산 야구장'];
 // New choices only; existing saved places and schedules are never migrated.
 const HISTORICAL_VENUES=[
@@ -2059,6 +2088,15 @@ function bearsMilitaryEvents(ds){
  return rows;
 }
 
+/* 구단 소식은 KBO 일정 자동 수집에 들어오지 않아 여기에 적는다.
+ * 관리자 화면에서 고칠 수 없는 대신, 배포만으로 달력과 일정 카드에 함께 보인다. */
+const BEARS_CLUB_NEWS=[
+ {date:'2026-11-17',time:'',type:'contract',title:'양의지 2년 최대 55억 원 두산 잔류',desc:'2027 FA 1호 · 계약금 40억 · 연봉 10억 · 인센티브 5억',place:''}
+];
+function bearsClubNewsEvents(ds){
+ return BEARS_CLUB_NEWS.filter(item=>item.date===ds).map((item,index)=>({id:'club-news-'+item.date+'-'+index,date:item.date,time:item.time,type:item.type,title:item.title,desc:item.desc,place:item.place}));
+}
+
 let dateIndexSource=null,dateIndex=new Map();
 function eventsOnDate(ds){
  const events=Repo.all();
@@ -2066,8 +2104,8 @@ function eventsOnDate(ds){
    dateIndexSource=events;dateIndex=new Map();
    for(const event of events){const key=S(event.date);if(!dateIndex.has(key))dateIndex.set(key,[]);dateIndex.get(key).push(event)}
  }
- const rows=dateIndex.get(ds)||[],titleEvent=bearsLeagueTitleEvent(ds),ksEvent=bearsKSTitleEvent(ds),birthdays=bearsBirthdayEvents(ds),military=bearsMilitaryEvents(ds);
- return [...rows,...(titleEvent?[titleEvent]:[]),...(ksEvent?[ksEvent]:[]),...birthdays,...military];
+ const rows=dateIndex.get(ds)||[],titleEvent=bearsLeagueTitleEvent(ds),ksEvent=bearsKSTitleEvent(ds),birthdays=bearsBirthdayEvents(ds),military=bearsMilitaryEvents(ds),clubNews=bearsClubNewsEvents(ds);
+ return [...rows,...(titleEvent?[titleEvent]:[]),...(ksEvent?[ksEvent]:[]),...birthdays,...military,...clubNews];
 }
 // Ticket sales disappear from public schedules after their individual opening time.
 // Keep the underlying records untouched so the owner can still edit them in admin.
@@ -2758,10 +2796,20 @@ document.addEventListener('click',event=>{
  scheduleSearch='';scheduleSearchDraft='';scheduleSearchLimit=30;route2();document.querySelector('.desktop-home-grid')?.scrollIntoView({block:'start'});
 });
 
+const FA_YANG_BANNER_KEY='bearstat_dismiss_fa_yang_2026_11_17';
+function faYangBannerDismissed(){
+ try{return localStorage.getItem(FA_YANG_BANNER_KEY)==='1'}catch(e){return false}
+}
+function faYangBannerHTML(){
+ if(faYangBannerDismissed())return '';
+ return `<aside class="fa-banner" aria-label="양의지 FA 계약 소식"><button type="button" class="fa-banner-main" data-fa-yang-open aria-label="양의지 2년 최대 55억 원 두산 베어스 잔류 · 개인 기록 열기"><img class="fa-banner-photo" src="assets/fa-yang-20261117.jpg" alt="양의지 선수" width="360" height="480" decoding="async"><span class="fa-banner-body"><span class="fa-banner-badge">2027 FA 1호</span><span class="fa-banner-title">양의지, 두산 베어스 잔류<span class="fa-banner-go" aria-hidden="true">›</span></span><span class="fa-banner-sub">2년 최대 55억 원 · 계약금 40억 · 연봉 10억 · 인센티브 5억</span></span></button><button type="button" class="fa-banner-close" data-fa-yang-close aria-label="축하 배너 닫기">×</button></aside>`;
+}
+
 function home(){
   const t=byDate(TS),kbo=t.find(e=>e.type==='kbo');
   const evs=byDate(sel).filter(e=>calendarCategoryMatch(e)),sd=new Date(sel+'T00:00:00');
   return `${desktopHomeHTML()}<div class="brand home-mobile-brand"><button class="logo admin-secret" id="admin_secret" type="button">BEARS<b>tat</b></button><div class="home-mobile-actions"><button type="button" class="ib" data-copy-home-link aria-label="홈페이지 링크 복사" title="링크 복사"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><button type="button" class="ib theme-toggle" data-toggle-theme aria-label="다크 모드로 전환" title="다크 모드로 전환">${THEME_ICONS}</button><button type="button" class="ib" data-open-push aria-label="일정 알림 설정"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button></div></div>
+  ${desktopMedia.matches?'':faYangBannerHTML()}
   <div class="mobile-today-schedule">${desktopMedia.matches?'':homeTodayScheduleHTML()}</div>
   <div class="desktop-home-grid"><section class="desktop-calendar"><h2 class="desktop-section-title">베어스 일정</h2>${scheduleSearchHTML()}${calendarLegendHTML()}
   ${calendar()}</section><section class="desktop-day">${desktopMedia.matches?homeTodayScheduleHTML():''}
@@ -7138,6 +7186,11 @@ document.addEventListener('click',event=>{
  event.preventDefault();
  setTheme(effectiveTheme()==='dark'?'light':'dark');
 });
+document.addEventListener('click',event=>{
+ const close=event.target.closest('[data-fa-yang-close]');
+ if(close){event.preventDefault();event.stopPropagation();try{localStorage.setItem(FA_YANG_BANNER_KEY,'1')}catch(e){}rerenderNow();return}
+ if(event.target.closest('[data-fa-yang-open]')){event.preventDefault();desktopOpenRecords('양의지','hitter');}
+});
 function desktopHeaderHTML(r){
  if(!desktopMedia.matches)return '';
  const links=[['home','홈'],['standings','순위'],['h2h','맞대결'],['opponent','상대전적'],['records','개인기록'],['numbers','등번호'],['milestones','달성 기록'],['awards','수상 기록']];
@@ -7146,7 +7199,7 @@ function desktopHeaderHTML(r){
 }
 function desktopHomeHTML(){
  if(!desktopMedia.matches)return '';
- return `<div class="desktop-home"><section class="desktop-hero" aria-labelledby="desktop-home-title"><p class="desktop-eyebrow">OB · DOOSAN BEARS / 1982–${TODAY.getFullYear()}</p><h1 id="desktop-home-title">베어스 유니폼을 입은<br>순간만 모아 보는 기록</h1><p>이름 하나로 만나는, 우리가 기억하는 베어스.</p><form class="desktop-search" id="desktop-search"><label for="desktop-player-search">두산 베어스 선수 기록</label><div class="desktop-search-line"><input id="desktop-player-search" type="search" placeholder="선수 이름을 입력하세요" autocomplete="off" value="${esc(desktopQuery)}"><button type="submit" aria-label="선수 검색">↗</button></div><div class="desktop-search-meta"><span>OB·두산 소속 기간의 누적 기록</span><span>Enter ↵</span></div></form></section></div>`;
+ return `<div class="desktop-home"><section class="desktop-hero" aria-labelledby="desktop-home-title"><p class="desktop-eyebrow">OB · DOOSAN BEARS / 1982–${TODAY.getFullYear()}</p><h1 id="desktop-home-title">베어스 유니폼을 입은<br>순간만 모아 보는 기록</h1><p>이름 하나로 만나는, 우리가 기억하는 베어스.</p><form class="desktop-search" id="desktop-search"><label for="desktop-player-search">두산 베어스 선수 기록</label><div class="desktop-search-line"><input id="desktop-player-search" type="search" placeholder="선수 이름을 입력하세요" autocomplete="off" value="${esc(desktopQuery)}"><button type="submit" aria-label="선수 검색">↗</button></div><div class="desktop-search-meta"><span>OB·두산 소속 기간의 누적 기록</span><span>Enter ↵</span></div></form></section>${faYangBannerHTML()}</div>`;
 }
 function desktopOpenRecords(name,role){
  desktopRecordIntent={name,role};
