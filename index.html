@@ -2417,7 +2417,7 @@ function gameCard(e,kind){
   ${rescheduleNoticeHTML(e)}${isCancelled(e)?'':`<div class="meta"><span>경기장</span><span>${e.venue||'미정'}</span>${st?`<span>${bearsName} 선발</span><span>${esc(st)}</span>`:''}${ost?`<span>${esc(teamDisplayName(e.opp)||'상대팀')} 선발</span><span>${esc(ost)}</span>`:''}</div>`}</div>`;
 }
 function showUpcomingScheduleTime(e){
- if(!e||S(e.title).replace(/\s+/g,'').includes('곰들의모임')||['birthday','championship','ks-championship','military'].includes(e.type)||!/^\d{4}-\d{2}-\d{2}$/.test(S(e.date))||S(e.date)<TS||isCancelled(e))return false;
+ if(!e||S(e.title).replace(/\s+/g,'').includes('곰들의모임')||['birthday','championship','ks-championship','military','contract'].includes(e.type)||!/^\d{4}-\d{2}-\d{2}$/.test(S(e.date))||S(e.date)<TS||isCancelled(e))return false;
  if(['final','finished','completed','live','inprogress','in_progress','playing'].includes(S(e.status).toLowerCase()))return false;
  if(['kbo','futures','edu'].includes(e.type)&&(hasScore(e)||isLiveGame(e)))return false;
  if(S(e.date)===TS){const m=S(e.time).match(/^(\d{1,2}):(\d{2})/);if(m){const now=new Date();if(+m[1]*60+(+m[2])<=now.getHours()*60+now.getMinutes())return false;}}
