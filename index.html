@@ -865,28 +865,44 @@ html[data-theme="dark"] .home-share-toast::before{background:#202b43;border-colo
 </style>
 
 <style id="bearstat-fa-yang-banner">
-/* 2027 FA 1호 양의지 잔류 축하 배너. 홈 상단에 늘 서는 축하 카드이며, 누르면 축하 팝업이 열린다. */
-.fa-banner{position:relative;display:flex;align-items:stretch;margin:0 0 14px;border:1px solid rgba(255,255,255,.13);border-radius:14px;background:#1A1748;box-shadow:0 8px 20px rgba(20,20,60,.16)}
-.fa-banner-main{display:flex;align-items:center;gap:12px;width:100%;margin:0;padding:12px 14px;border:0;border-radius:14px;background:transparent;color:#fff;font:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.fa-banner-photo{display:block;flex:0 0 auto;width:62px;height:82px;object-fit:cover;object-position:50% 28%;border-radius:8px;background:#12102c}
-.fa-banner-body{display:flex;flex:1 1 auto;flex-direction:column;gap:4px;min-width:0}
-.fa-banner-badge{align-self:flex-start;display:inline-flex;align-items:center;background:#D81921;color:#fff;font-size:10px;font-weight:800;letter-spacing:.6px;line-height:1.2;padding:3px 7px;border-radius:4px}
-.fa-banner-title{font-size:15px;font-weight:800;letter-spacing:-.35px;line-height:1.32;color:#fff}
-.fa-banner-go{flex:0 0 auto;font-size:18px;font-weight:700;line-height:1;color:rgba(255,255,255,.42);transition:transform .15s ease,color .15s ease}
-.fa-banner-sub{font-size:11.5px;font-weight:600;letter-spacing:-.1px;line-height:1.5;color:rgba(255,255,255,.72);word-break:keep-all}
-.fa-banner-main:focus-visible{outline:2px solid #fff;outline-offset:-3px}
-@media(hover:hover){.fa-banner-main:hover .fa-banner-go{color:#fff;transform:translateX(2px)}}
+/* 2026-11-17 양의지 FA 계약 경축 현수막: 흰 바탕에 좌우 색 띠와 경·축 도장을 두었다. 누르면 축하 팝업이 열린다. */
+.fa-banner{--fa-paper:#fffdf3;--fa-ink:#171631;position:relative;margin:0 0 14px;padding:3px;border-radius:14px;
+ background:linear-gradient(150deg,#f9f0cc 0%,#e8d49a 46%,#f4e8bd 100%);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 10px 24px rgba(10,10,34,.2),0 2px 6px rgba(10,10,34,.1);color:var(--fa-ink)}
+.fa-banner-main{position:relative;display:flex;align-items:center;gap:10px;width:100%;margin:0;min-height:96px;padding:10px 16px;
+ border:1px solid #eddfb6;border-radius:12px;background:var(--fa-paper);color:var(--fa-ink);font:inherit;text-align:left;
+ cursor:pointer;overflow:hidden;-webkit-tap-highlight-color:transparent}
+.fa-banner-main::before,.fa-banner-main::after{content:"";position:absolute;top:0;bottom:0;width:18px;pointer-events:none;
+ background:repeating-linear-gradient(46deg,#d8192e 0 7px,#f7a11c 7px 14px,#f9d64f 14px 21px,#2f63b6 21px 28px,#16255c 28px 35px)}
+.fa-banner-main::before{left:0}
+.fa-banner-main::after{right:0;transform:scaleX(-1)}
+.fa-banner-seal{position:relative;z-index:1;flex:0 0 auto;display:grid;place-items:center;width:52px;height:52px;border-radius:50%;
+ background:#fffdf5;box-shadow:0 1px 3px rgba(20,20,50,.2),inset 0 0 0 1px #f0e3bf;color:#16255c}
+.fa-banner-seal-r{color:#c8102e}
+.fa-banner-wreath{position:absolute;inset:1px;width:calc(100% - 2px);height:calc(100% - 2px);color:#c9a227}
+.fa-banner-seal-glyph{position:relative;font-size:24px;font-weight:900;line-height:1;letter-spacing:0;padding-bottom:1px}
+.fa-banner-body{position:relative;z-index:1;display:flex;flex:1 1 auto;flex-direction:column;align-items:center;gap:3px;min-width:0;padding:0 2px;text-align:center}
+.fa-banner-sub{font-size:10px;font-weight:800;letter-spacing:.03em;color:#2b2a63;line-height:1.3;white-space:nowrap}
+.fa-banner-title{font-size:17px;font-weight:900;letter-spacing:-.55px;line-height:1.27;word-break:keep-all;color:#12112a}
+.fa-banner-title-2{display:inline}
+@media(max-width:640px){.fa-banner-title-2{display:block}}
+.fa-banner-more{font-size:10.5px;font-weight:700;letter-spacing:-.05em;color:#5c567f;line-height:1.25}
+.fa-banner-main:focus-visible{outline:2px solid #16255c;outline-offset:-3px}
+@media(hover:hover){.fa-banner-main:hover .fa-banner-more{color:#16255c}}
 @media(min-width:1024px){
- .fa-banner{max-width:840px;margin:0 auto;border-radius:16px}
- .fa-banner-main{gap:16px;padding:16px 20px;border-radius:16px}
- .fa-banner-photo{width:100px;height:132px;border-radius:10px}
- .fa-banner-go{font-size:20px}
+ .fa-banner{max-width:840px;margin:0 auto 16px;padding:4px;border-radius:17px}
+ .fa-banner-main{min-height:130px;gap:18px;padding:14px 30px;border-radius:14px}
+ .fa-banner-main::before,.fa-banner-main::after{width:26px}
+ .fa-banner-seal{width:74px;height:74px}
+ .fa-banner-seal-glyph{font-size:34px}
  .fa-banner-body{gap:5px}
- .fa-banner-badge{font-size:10.5px;padding:4px 8px}
- .fa-banner-title{font-size:19px;letter-spacing:-.5px}
- .fa-banner-sub{font-size:13px}
+ .fa-banner-sub{font-size:13px;letter-spacing:.05em}
+ .fa-banner-title{font-size:30px;letter-spacing:-.9px}
+ .fa-banner-title-2{display:inline}
+ .fa-banner-more{font-size:12px}
 }
-@media(prefers-reduced-motion:reduce){.fa-banner-go{transition:none}}
+:root[data-theme="dark"] .fa-banner{box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 14px 34px rgba(0,0,0,.5)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .fa-banner{box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 14px 34px rgba(0,0,0,.5)}}
 </style>
 
 <style id="bearstat-fa-yang-modal">
@@ -2870,9 +2886,11 @@ document.addEventListener('click',event=>{
 
 /* 축하 배너와 팝업은 계약 당일(로컬 날짜)에만 보인다. 지난 뒤에는 달력 기록만 남는다. */
 const FA_YANG_DAY='2026-11-17';
+/* 배너 좌우 경·축 도장의 월계관. 두 도장이 같은 그림을 쓴다. */
+const FA_YANG_WREATH='<svg class="fa-banner-wreath" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><circle cx="50" cy="50" r="24" fill="none" stroke="currentColor" stroke-width="1" opacity=".4"/><g fill="currentColor"><path d="M0 0C3.20 -3.60 3.20 -8.20 0 -11.50C-3.20 -8.20 -3.20 -3.60 0 0Z" transform="translate(40.42 20.52) rotate(2.0)"/><path d="M0 0C2.62 -2.95 2.62 -6.72 0 -9.43C-2.62 -6.72 -2.62 -2.95 0 0Z" transform="translate(31.89 24.84) rotate(-55.7)"/><path d="M0 0C3.20 -3.60 3.20 -8.20 0 -11.50C-3.20 -8.20 -3.20 -3.60 0 0Z" transform="translate(25.08 31.56) rotate(-33.5)"/><path d="M0 0C2.62 -2.95 2.62 -6.72 0 -9.43C-2.62 -6.72 -2.62 -2.95 0 0Z" transform="translate(20.65 40.04) rotate(-91.2)"/><path d="M0 0C3.20 -3.60 3.20 -8.20 0 -11.50C-3.20 -8.20 -3.20 -3.60 0 0Z" transform="translate(19.00 49.46) rotate(-69.0)"/><path d="M0 0C2.62 -2.95 2.62 -6.72 0 -9.43C-2.62 -6.72 -2.62 -2.95 0 0Z" transform="translate(20.32 58.93) rotate(-126.8)"/><path d="M0 0C3.20 -3.60 3.20 -8.20 0 -11.50C-3.20 -8.20 -3.20 -3.60 0 0Z" transform="translate(24.45 67.56) rotate(-104.5)"/><path d="M0 0C2.62 -2.95 2.62 -6.72 0 -9.43C-2.62 -6.72 -2.62 -2.95 0 0Z" transform="translate(31.02 74.51) rotate(-162.2)"/><path d="M0 0C3.20 -3.60 3.20 -8.20 0 -11.50C-3.20 -8.20 -3.20 -3.60 0 0Z" transform="translate(39.40 79.13) rotate(-140.0)"/></g><g fill="none" stroke="currentColor" stroke-width="1.5" opacity=".85"><path d="M40.42 20.52A31 31 0 0 0 39.4 79.13"/><path d="M59.58 20.52A31 31 0 0 1 60.6 79.13"/></g><path d="M50 5l2.1 5.9 5.9 2.1-5.9 2.1L50 21l-2.1-5.9-5.9-2.1 5.9-2.1z" fill="currentColor"/></svg>';
 function faYangBannerHTML(){
  if(TS!==FA_YANG_DAY)return '';
- return `<aside class="fa-banner" aria-label="양의지 FA 계약 소식"><button type="button" class="fa-banner-main" data-fa-yang-open aria-label="양의지 2027 FA 1호 계약 축하 팝업 열기"><img class="fa-banner-photo" src="assets/fa-yang-20261117.jpg" alt="양의지 선수" width="360" height="480" decoding="async"><span class="fa-banner-body"><span class="fa-banner-badge">2027 FA 1호</span><span class="fa-banner-title">양의지, 두산 베어스 잔류!</span><span class="fa-banner-sub">양의지 선수의 FA 계약을 축하합니다. 🎉</span></span><span class="fa-banner-go" aria-hidden="true">›</span></button></aside>`;
+ return `<aside class="fa-banner" aria-label="양의지 FA 계약 소식"><button type="button" class="fa-banner-main" data-fa-yang-open aria-label="양의지 FA 계약 축하 팝업 열기"><span class="fa-banner-seal fa-banner-seal-l" aria-hidden="true">${FA_YANG_WREATH}<span class="fa-banner-seal-glyph">경</span></span><span class="fa-banner-body"><span class="fa-banner-sub">2026.11.17 · 두산 베어스 FA 1호</span><span class="fa-banner-title">양의지 선수 <span class="fa-banner-title-2">FA 계약을 축하합니다</span></span><span class="fa-banner-more">눌러서 개인기록 보기 ›</span></span><span class="fa-banner-seal fa-banner-seal-r" aria-hidden="true">${FA_YANG_WREATH}<span class="fa-banner-seal-glyph">축</span></span></button></aside>`;
 }
 
 /* 2027 FA 1호 양의지 잔류 축하 팝업: 홈에 처음 들어오면 한 번 크게 열리고,
