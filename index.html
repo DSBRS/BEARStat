@@ -856,35 +856,77 @@ html[data-theme="dark"] .home-share-toast::before{background:#202b43;border-colo
 </style>
 
 <style id="bearstat-fa-yang-banner">
-/* 2027 FA 1호 양의지 잔류 축하 배너. 홈 상단에만 서고, 닫으면 다시 뜨지 않는다. */
-.fa-banner{position:relative;display:flex;align-items:stretch;margin:0 0 14px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:linear-gradient(135deg,#1A1748 0%,#161338 58%,#1f1b52 100%);box-shadow:0 10px 24px rgba(20,20,60,.16);overflow:hidden;isolation:isolate}
-.fa-banner::before{content:"";position:absolute;top:0;bottom:0;left:0;width:3px;background:#D81921}
-.fa-banner::after{content:"";position:absolute;top:-40%;right:-14%;width:56%;height:160%;background:radial-gradient(circle at 32% 32%,rgba(255,255,255,.13),transparent 62%);pointer-events:none}
-.fa-banner-main{position:relative;display:flex;align-items:center;gap:12px;width:100%;margin:0;padding:12px 40px 12px 14px;border:0;background:transparent;color:#fff;font:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.fa-banner-photo{display:block;flex:0 0 auto;width:62px;height:82px;object-fit:cover;object-position:50% 28%;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:#12102c}
+/* 2027 FA 1호 양의지 잔류 축하 배너. 홈 상단에 늘 서는 축하 카드이며, 누르면 축하 팝업이 열린다. */
+.fa-banner{position:relative;display:flex;align-items:stretch;margin:0 0 14px;border:1px solid rgba(255,255,255,.13);border-radius:14px;background:#1A1748;box-shadow:0 8px 20px rgba(20,20,60,.16)}
+.fa-banner-main{display:flex;align-items:center;gap:12px;width:100%;margin:0;padding:12px 14px;border:0;border-radius:14px;background:transparent;color:#fff;font:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.fa-banner-photo{display:block;flex:0 0 auto;width:62px;height:82px;object-fit:cover;object-position:50% 28%;border-radius:8px;background:#12102c}
 .fa-banner-body{display:flex;flex:1 1 auto;flex-direction:column;gap:4px;min-width:0}
 .fa-banner-badge{align-self:flex-start;display:inline-flex;align-items:center;background:#D81921;color:#fff;font-size:10px;font-weight:800;letter-spacing:.6px;line-height:1.2;padding:3px 7px;border-radius:4px}
 .fa-banner-title{font-size:15px;font-weight:800;letter-spacing:-.35px;line-height:1.32;color:#fff}
 .fa-banner-go{flex:0 0 auto;font-size:18px;font-weight:700;line-height:1;color:rgba(255,255,255,.42);transition:transform .15s ease,color .15s ease}
-.fa-banner-sub{font-size:11.5px;font-weight:600;letter-spacing:-.1px;line-height:1.5;color:rgba(255,255,255,.68);word-break:keep-all}
-.fa-banner-close{position:absolute;top:7px;right:7px;width:28px;height:28px;display:grid;place-items:center;margin:0;padding:0;border:0;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);font-family:inherit;font-size:16px;line-height:1;cursor:pointer}
-.fa-banner-close:hover,.fa-banner-close:focus-visible{background:rgba(255,255,255,.12);color:#fff}
+.fa-banner-sub{font-size:11.5px;font-weight:600;letter-spacing:-.1px;line-height:1.5;color:rgba(255,255,255,.72);word-break:keep-all}
 .fa-banner-main:focus-visible{outline:2px solid #fff;outline-offset:-3px}
 @media(hover:hover){.fa-banner-main:hover .fa-banner-go{color:#fff;transform:translateX(2px)}}
 @media(min-width:1024px){
  .fa-banner{max-width:840px;margin:0 auto;border-radius:16px}
- .fa-banner-main{gap:16px;padding:16px 52px 16px 20px}
- .fa-banner-photo{width:100px;height:132px;border-radius:12px}
+ .fa-banner-main{gap:16px;padding:16px 20px;border-radius:16px}
+ .fa-banner-photo{width:100px;height:132px;border-radius:10px}
  .fa-banner-go{font-size:20px}
  .fa-banner-body{gap:5px}
  .fa-banner-badge{font-size:10.5px;padding:4px 8px}
  .fa-banner-title{font-size:19px;letter-spacing:-.5px}
  .fa-banner-sub{font-size:13px}
- .fa-banner-close{top:10px;right:10px;width:30px;height:30px;font-size:17px}
 }
 @media(prefers-reduced-motion:reduce){.fa-banner-go{transition:none}}
 </style>
+
+<style id="bearstat-fa-yang-modal">
+/* 2027 FA 1호 양의지 잔류 축하 팝업. 닫으면 다시 뜨지 않고, 상단 배너는 그대로 남는다. */
+html.fa-modal-open{overflow:hidden}
+.fa-modal-backdrop{position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(9,9,22,.74);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);animation:fa-fade .26s ease both}
+.fa-modal{position:relative;display:grid;grid-template-columns:minmax(0,1fr);width:100%;max-width:400px;max-height:calc(100vh - 40px);max-height:calc(100dvh - 40px);overflow:auto;border:1px solid rgba(255,255,255,.16);border-radius:20px;background:linear-gradient(158deg,#1f1b52 0%,#1A1748 46%,#131030 100%);box-shadow:0 28px 70px rgba(6,6,20,.6);animation:fa-pop .34s cubic-bezier(.2,.85,.3,1.05) both}
+.fa-modal::after{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle at 78% 6%,rgba(244,196,48,.14),transparent 46%);pointer-events:none}
+.fa-modal-close{position:absolute;top:10px;right:10px;z-index:2;display:grid;place-items:center;width:34px;height:34px;margin:0;padding:0;border:0;border-radius:9px;background:rgba(10,8,30,.5);color:rgba(255,255,255,.72);font-family:inherit;font-size:18px;line-height:1;cursor:pointer}
+.fa-modal-close:hover,.fa-modal-close:focus-visible{background:rgba(255,255,255,.16);color:#fff}
+.fa-modal-photo{position:relative;overflow:hidden;border-radius:19px 19px 0 0;background:#12102c}
+.fa-modal-photo img{display:block;width:100%;height:230px;object-fit:cover;object-position:50% 24%}
+.fa-modal-photo::after{content:"";position:absolute;inset:auto 0 0 0;height:56%;background:linear-gradient(to top,rgba(19,16,48,.96),rgba(19,16,48,0));pointer-events:none}
+.fa-modal-body{position:relative;z-index:1;display:flex;flex-direction:column;gap:10px;padding:4px 20px 22px;color:#fff}
+.fa-modal-badge{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:5px;background:#D81921;color:#fff;font-size:11px;font-weight:800;letter-spacing:.5px;line-height:1.2;box-shadow:0 4px 14px rgba(216,25,33,.35)}
+.fa-modal-title{margin:0;font-size:25px;font-weight:900;letter-spacing:-1px;line-height:1.26;color:#fff}
+.fa-modal-contract{margin:0;font-size:14px;font-weight:700;letter-spacing:-.2px;line-height:1.55;color:rgba(255,255,255,.92);word-break:keep-all}
+.fa-modal-contract span{display:block;font-size:12px;font-weight:600;color:rgba(255,255,255,.6)}
+.fa-modal-quote{margin:2px 0 0;padding:2px 0 2px 12px;border-left:3px solid #F4C430;font-size:13px;font-weight:600;font-style:normal;line-height:1.6;color:rgba(255,255,255,.78);word-break:keep-all}
+.fa-modal-actions{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.fa-modal-primary,.fa-modal-secondary{width:100%;padding:13px 18px;border-radius:10px;font-family:inherit;font-size:14px;font-weight:800;letter-spacing:-.2px;cursor:pointer}
+.fa-modal-primary{border:0;background:#D81921;color:#fff;box-shadow:0 8px 20px rgba(216,25,33,.32)}
+.fa-modal-primary:hover,.fa-modal-primary:focus-visible{background:#c11119}
+.fa-modal-secondary{border:1px solid rgba(255,255,255,.28);background:transparent;color:rgba(255,255,255,.82)}
+.fa-modal-secondary:hover,.fa-modal-secondary:focus-visible{border-color:rgba(255,255,255,.5);color:#fff}
+.fa-modal-primary:focus-visible,.fa-modal-secondary:focus-visible,.fa-modal-close:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.fa-confetti{position:fixed;inset:0;z-index:9999;pointer-events:none}
+@keyframes fa-fade{from{opacity:0}to{opacity:1}}
+@keyframes fa-pop{from{opacity:0;transform:translateY(14px) scale(.965)}to{opacity:1;transform:none}}
+@media(min-width:1024px){
+ .fa-modal{grid-template-columns:330px minmax(0,1fr);max-width:860px;max-height:min(660px,calc(100vh - 56px));max-height:min(660px,calc(100dvh - 56px));align-items:stretch;border-radius:24px}
+ .fa-modal-photo{border-radius:23px 0 0 23px}
+ .fa-modal-photo img{height:100%;min-height:420px;object-position:50% 20%}
+ .fa-modal-photo::after{inset:0 0 0 auto;width:26%;height:auto;background:linear-gradient(to left,rgba(31,27,82,.9),rgba(31,27,82,0))}
+ .fa-modal-body{justify-content:center;gap:12px;padding:34px 34px 32px}
+ .fa-modal-badge{font-size:12px;padding:6px 11px}
+ .fa-modal-title{font-size:34px;letter-spacing:-1.6px}
+ .fa-modal-contract{font-size:16px}
+ .fa-modal-contract span{font-size:13px}
+ .fa-modal-quote{font-size:15px;padding-left:14px;margin-top:4px}
+ .fa-modal-actions{flex-direction:row;gap:10px;margin-top:12px}
+ .fa-modal-primary{flex:1 1 auto;width:auto;padding:14px 20px;font-size:15px}
+ .fa-modal-secondary{flex:0 0 auto;width:auto;min-width:104px;padding:14px 20px;font-size:15px}
+ .fa-modal-close{top:12px;right:12px}
+}
+@media(prefers-reduced-motion:reduce){.fa-modal-backdrop,.fa-modal{animation:none}}
+</style>
 </head>
+
 <body>
 <div id="app"></div>
 <nav><div id="nav"></div></nav>
@@ -2092,7 +2134,7 @@ function bearsMilitaryEvents(ds){
 /* 구단 소식은 KBO 일정 자동 수집에 들어오지 않아 여기에 적는다.
  * 관리자 화면에서 고칠 수 없는 대신, 배포만으로 달력과 일정 카드에 함께 보인다. */
 const BEARS_CLUB_NEWS=[
- {date:'2026-11-17',time:'',type:'contract',title:'양의지 2년 최대 55억 원 두산 잔류',desc:'2027 FA 1호 · 계약금 40억 · 연봉 10억 · 인센티브 5억',place:''}
+ {date:'2026-11-17',time:'',type:'contract',title:'양의지 선수의 FA 계약을 축하합니다. 🎉',desc:'2027 FA 1호 · 두산 베어스 잔류',place:''}
 ];
 function bearsClubNewsEvents(ds){
  return BEARS_CLUB_NEWS.filter(item=>item.date===ds).map((item,index)=>({id:'club-news-'+item.date+'-'+index,date:item.date,time:item.time,type:item.type,title:item.title,desc:item.desc,place:item.place}));
@@ -2797,14 +2839,65 @@ document.addEventListener('click',event=>{
  scheduleSearch='';scheduleSearchDraft='';scheduleSearchLimit=30;route2();document.querySelector('.desktop-home-grid')?.scrollIntoView({block:'start'});
 });
 
-const FA_YANG_BANNER_KEY='bearstat_dismiss_fa_yang_2026_11_17';
-function faYangBannerDismissed(){
- try{return localStorage.getItem(FA_YANG_BANNER_KEY)==='1'}catch(e){return false}
-}
 function faYangBannerHTML(){
- if(faYangBannerDismissed())return '';
- return `<aside class="fa-banner" aria-label="양의지 FA 계약 소식"><button type="button" class="fa-banner-main" data-fa-yang-open aria-label="양의지 2년 최대 55억 원 두산 베어스 잔류 · 개인 기록 열기"><img class="fa-banner-photo" src="assets/fa-yang-20261117.jpg" alt="양의지 선수" width="360" height="480" decoding="async"><span class="fa-banner-body"><span class="fa-banner-badge">2027 FA 1호</span><span class="fa-banner-title">양의지, 두산 베어스 잔류</span><span class="fa-banner-sub">2년 최대 55억 원 · 계약금 40억 · 연봉 10억 · 인센티브 5억</span></span><span class="fa-banner-go" aria-hidden="true">›</span></button><button type="button" class="fa-banner-close" data-fa-yang-close aria-label="축하 배너 닫기">×</button></aside>`;
+ return `<aside class="fa-banner" aria-label="양의지 FA 계약 소식"><button type="button" class="fa-banner-main" data-fa-yang-open aria-label="양의지 2027 FA 1호 계약 축하 팝업 열기"><img class="fa-banner-photo" src="assets/fa-yang-20261117.jpg" alt="양의지 선수" width="360" height="480" decoding="async"><span class="fa-banner-body"><span class="fa-banner-badge">2027 FA 1호</span><span class="fa-banner-title">양의지, 두산 베어스 잔류!</span><span class="fa-banner-sub">양의지 선수의 FA 계약을 축하합니다. 🎉</span></span><span class="fa-banner-go" aria-hidden="true">›</span></button></aside>`;
 }
+
+/* 2027 FA 1호 양의지 잔류 축하 팝업: 홈에 처음 들어오면 한 번 크게 열리고,
+ * 닫으면 다시 뜨지 않는다. 상단 배너는 닫은 뒤에도 눌러서 다시 볼 수 있다. */
+const FA_YANG_MODAL_KEY='bearstat_dismiss_fa_yang_modal_2026_11_17';
+let faYangModalHost=null,faYangConfettiRaf=0;
+function faYangModalDismissed(){try{return localStorage.getItem(FA_YANG_MODAL_KEY)==='1'}catch(e){return false}}
+function faYangOnHome(){const h=S(location.hash).replace(/^#\/?/,'').split(/[?&]/)[0];return h===''||h==='home'}
+function faYangModalHTML(){
+ return `<div class="fa-modal-backdrop" data-fa-modal-backdrop><div class="fa-modal" role="dialog" aria-modal="true" aria-labelledby="fa_modal_title"><button type="button" class="fa-modal-close" data-fa-modal-close aria-label="축하 팝업 닫기">×</button><div class="fa-modal-photo"><img src="assets/fa-yang-20261117.jpg" alt="양의지 선수" width="360" height="480" decoding="async"></div><div class="fa-modal-body"><span class="fa-modal-badge">2027 FA 1호 · 공식 계약</span><h2 class="fa-modal-title" id="fa_modal_title">양의지, 두산 베어스 잔류!</h2><p class="fa-modal-contract">양의지 선수의 FA 계약을 축하합니다. 🎉</p><blockquote class="fa-modal-quote">“두산 유니폼을 입은 채 은퇴하고 싶었다”</blockquote><div class="fa-modal-actions"><button type="button" class="fa-modal-primary" data-fa-modal-record>양의지 개인기록 보기</button><button type="button" class="fa-modal-secondary" data-fa-modal-close>닫기</button></div></div></div><canvas class="fa-confetti" aria-hidden="true"></canvas></div>`;
+}
+function faYangConfetti(canvas){
+ const ctx=canvas.getContext('2d');
+ if(!ctx)return;
+ if(matchMedia('(prefers-reduced-motion: reduce)').matches){canvas.remove();return}
+ const dpr=Math.min(2,window.devicePixelRatio||1);
+ canvas.width=Math.round(innerWidth*dpr);canvas.height=Math.round(innerHeight*dpr);
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+ const colors=['#1A1748','#D81921','#ffffff','#F4C430','#9fb4ff'],count=innerWidth<600?80:140,pieces=[];
+ for(let i=0;i<count;i++)pieces.push({x:Math.random()*innerWidth,y:-20-Math.random()*innerHeight*0.8,vx:(Math.random()-.5)*1.6,vy:1.4+Math.random()*2.4,w:5+Math.random()*7,h:4+Math.random()*6,rot:Math.random()*Math.PI,vr:(Math.random()-.5)*.2,sway:Math.random()*Math.PI*2,color:colors[i%colors.length],round:i%4===0});
+ let start=0;
+ const step=now=>{
+  if(!start)start=now;
+  const t=now-start,alpha=t>4000?Math.max(0,1-(t-4000)/1100):1;
+  ctx.clearRect(0,0,innerWidth,innerHeight);ctx.globalAlpha=alpha;
+  for(const p of pieces){
+   p.sway+=.04;p.x+=p.vx+Math.sin(p.sway)*.6;p.y+=p.vy;p.vy+=.014;p.rot+=p.vr;
+   if(p.y>innerHeight+30&&t<3800){p.y=-24;p.vy=1.4+Math.random()*2;p.x=Math.random()*innerWidth}
+   ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.fillStyle=p.color;
+   if(p.round){ctx.beginPath();ctx.arc(0,0,p.w/2,0,Math.PI*2);ctx.fill()}else ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+   ctx.restore();
+  }
+  if(t<5100)faYangConfettiRaf=requestAnimationFrame(step);
+  else{ctx.clearRect(0,0,innerWidth,innerHeight);canvas.remove();faYangConfettiRaf=0}
+ };
+ faYangConfettiRaf=requestAnimationFrame(step);
+}
+function openFaYangModal(force){
+ if(faYangModalHost)return;
+ if(!force&&faYangModalDismissed())return;
+ if(!faYangOnHome())return;
+ const template=document.createElement('template');template.innerHTML=faYangModalHTML();
+ const node=template.content.firstElementChild;if(!node)return;
+ document.body.appendChild(node);faYangModalHost=node;
+ document.documentElement.classList.add('fa-modal-open');
+ const canvas=node.querySelector('.fa-confetti');if(canvas)faYangConfetti(canvas);
+ const primary=node.querySelector('[data-fa-modal-record]');if(primary)primary.focus({preventScroll:true});
+}
+function closeFaYangModal(){
+ if(faYangConfettiRaf){cancelAnimationFrame(faYangConfettiRaf);faYangConfettiRaf=0}
+ if(faYangModalHost){faYangModalHost.remove();faYangModalHost=null}
+ document.documentElement.classList.remove('fa-modal-open');
+}
+function dismissFaYangModal(){try{localStorage.setItem(FA_YANG_MODAL_KEY,'1')}catch(e){}closeFaYangModal()}
+addEventListener('hashchange',()=>{if(faYangOnHome())openFaYangModal();else closeFaYangModal()});
+addEventListener('load',()=>openFaYangModal());
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&faYangModalHost&&!event.isComposing){event.preventDefault();dismissFaYangModal()}});
 
 function home(){
   const t=byDate(TS),kbo=t.find(e=>e.type==='kbo');
@@ -7188,9 +7281,10 @@ document.addEventListener('click',event=>{
  setTheme(effectiveTheme()==='dark'?'light':'dark');
 });
 document.addEventListener('click',event=>{
- const close=event.target.closest('[data-fa-yang-close]');
- if(close){event.preventDefault();event.stopPropagation();try{localStorage.setItem(FA_YANG_BANNER_KEY,'1')}catch(e){}rerenderNow();return}
- if(event.target.closest('[data-fa-yang-open]')){event.preventDefault();desktopOpenRecords('양의지','hitter');}
+ if(event.target.closest('[data-fa-modal-record]')){event.preventDefault();dismissFaYangModal();desktopOpenRecords('양의지','hitter');return}
+ const backdrop=event.target.closest('[data-fa-modal-backdrop]');
+ if(backdrop&&(event.target===backdrop||event.target.closest('[data-fa-modal-close]'))){event.preventDefault();dismissFaYangModal();return}
+ if(event.target.closest('[data-fa-yang-open]')){event.preventDefault();if(faYangModalHost)closeFaYangModal();else openFaYangModal(true);}
 });
 function desktopHeaderHTML(r){
  if(!desktopMedia.matches)return '';
