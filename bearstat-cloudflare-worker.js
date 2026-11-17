@@ -36,13 +36,14 @@ const NOTIFICATION_LABELS={kbo:'야구',futures:'퓨처스',edu:'교육리그',h
 const BIRTHDAY_WINDOW=54000000;
 function normalizeNotificationPreferences(input={},legacyRecord=true){
  const categories=Object.fromEntries(NOTIFICATION_KEYS.map(key=>[key,typeof input.categories?.[key]==='boolean'?input.categories[key]:key==='features'?false:key==='records'?legacyRecord!==false:true]));
- const minutes=Number(input.reminderMinutes??5);
- return {categories,recordUpdates:categories.records,reminderMinutes:Number.isInteger(minutes)&&minutes>=0&&minutes<=10080?minutes:5,ticketAtStart:input.ticketAtStart!==false};
+ const minutes=Number(input.reminderMinutes??5),startAtTime=typeof input.startAtTime==='boolean'?input.startAtTime:input.ticketAtStart!==false;
+ return {categories,recordUpdates:categories.records,reminderMinutes:Number.isInteger(minutes)&&minutes>=0&&minutes<=10080?minutes:5,startAtTime,ticketAtStart:startAtTime};
 }
 function validateNotificationPreferences(input){
  if(input.categories!==undefined&&(!input.categories||Array.isArray(input.categories)||typeof input.categories!=='object'||Object.entries(input.categories).some(([k,v])=>!NOTIFICATION_KEYS.includes(k)||typeof v!=='boolean')))return false;
  if(input.recordUpdates!==undefined&&typeof input.recordUpdates!=='boolean')return false;
  if(input.reminderMinutes!==undefined&&(!Number.isInteger(input.reminderMinutes)||input.reminderMinutes<0||input.reminderMinutes>10080))return false;
+ if(input.startAtTime!==undefined&&typeof input.startAtTime!=='boolean')return false;
  return input.ticketAtStart===undefined||typeof input.ticketAtStart==='boolean';
 }
 async function readNotificationPreferences(env,hash){
@@ -77,7 +78,7 @@ function notificationReminder(event,preferences,now=Date.now()){
  }
  if(+start+60000<=now)return [];
  if(preferences.reminderMinutes>0){const due=+start-preferences.reminderMinutes*60000;if(now>=due&&now<due+60000&&now<+start)out.push({event,start,category,key:key+':before:'+preferences.reminderMinutes,due,atStart:false});}
- if(category==='ticket'&&preferences.ticketAtStart&&now>=+start&&now<+start+60000)out.push({event,start,category,key:key+':ticket-start',due:+start,atStart:true});
+ if(preferences.startAtTime&&now>=+start&&now<+start+60000)out.push({event,start,category,key:key+':start',due:+start,atStart:true});
  return out;
 }
 function notificationReminderPayload(reminder,preferences){
@@ -87,9 +88,9 @@ function notificationReminderPayload(reminder,preferences){
   const body=(name?name+' 선수 생일':'두산 선수 생일')+' 🎂';
   return {kind:'birthday',category,type:event.type,eventId:event.id,title:'BEARStat · 생일',body,tag:'bearstat-'+reminder.key+'-'+start.toISOString(),url:url.href,startAt:start.toISOString(),expiresAt:new Date(+start+BIRTHDAY_WINDOW).toISOString()};
  }
- const title='BEARStat · '+NOTIFICATION_LABELS[category]+(atStart?' 지금 예매 시작':` ${preferences.reminderMinutes}분 전`);
+ const title='BEARStat · '+NOTIFICATION_LABELS[category]+(atStart?(category==='ticket'?' 지금 예매 시작':' 지금 시작'):` ${preferences.reminderMinutes}분 전`);
  const name=h(event.title)||(h(event.opp)?'두산 vs '+h(event.opp):NOTIFICATION_LABELS[category]);
- return {kind:atStart?'ticket-start':'schedule-reminder',category,type:event.type,eventId:event.id,title,body:[name,h(event.time).slice(0,5),category==='ticket'?h(event.ticketSite||event.bookingSite||event.venue||event.place):h(event.venue||event.place),h(event.channel||event.program)].filter(Boolean).join(' · ').slice(0,300),ticketSite:category==='ticket'?h(event.ticketSite||event.bookingSite||event.venue||event.place):undefined,tag:'bearstat-'+reminder.key+'-'+start.toISOString(),url:url.href,startAt:start.toISOString(),expiresAt:new Date(atStart?+start+60000:+start).toISOString()};
+ return {kind:atStart?(category==='ticket'?'ticket-start':'schedule-start'):'schedule-reminder',category,type:event.type,eventId:event.id,title,body:[name,h(event.time).slice(0,5),category==='ticket'?h(event.ticketSite||event.bookingSite||event.venue||event.place):h(event.venue||event.place),h(event.channel||event.program)].filter(Boolean).join(' · ').slice(0,300),ticketSite:category==='ticket'?h(event.ticketSite||event.bookingSite||event.venue||event.place):undefined,tag:'bearstat-'+reminder.key+'-'+start.toISOString(),url:url.href,startAt:start.toISOString(),expiresAt:new Date(atStart?+start+60000:+start).toISOString()};
 }
 async function deliverNotification(env,subscriber,key,startsAt,payload,send=F,now=Date.now()){
  const lease=await env.DB.prepare("INSERT INTO deliveries(endpoint_hash,event_key,starts_at,state,lease_until) VALUES(?,?,?,'sending',?) ON CONFLICT(endpoint_hash,event_key,starts_at) DO UPDATE SET state='sending',lease_until=excluded.lease_until WHERE deliveries.state<>'sent' AND deliveries.lease_until<? RETURNING endpoint_hash").bind(subscriber.endpoint_hash,key,startsAt,now+60000,now).first();
