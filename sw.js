@@ -5,7 +5,8 @@ self.addEventListener('push',event=>{
  event.waitUntil((async()=>{
   let data;try{data=event.data?.json()}catch{return;}
   if(!data||typeof data.title!=='string')return;
-  if(data.startAt&&(!Number.isFinite(Date.parse(data.startAt))||Date.parse(data.startAt)<=Date.now()))return;
+  const deadline=data.expiresAt||data.startAt;
+  if(deadline&&(!Number.isFinite(Date.parse(deadline))||Date.parse(deadline)<=Date.now()))return;
   const base=new URL(self.registration.scope);let url=base.href;
   try{const candidate=new URL(data.url,base);if(candidate.origin===base.origin&&candidate.pathname.startsWith(base.pathname))url=candidate.href}catch{}
   await self.registration.showNotification(data.title.slice(0,100),{body:String(data.body||'').slice(0,300),tag:String(data.tag||'bearstat-reminder'),icon:new URL('favicon.png',base).href,badge:new URL('favicon.png',base).href,data:{url},renotify:false});
