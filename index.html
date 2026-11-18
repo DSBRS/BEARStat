@@ -755,7 +755,6 @@ table th button,table td button{ text-align:center }
 .jersey-history-row small{font-size:10px;color:var(--sub);font-weight:400}
 .jersey-history-row.selected{background:var(--chip);border-left:3px solid var(--acc);padding-left:7px}
 .jersey-season-badge{display:inline-block;font-size:9px;font-weight:700;color:var(--navy);padding:3px 6px;border-radius:4px;background:var(--card);white-space:nowrap}
-.jersey-coach-badge{display:inline-block;font-size:8px;font-weight:650;color:var(--sub);padding:2px 5px;border-radius:5px;background:color-mix(in srgb,var(--line) 42%,transparent);white-space:nowrap;vertical-align:1px}
 .jersey-person-button{appearance:none;border:0;background:none;padding:0;color:inherit;font:inherit;font-weight:inherit;cursor:pointer;text-align:left}.jersey-person-button:hover{text-decoration:underline;text-underline-offset:3px}.jersey-person-history{margin:14px 0 20px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}.jersey-person-history h4{margin:0 0 9px;font-size:14px}.jersey-person-history p{margin:0;font-size:12px;line-height:1.8;color:var(--sub)}
 .jersey-no-history{font-size:13px;line-height:1.8;color:var(--sub);margin:20px 0}
 .jersey-detail-source{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:22px;font-size:10px;color:var(--sub);line-height:1.8}
@@ -7541,43 +7540,10 @@ function jerseyPersonHistory(key){
   return true;
  }));
 }
-const BEARS_STAFF_ROLES={
- '김영덕':['감독'],'김성근':['코치','감독대행','감독'],'이광환':['코치','2군 감독대행','2군 감독','감독'],'이재우':['감독','감독대행'],'윤동균':['코치','감독대행','감독'],'최주억':['감독대행'],'김인식':['감독'],'김경문':['감독'],'김광수':['코치','감독대행'],'김진욱':['감독'],'송일수':['감독'],'김태형':['코치','감독'],'이승엽':['감독'],'조성환':['코치','감독대행'],'김원형':['코치','감독'],
- '홍원기':['코치'],'손시헌':['코치'],'정재훈':['코치'],'가득염':['코치'],'이진영':['코치'],'조중근':['코치'],'손지환':['코치'],'고토':['코치'],'임재현':['코치'],'조인성':['코치'],'니무라':['2군 감독'],'오노':['코치'],'조웅천':['코치'],'이도형':['코치'],'전형도':['코치'],'김재현':['코치'],'서예일':['코치'],'김진수':['코치'],'권명철':['코치'],'조경택':['코치'],'김동한':['코치'],'윤명준':['코치'],'고영민':['코치'],'김민재':['코치'],
- '구강현':['코치'],'김강':['코치'],'김진홍':['코치'],'이삼열':['코치'],'김우열':['코치','2군 감독대행'],'박철순':['코치'],'박상열':['코치'],'백기성':['코치'],'유지훤':['코치'],'황태환':['코치'],'정연회':['코치','2군 감독'],'송재박':['코치','2군 감독'],'이복근':['2군 감독']
-};
-const BEARS_STAFF_CAREERS={
- '김성근':['코치 · 1982~1983','감독 · 1984~1988'],
- '이광환':['코치 · 1982~1985','2군 감독대행 · 1987','2군 감독 · 1988','감독 · 1989~1990'],
- '이삼열':['코치 · 1984~1993'],
- '김우열':['코치 · 1988','2군 감독대행 · 2012'],
- '박철순':['코치 · 1997~1998'],
- '김광수':['코치 · 1993~1997, 2000~2011','감독대행 · 2011'],
- '박상열':['코치 · 1992, 2001~2004'],
- '백기성':['코치 · 1997~1998'],
- '유지훤':['코치 · 1989~2003, 2014~2020'],
- '황태환':['2군 투수코치 · 1990'],
- '정연회':['수석코치 · 1991','2군 감독 · 1991~1994'],
- '송재박':['코치 · 1992~2003, 2007~2011, 2012~2014, 2016~2017','2군 감독 · 2004~2006, 2012, 2015'],
- '이복근':['2군 감독 · 2022'],
- '전형도':['코치 · 2011~2017, 2026~']
-};
-function jerseyStaffRoles(name){
- const roles=new Set(BEARS_STAFF_ROLES[name]||[]);
- jerseyData().records.filter(r=>r.name===name&&r.role).forEach(r=>{
-  if(['감독','감독대행','2군 감독','2군 감독대행'].includes(r.role))roles.add(r.role);else roles.add('코치');
- });
- return [...roles];
-}
-function jerseyStaffCareerLines(name){return BEARS_STAFF_CAREERS[name]||[]}
-function jerseyRoleBadge(row){
- if(!row)return '';
- return jerseyStaffRoles(row.name).map(role=>`<span class="jersey-coach-badge">${esc(role)}</span>`).join('');
-}
 function jerseyPersonHistoryHTML(){
  if(!jerseyPersonOpen)return '';
- const personName=jerseyPersonName(jerseyPersonOpen),rows=jerseyPersonHistory(jerseyPersonOpen),staff=jerseyStaffCareerLines(personName),roles=jerseyStaffRoles(personName);
- return `<div class="jersey-person-history"><h4>${esc(personName)} · 사용 등번호</h4><p>${rows.length?rows.map(row=>`No. ${esc(row.number)} · ${esc(jerseyPeriod(row))}`).join('<br>'):'확인된 등번호 이력이 없어요.'}${staff.length?`<br><br><b>OB·두산 지도자 경력</b><br>${staff.map(esc).join('<br>')}`:roles.length?`<br><br>스태프 경력 · ${roles.map(esc).join(' · ')}`:''}</p></div>`;
+ const personName=jerseyPersonName(jerseyPersonOpen),rows=jerseyPersonHistory(jerseyPersonOpen);
+ return `<div class="jersey-person-history"><h4>${esc(personName)} · 사용 등번호</h4><p>${rows.length?rows.map(row=>`No. ${esc(row.number)} · ${esc(jerseyPeriod(row))}`).join('<br>'):'확인된 등번호 이력이 없어요.'}</p></div>`;
 }
 const JERSEY_FOREIGN_PLAYERS=new Set([
  '타이론 우즈','우즈','에드가 캐세레스','캐세레스','마이크 파머','파머','빅터 콜','빅터콜','셰인 베넷','베넷','트로이 닐','마이크 니일','니일',
@@ -7725,7 +7691,7 @@ function jerseyModalHTML(){
  if(jerseyOpen===null)return '';
  const number=jerseyOpen,rows=jerseyHistory(number),assigned=jerseyAssignments(number),retired=jerseyRetirement(number),current=jerseyAssignments(number,'current'),head=retired?.name||jerseyRecentFirst(assigned)[0]?.name||'';
  const official=jerseyData().officialChecks?.find(check=>check.number===number);
- return `<div class="sheetback jersey-modal" data-jersey-back><section class="sheet jersey-sheet" role="dialog" aria-modal="true" aria-labelledby="jersey-dialog-title" tabindex="-1"><div class="jersey-sheet-top"><div><p>NUMBER ARCHIVE</p><h2 id="jersey-dialog-title">${number}번의 역사</h2></div><button type="button" class="jersey-close" data-jersey-close aria-label="등번호 상세 닫기">×</button></div><div class="jersey-sheet-profile">${jerseySVG(number,jerseyMarkingName(head),!!retired)}<div>${retired?`<span class="jersey-gold-label">영구결번 · ${retired.since}년 지정</span><h3>${esc(retired.name)}</h3><a class="jersey-small-link" href="${esc(retired.source)}" target="_blank" rel="noopener noreferrer">지정 기록 ↗</a>`:`<p>${jerseySeason==='current'?'현재 사용자 · 자료 기준':jerseySeason+' 시즌 사용자'}</p>${assigned.length?assigned.map(row=>`<div class="jersey-assignment"><b><button type="button" class="jersey-person-button" data-jersey-person="${encodeURIComponent(jerseyPersonKey(row))}">${esc(jerseyDisplayName(row))}</button> ${jerseyRoleBadge(row)}</b><span>${esc(jerseyPeriod(row))}</span></div>`).join(''):'<h3>확인된 배정 없음</h3>'}`}${jerseySeason!=='current'&&!retired?`<div class="jersey-present-note">현재 · ${current.length?current.map(r=>esc(jerseyDisplayName(r))).join(', '):jerseyData().retired[number]?'영구결번':'확인된 배정 없음'}</div>`:''}</div></div>${jerseyPersonHistoryHTML()}<div class="jersey-history-heading"><h3>확인된 역대 사용자</h3><span>${new Set(rows.map(r=>r.name)).size}명 · ${rows.length}개 기간</span></div><div class="jersey-history-list">${rows.length?rows.map(row=>{const selected=assigned.includes(row);return `<article class="jersey-history-row${selected?' selected':''}"><div><b><button type="button" class="jersey-person-button" data-jersey-person="${encodeURIComponent(jerseyPersonKey(row))}">${esc(jerseyDisplayName(row))}</button></b>${jerseyRoleBadge(row)}${row.role&&!['코치','감독'].includes(row.role)?`<small>${esc(row.role)}</small>`:''}${selected?`<span class="jersey-season-badge">${jerseySeason==='current'?'현재':jerseySeason+' 시즌'}</span>`:''}</div><span>${esc(jerseyPeriod(row))}</span></article>`}).join(''):'<p class="jersey-no-history">이 번호의 확인된 사용 기록이 없어요. 사용자가 없었다는 뜻은 아니에요.</p>'}</div><footer class="jersey-detail-source"><span>자료 기준 ${jerseyData().asOf.replaceAll('-','.')}</span><a href="${esc(jerseyData().source)}" target="_blank" rel="noopener noreferrer">전체 이력 출처 ↗</a>${official?`<a href="${esc(official.source)}" target="_blank" rel="noopener noreferrer">${esc(official.name)} KBO 대조 ↗</a>`:''}</footer></section></div>`;
+ return `<div class="sheetback jersey-modal" data-jersey-back><section class="sheet jersey-sheet" role="dialog" aria-modal="true" aria-labelledby="jersey-dialog-title" tabindex="-1"><div class="jersey-sheet-top"><div><p>NUMBER ARCHIVE</p><h2 id="jersey-dialog-title">${number}번의 역사</h2></div><button type="button" class="jersey-close" data-jersey-close aria-label="등번호 상세 닫기">×</button></div><div class="jersey-sheet-profile">${jerseySVG(number,jerseyMarkingName(head),!!retired)}<div>${retired?`<span class="jersey-gold-label">영구결번 · ${retired.since}년 지정</span><h3>${esc(retired.name)}</h3><a class="jersey-small-link" href="${esc(retired.source)}" target="_blank" rel="noopener noreferrer">지정 기록 ↗</a>`:`<p>${jerseySeason==='current'?'현재 사용자 · 자료 기준':jerseySeason+' 시즌 사용자'}</p>${assigned.length?assigned.map(row=>`<div class="jersey-assignment"><b><button type="button" class="jersey-person-button" data-jersey-person="${encodeURIComponent(jerseyPersonKey(row))}">${esc(jerseyDisplayName(row))}</button></b><span>${esc(jerseyPeriod(row))}</span></div>`).join(''):'<h3>확인된 배정 없음</h3>'}`}${jerseySeason!=='current'&&!retired?`<div class="jersey-present-note">현재 · ${current.length?current.map(r=>esc(jerseyDisplayName(r))).join(', '):jerseyData().retired[number]?'영구결번':'확인된 배정 없음'}</div>`:''}</div></div>${jerseyPersonHistoryHTML()}<div class="jersey-history-heading"><h3>확인된 역대 사용자</h3><span>${new Set(rows.map(r=>r.name)).size}명 · ${rows.length}개 기간</span></div><div class="jersey-history-list">${rows.length?rows.map(row=>{const selected=assigned.includes(row);return `<article class="jersey-history-row${selected?' selected':''}"><div><b><button type="button" class="jersey-person-button" data-jersey-person="${encodeURIComponent(jerseyPersonKey(row))}">${esc(jerseyDisplayName(row))}</button></b>${selected?`<span class="jersey-season-badge">${jerseySeason==='current'?'현재':jerseySeason+' 시즌'}</span>`:''}</div><span>${esc(jerseyPeriod(row))}</span></article>`}).join(''):'<p class="jersey-no-history">이 번호의 확인된 사용 기록이 없어요. 사용자가 없었다는 뜻은 아니에요.</p>'}</div><footer class="jersey-detail-source"><span>자료 기준 ${jerseyData().asOf.replaceAll('-','.')}</span><a href="${esc(jerseyData().source)}" target="_blank" rel="noopener noreferrer">전체 이력 출처 ↗</a>${official?`<a href="${esc(official.source)}" target="_blank" rel="noopener noreferrer">${esc(official.name)} KBO 대조 ↗</a>`:''}</footer></section></div>`;
 }
 function jerseyView(){
  const data=jerseyData();
