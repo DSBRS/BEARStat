@@ -1414,14 +1414,15 @@ const BEAR_NATIONAL_MEDALS=[
  {year:2026,category:'medal',name:'박준순',title:'아이치·나고야 아시안게임',medal:'금메달'}
 ];
 const BEAR_BUILTIN_AWARDS=[
- {id:'builtin-2023-kim-taekyeon-highschool-choi-dongwon',year:2023,category:'choi-dongwon',name:'김택연 (인천고)',title:'고교 최동원상'}
+ {id:'builtin-2023-kim-taekyeon-highschool-choi-dongwon',year:2023,category:'choi-dongwon',name:'김택연 (인천고)',title:'고교 최동원상'},
+ {id:'defense_2026_68220',year:2026,category:'defense',name:'곽빈',title:'투수 KBO 수비상',role:'pitcher',team:'두산',playerId:'68220',source:'https://www.koreabaseball.com/Player/Awards/DefensePrize.aspx'}
 ];
 let BEAR_MANAGED_AWARDS=[];
 let bearAwardEditId='';
 let bearAwardEditorOpen=false;
 let bearAwardStatus='';
 const awardStoreKey='bearstat_awards_v1';
-function bearAllAwards(){return [...BEAR_BUILTIN_AWARDS,...BEAR_MANAGED_AWARDS].filter(x=>x&&x.category!=='championship')}
+function bearAllAwards(){const rows=[],seen=new Set();[...BEAR_BUILTIN_AWARDS,...BEAR_MANAGED_AWARDS].forEach((x,i)=>{if(!x||x.category==='championship')return;const key=x.id?String(x.id):'@'+i;if(seen.has(key))return;seen.add(key);rows.push(x)});return rows}
 async function loadManagedAwards(){
  if(!SB)return;
  const {data,error}=await SB.from('kv').select('body').eq('key',awardStoreKey).maybeSingle();
@@ -7322,7 +7323,7 @@ function playerAwardsHTML(name,role){
  const normalize=value=>String(value||'').replace(/\s+/g,'').trim();
  const canonical=value=>{const key=normalize(value);return key==='스캇프록터'||key==='프록터'?'스캇프록터':key};
  const seen=new Set();
- const rows=BEAR_MANAGED_AWARDS.filter(item=>{
+ const rows=[...BEAR_BUILTIN_AWARDS,...BEAR_MANAGED_AWARDS].filter(item=>{
   if(!item||item.category==='championship'||canonical(item.name)!==canonical(name))return false;
   const awardRole=playerAwardRole(item);if(awardRole&&role&&awardRole!==role)return false;
   const key=[item.year,item.month||'',item.category,item.series||'',item.field||item.title||''].join('|');
