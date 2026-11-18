@@ -129,6 +129,24 @@ for (const season of [String(data.maxYear), '2020', '2019']) {
     assert.ok(ctx.jerseyCardHTML('21', null).includes('is-retired'));
   });
 }
+// 상세 모달: 최신 시즌은 '시즌 사용자'로만, 과거 시즌은 현재 주인을 참고로 함께 보여 준다.
+ok('modal keeps the current owner note for past seasons', () => {
+  const modalStart = html.indexOf('function jerseyModalHTML(');
+  const modalEnd = html.indexOf('\nfunction jerseyView(');
+  assert.ok(modalStart > 0 && modalEnd > modalStart, 'jersey modal not found');
+  vm.runInContext(html.slice(modalStart, modalEnd), ctx);
+  ctx.jerseyOpen = '1';
+  ctx.jerseySeason = '2020';
+  const past = ctx.jerseyModalHTML();
+  assert.ok(past.includes('2020 시즌 사용자'), 'past season label');
+  assert.ok(past.includes('현재 · 박치국'), 'past season shows the current owner');
+  ctx.jerseySeason = String(data.maxYear);
+  const latest = ctx.jerseyModalHTML();
+  assert.ok(latest.includes(`${data.maxYear} 시즌 사용자`), 'latest season label');
+  assert.ok(!latest.includes('현재 · '), 'latest season needs no current note');
+  ctx.jerseyOpen = null; ctx.jerseySeason = '2024';
+});
+
 // 배정 없는 시즌의 번호는 그리지 않는다(기존 동작).
 ok('unassigned numbers stay hidden', () => {
   const cards = cardsFor('2026');
