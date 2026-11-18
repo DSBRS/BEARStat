@@ -2652,7 +2652,7 @@ function knownPushEnabled(){try{return 'Notification' in window&&Notification.pe
 const PUSH_CATEGORY_GROUPS=[
  ['베어스탯 소식', [['features','기능 추가 알림','새 기능과 개선 소식을 알려드려요.'],['records','기록 업데이트 알림','공개 경기 기록이 추가·수정되면 알려드려요.']]],
  ['경기 알림', [['kbo','야구 알림','두산 1군 경기 시작 전'],['futures','퓨처스 알림','퓨처스리그 경기 시작 전'],['edu','교육리그 알림','교육리그·연습경기 시작 전'],['handball','핸드볼 알림','두산 핸드볼 경기 시작 전'],['national','국가대표 알림','국가대표 경기와 대표팀 일정 시작 전']]],
- ['선수 소식', [['birthday','생일 알림','두산 선수 생일 당일 오전 9시']]],
+ ['선수 소식', [['birthday','생일 알림','두산 선수 생일 당일 자정']]],
  ['예매·행사·방송', [['ticket','티켓팅 알림','예매 시작 전 · 선택 시 정각에도 알림'],['club','구단 행사 알림','구단 공식 행사 시작 전'],['fan','팬 행사 알림','팬 행사·이벤트 시작 전'],['broadcast','방송 알림','방송 시작 전'],['radio','라디오·유튜브 알림','라디오·유튜브 일정 시작 전'],['etc','기타 일정 알림','그 밖의 등록된 일정 시작 전']]]
 ];
 const PUSH_CATEGORY_KEYS=PUSH_CATEGORY_GROUPS.flatMap(([,rows])=>rows.map(([key])=>key));
@@ -2666,7 +2666,7 @@ const pushState={suppressed:knownPushEnabled(),supported:!!(window.isSecureConte
 function pushCategorySettingsHTML(){
  const s=pushState,disabled=s.busy?' disabled':'';
  const groups=PUSH_CATEGORY_GROUPS.map(([group,rows])=>[group,rows.filter(([key])=>pushServerCategoryKeys().includes(key))]).filter(([,rows])=>rows.length),keys=groups.flatMap(([,rows])=>rows.map(([key])=>key));
- return `<section class="push-categories" aria-label="받을 알림 선택"><div class="push-category-heading"><div><h2>받고 싶은 알림만 골라요</h2><p class="note">${keys.length}개 중 ${keys.filter(key=>s.categories[key]).length}개 선택 · 이 기기에 적용</p></div><div class="push-category-actions"><button type="button" class="chip" data-push-select="all"${disabled}>전체 선택</button><button type="button" class="chip" data-push-select="none"${disabled}>전체 해제</button></div></div>${groups.map(([group,rows])=>`<fieldset class="push-category-group"><legend>${group}</legend><div class="push-category-grid">${rows.map(([key,title,description])=>`<label class="push-category-option"><span><b>${title}</b><small>${description}</small></span><input type="checkbox" role="switch" data-push-category="${key}"${s.categories[key]?' checked':''}${disabled}><i aria-hidden="true"></i></label>`).join('')}</div></fieldset>`).join('')}<p class="note">국가대표로 분류된 일정은 야구 알림과 별도로 받아요. 일정 알림은 날짜와 시간이 등록된 경우에만 보내요.${pushServerCategoryKeys().includes('birthday')?' 생일 알림은 일정 시작 전 알림 시간과 상관없이 생일 당일 오전 9시에 보내요.':''}</p></section>`;
+ return `<section class="push-categories" aria-label="받을 알림 선택"><div class="push-category-heading"><div><h2>받고 싶은 알림만 골라요</h2><p class="note">${keys.length}개 중 ${keys.filter(key=>s.categories[key]).length}개 선택 · 이 기기에 적용</p></div><div class="push-category-actions"><button type="button" class="chip" data-push-select="all"${disabled}>전체 선택</button><button type="button" class="chip" data-push-select="none"${disabled}>전체 해제</button></div></div>${groups.map(([group,rows])=>`<fieldset class="push-category-group"><legend>${group}</legend><div class="push-category-grid">${rows.map(([key,title,description])=>`<label class="push-category-option"><span><b>${title}</b><small>${description}</small></span><input type="checkbox" role="switch" data-push-category="${key}"${s.categories[key]?' checked':''}${disabled}><i aria-hidden="true"></i></label>`).join('')}</div></fieldset>`).join('')}<p class="note">국가대표로 분류된 일정은 야구 알림과 별도로 받아요. 일정 알림은 날짜와 시간이 등록된 경우에만 보내요.${pushServerCategoryKeys().includes('birthday')?' 생일 알림은 일정 시작 전 알림 시간과 상관없이 생일 당일 자정에 보내요.':''}</p></section>`;
 }
 function pushSettingsHTML(){
  const s=pushState,disabled=s.busy?' disabled':'';

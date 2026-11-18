@@ -10,8 +10,8 @@ TOKEN = re.compile(r'''\s+|//[^\n]*|/\*[\s\S]*?\*/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'
 TIME = re.compile(r'(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?')
 KST = dt.timezone(dt.timedelta(hours=9), 'KST')
 
-# Birthday pushes go out once, on the morning of the day itself.
-BIRTHDAY_TIME = '09:00'
+# Birthday pushes go out once, as the day itself starts (midnight KST).
+BIRTHDAY_TIME = '00:00'
 # Export this month through December of the next year, so the feed keeps working
 # until the roster data gains the next season.
 BIRTHDAY_MONTHS = 14

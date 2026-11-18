@@ -41,7 +41,7 @@ class NotificationExportTests(unittest.TestCase):
   self.assertEqual([e['date'] for e in events],['2026-11-20','2027-11-20'])
   event=events[0]
   self.assertEqual(event['id'],'birthday-2026-11-20')
-  self.assertEqual(event['time'],'09:00')
+  self.assertEqual(event['time'],'00:00')
   self.assertEqual(event['title'],'가선수 선수 생일')
   self.assertEqual(event['players'],['가선수'])
   self.assertEqual(event['notificationCategory'],'birthday')

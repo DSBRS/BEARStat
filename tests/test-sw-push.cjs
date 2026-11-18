@@ -43,7 +43,7 @@ const base = { title: 'BEARStat · 생일', body: '오늘 생일이에요', tag:
   let checks = 0;
   const now = Date.now();
   const cases = [
-    // Birthday: the worker sends 09:00 KST as startAt and that midnight as expiresAt,
+    // Birthday: the worker sends 00:00 KST as startAt and 15 hours later as expiresAt,
     // so the cron usually delivers a few seconds after startAt. It must still show.
     ['birthday delivered after its start time', { ...base, startAt: iso(now - 5000), expiresAt: iso(now + 15 * 3600e3) }, 1],
     // On-time start notice: startAt is that minute, expiresAt is +60s.
