@@ -8,7 +8,7 @@ const career = JSON.parse(html.match(/<template id="career_catalog_data">([\s\S]
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const ctx = vm.createContext({
   jerseyData: () => data,
-  jerseySeason: 'current', jerseyRange: 'all', jerseyQuery: '', addedCareerPlayers: [],
+  jerseySeason: String(data.maxYear), jerseyRange: 'all', jerseyQuery: '', addedCareerPlayers: [],
   careerCatalog: () => career,
   S: x => String(x ?? ''),
   esc,
@@ -46,7 +46,7 @@ ok('2024 #4 두 명', () => {
 });
 
 // 카드마다 (번호, 선수) 조합은 한 번만 나오고, 표시되는 번호는 선택 시즌 배정 번호와 같다.
-for (const season of ['current', ...Array.from({length: data.maxYear - data.minYear + 1}, (_, i) => String(data.minYear + i))]) {
+for (const season of Array.from({length: data.maxYear - data.minYear + 1}, (_, i) => String(data.minYear + i))) {
   ok(`${season} uniqueness`, () => {
     const cards = cardsFor(season);
     const keys = cards.map(card => `${card.number}|${card.row ? ctx.jerseyPersonKey(card.row) : 'none'}`);
@@ -63,10 +63,18 @@ for (const season of ['current', ...Array.from({length: data.maxYear - data.minY
     assert.deepEqual(positions, positions.slice().sort((a, b) => a - b), `${season}: number order`);
   });
 }
-// '현재'에는 한 번호에 한 명만 있고, 카드 수가 번호 수와 같다.
-ok('current one card per number', () => {
-  const cards = cardsFor('current');
-  assert.equal(cards.length, new Set(cards.map(card => card.number)).size);
+// 기본 시즌은 최신 자료 연도이고, 그해 여러 명이 쓴 번호는 선수마다 카드가 한 장씩 나온다.
+ok('latest season is the default', () => {
+  assert.ok(!html.includes('value="current"'), 'no current option');
+  const cards = cardsFor(String(data.maxYear));
+  assert.deepEqual(namesOf(cards, '24'), ['다즈 카메론', '손아섭']);
+  assert.deepEqual(namesOf(cards, '20'), ['김성재', '김영현']);
+  assert.deepEqual(namesOf(cards, '14'), ['류승민', '박계범']);
+  assert.equal(ctx.jerseyCardStatus('24', cards.find(card => card.number === '24').row, false), `${data.maxYear} 시즌`);
+  ctx.jerseySeason = '';
+  assert.deepEqual(namesOf(ctx.jerseyDisplayCards(), '24'), ['다즈 카메론', '손아섭'], 'empty season falls back to the latest year');
+  ctx.jerseySeason = 'current';
+  assert.deepEqual(namesOf(ctx.jerseyDisplayCards(), '24'), ['다즈 카메론', '손아섭'], 'legacy current falls back to the latest year');
 });
 
 // 포지션 필터: 그 포지션 선수 카드만 남는다.
@@ -111,7 +119,7 @@ ok('name search fallback', () => {
   assert.equal(ctx.jerseyCardStatus('11', null, false), '사용 이력 일치');
 });
 // 영구결번은 시즌과 상관없이 금색 카드 한 장.
-for (const season of ['current', '2020', '2026']) {
+for (const season of [String(data.maxYear), '2020', '2019']) {
   ok(`retired ${season}`, () => {
     const cards = cardsFor(season);
     assert.equal(cards.filter(card => card.number === '21').length, 1);
