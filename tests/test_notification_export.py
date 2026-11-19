@@ -9,7 +9,7 @@ module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 ROOT=Path(__file__).parents[1]
 
 def birthday_html(players):
- return 'const HANDBALL_AUTO=[]; const NATIONAL_TEAM_GAMES=[]; const BEARS_HARU_BIRTHDAYS='+json.dumps(players,ensure_ascii=False)+';'
+ return 'const HANDBALL_AUTO=[]; const NATIONAL_TEAM_GAMES=[]; const CLUB_EVENTS=[]; const BEARS_HARU_BIRTHDAYS='+json.dumps(players,ensure_ascii=False)+';'
 
 def birthday_events(players,today):
  return [e for e in module.notification_events(birthday_html(players),dt.date.fromisoformat(today))['events'] if e['type']=='birthday']
@@ -25,16 +25,29 @@ class NotificationExportTests(unittest.TestCase):
   self.assertEqual(actual,expected)
   self.assertTrue(any(e['type']=='handball' for e in value['events']))
  def test_js_literals_and_punctuation_in_titles(self):
-  html='''const HANDBALL_AUTO=[{id:'a',type:'handball',title:'quote \\' and comma,]',date:'2026-12-01',time:'17:00',players:[],},]; const NATIONAL_TEAM_GAMES=[]; const BEARS_HARU_BIRTHDAYS=[];'''
+  html='''const HANDBALL_AUTO=[{id:'a',type:'handball',title:'quote \\' and comma,]',date:'2026-12-01',time:'17:00',players:[],},]; const NATIONAL_TEAM_GAMES=[]; const CLUB_EVENTS=[]; const BEARS_HARU_BIRTHDAYS=[];'''
   self.assertEqual(module.notification_events(html,dt.date(2026,11,17))['events'][0]['title'],"quote ' and comma,]")
  def test_untimed_history_stays_out_of_push_feed(self):
-  html='const HANDBALL_AUTO=[]; const NATIONAL_TEAM_GAMES='+json.dumps([{'id':'history','type':'national','date':'2006-03-03','time':''}])+'; const BEARS_HARU_BIRTHDAYS=[];'
+  html='const HANDBALL_AUTO=[]; const NATIONAL_TEAM_GAMES='+json.dumps([{'id':'history','type':'national','date':'2006-03-03','time':''}])+'; const CLUB_EVENTS=[]; const BEARS_HARU_BIRTHDAYS=[];'
   self.assertEqual(module.notification_events(html,dt.date(2026,11,17))['events'],[])
  def test_executable_source_is_never_evaluated(self):
   with self.assertRaises(ValueError):module.array_literal('const NATIONAL_TEAM_GAMES=[fetch("http://example.invalid")];','NATIONAL_TEAM_GAMES')
  def test_duplicate_ids_fail_instead_of_silently_overwriting(self):
   e={'id':'same','type':'national','date':'2026-11-10','time':'09:30'}
-  with self.assertRaises(ValueError):module.notification_events('const HANDBALL_AUTO=[]; const NATIONAL_TEAM_GAMES='+json.dumps([e,e])+'; const BEARS_HARU_BIRTHDAYS=[];',dt.date(2026,11,17))
+  with self.assertRaises(ValueError):module.notification_events('const HANDBALL_AUTO=[]; const NATIONAL_TEAM_GAMES='+json.dumps([e,e])+'; const CLUB_EVENTS=[]; const BEARS_HARU_BIRTHDAYS=[];',dt.date(2026,11,17))
+ def test_builtin_club_and_ticket_events_are_exported(self):
+  html=ROOT.joinpath('index.html').read_text()
+  source=module.array_literal(html,'CLUB_EVENTS')
+  expected={e['id']:e for e in source if e.get('time')}
+  actual={e['id']:e for e in module.notification_events(html)['events'] if e['type'] in ('club','fan','ticket','broadcast','radio','etc')}
+  self.assertTrue(expected)
+  self.assertEqual(actual,expected)
+  bears={e['date']:e for e in source}
+  self.assertEqual(bears['2026-11-21']['type'],'ticket')
+  self.assertEqual(bears['2026-11-28']['type'],'club')
+  self.assertEqual(bears['2026-11-28']['time'],'11:00')
+ def test_unexpected_type_in_the_club_schedule_fails(self):
+  with self.assertRaises(ValueError):module.notification_events("const HANDBALL_AUTO=[]; const NATIONAL_TEAM_GAMES=[]; const CLUB_EVENTS=[{id:'x',type:'kbo',date:'2026-11-21',time:'11:00'}]; const BEARS_HARU_BIRTHDAYS=[];",dt.date(2026,11,17))
  def test_birthday_events_are_push_ready(self):
   players=[{'n':'가선수','b':'1990-11-20','y':[2026],'id':'1'}]
   events=birthday_events(players,'2026-11-17')

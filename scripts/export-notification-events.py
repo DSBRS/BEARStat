@@ -19,6 +19,15 @@ BIRTHDAY_MONTHS = 14
 # but only one season ahead: older data must not invent a current roster.
 BIRTHDAY_MAX_SEASON_GAP = 1
 
+# Built-in schedule arrays that also feed push delivery, with the schedule types
+# each array is allowed to hold. CLUB_EVENTS carries the club notices (ticket
+# openings, club and fan events) that the calendar already shows.
+SCHEDULE_ARRAYS = (
+    ('HANDBALL_AUTO', ('handball',)),
+    ('NATIONAL_TEAM_GAMES', ('national',)),
+    ('CLUB_EVENTS', ('club', 'fan', 'ticket', 'broadcast', 'radio', 'etc')),
+)
+
 def array_literal(html, name):
     found = re.search(r'\bconst\s+' + re.escape(name) + r'\s*=\s*', html)
     if not found:
@@ -120,7 +129,7 @@ def birthday_events(html, today=None):
 
 def notification_events(html, today=None):
     result, seen, events = [], set(), []
-    for name in ('HANDBALL_AUTO', 'NATIONAL_TEAM_GAMES'):
+    for name, allowed in SCHEDULE_ARRAYS:
         for event in array_literal(html, name):
             if not isinstance(event, dict) or not isinstance(event.get('id'), str):
                 raise ValueError('Schedule needs an event id: ' + name)
@@ -133,7 +142,7 @@ def notification_events(html, today=None):
             if not TIME.fullmatch(event['time']):
                 raise ValueError('Invalid schedule time: ' + event['id'])
             dt.date.fromisoformat(event['date'])
-            if event.get('type') not in ('national', 'handball'):
+            if event.get('type') not in allowed:
                 raise ValueError('Unexpected built-in schedule type: ' + event['id'])
             events.append(event)
     for event in birthday_events(html, today):
@@ -144,7 +153,7 @@ def notification_events(html, today=None):
             raise ValueError('Invalid birthday time: ' + event['id'])
         events.append(event)
     events.sort(key=lambda e: (e['date'], e['time'], e['type'], e['id']))
-    return {'schemaVersion': 1, 'source': 'index.html: HANDBALL_AUTO + NATIONAL_TEAM_GAMES + BEARS_HARU_BIRTHDAYS', 'events': events}
+    return {'schemaVersion': 1, 'source': 'index.html: ' + ' + '.join(name for name, _ in SCHEDULE_ARRAYS) + ' + BEARS_HARU_BIRTHDAYS', 'events': events}
 
 def main():
     parser = argparse.ArgumentParser()
@@ -157,7 +166,7 @@ def main():
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(value, ensure_ascii=False, separators=(',', ':')) + '\n')
-    counts = {t: sum(e['type'] == t for e in value['events']) for t in ('national', 'handball', 'birthday')}
+    counts = {t: sum(e['type'] == t for e in value['events']) for t in ('national', 'handball', 'club', 'fan', 'ticket', 'birthday')}
     print('Exported notification schedules:', counts)
 
 if __name__ == '__main__':
