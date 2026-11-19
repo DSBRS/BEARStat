@@ -860,6 +860,8 @@ html[data-theme="dark"] .home-share-toast::before{background:#202b43;border-colo
 <style id="bearstat-ticket-mark">
 .cal-mark.ticket-mark{width:18px;height:16px;display:inline-grid;place-items:center;color:inherit}
 .cal-mark.ticket-mark svg{display:block;width:17px;height:17px;overflow:visible}
+/* 고른 날짜 칸은 밝은 배경을 유지하므로, 그 칸에서는 진한 남색으로 그린다. */
+.d.sel .cal-mark.ticket-mark{color:#142B5F}
 </style>
 
 <style id="calendar-marker-compact-fix">
