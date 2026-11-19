@@ -38,6 +38,22 @@ for (const feed of feeds) {
   checks++;
 }
 
+// The app, the public feed and the push feed must carry the same notice text.
+for (const id of ['ticket-bearsmeeting-20261121-presale-40', 'ticket-bearsmeeting-20261121-39', 'club-bearsmeeting-20261128-38']) {
+  const builtin = club.find(e => e.id === id).desc;
+  assert.equal(feeds[0].events.find(e => e.id === id).desc, builtin, id + ' 공개 피드 설명이 앱과 같아야 합니다');
+  assert.equal(feeds[1].events.find(e => e.id === id).desc, builtin, id + ' 푸시 피드 설명이 앱과 같아야 합니다');
+  checks++;
+}
+
+// Each seat price sits on its own line, so the box reads as a price list.
+for (const event of [presale, general]) {
+  const rows = event.desc.split('\n').filter(line => /^\S+ \d{1,3},\d{3}원$/.test(line));
+  assert.equal(rows.length, 6, '좌석별 가격이 한 줄씩 있어야 합니다: ' + event.id);
+  assert.ok(!event.desc.includes(' / 익사이팅존'), '가격은 빗금으로 이어 붙이지 않습니다');
+  checks += 2;
+}
+
 // 3. The calendar draws the ticket icon, and no longer the generic dot for a ticket day.
 const markSource = html.slice(html.indexOf('function ticketMarkSVG('), html.indexOf('let calendarCategory='));
 const markCtx = vm.createContext({
@@ -94,6 +110,23 @@ assert.ok(opened.includes('베어스클럽 유료회원 선예매'), '상세에 
 assert.ok(opened.includes('테이블석 20,000'));
 checks += 5;
 
+// 4-1. 날짜·시간·장소와 안내문이 같은 회색 박스 안에 들어가고, 가격은 한 줄에 하나씩.
+const boxStart = opened.indexOf('<div class="ev-info-box">');
+const linesStart = opened.indexOf('<div class="ev-info-lines">');
+const detailEnd = opened.lastIndexOf('</div></div>');
+assert.ok(boxStart > -1, '회색 네모 박스가 있어야 합니다');
+assert.ok(linesStart > boxStart, '안내문은 박스 안, 날짜/시간/장소 아래에 있어야 합니다');
+assert.ok(linesStart < detailEnd, '안내문까지 박스 안에서 끝나야 합니다');
+assert.ok(opened.slice(boxStart, linesStart).includes('<span>장소</span>'), '장소 줄도 같은 박스 안에 있습니다');
+assert.ok(!opened.includes('regular-detail'), '공지형 상세는 경기 상세 박스를 따로 두지 않습니다');
+for (const row of ['테이블석 20,000원', '익사이팅존 18,000원', '블루·오렌지석 15,000원', '레드석 12,000원', '네이비석 10,000원', '외야석 5,000원']) {
+  assert.ok(opened.includes(`<div>${row}</div>`), '가격은 좌석별 한 줄로 나뉘어야 합니다: ' + row);
+}
+assert.ok(opened.includes('<div>수수료 매수당 1,000원</div>'), '수수료 안내도 자기 줄에 섭니다');
+assert.ok(opened.includes('베어스클럽 유료회원 선예매 11/21(토) 10:00 (성인 2매 / 두린이 4매)'), '예매 조건은 첫 줄에 남습니다');
+assert.ok(!/<div>[^<]*\n/.test(opened), '줄바꿈은 화면 줄로 바뀌어야 합니다');
+checks += 12;
+
 // 5. The club event's schedule notice is closed the same way, while game cards keep their own detail.
 openIds.clear();
 
@@ -102,6 +135,28 @@ const clubRow = rowCtx.evRow(clubEvent);
 assert.ok(clubRow.includes('상세 보기 ▾'));
 assert.ok(!clubRow.includes('울랄라세션'));
 checks += 2;
+
+openIds.add(clubEvent.id);
+const clubOpened = rowCtx.evRow(clubEvent);
+assert.ok(clubOpened.indexOf('<div class="ev-info-box">') > -1 && clubOpened.indexOf('<div class="ev-info-box">') < clubOpened.indexOf('<div class="ev-info-lines">'), '곰들의 모임 타임라인도 같은 박스 안에 들어갑니다');
+assert.ok(clubOpened.includes('<div>12:00 선수단 팬 사인회</div>'), '타임라인은 한 줄에 하나씩 섭니다');
+assert.ok(clubOpened.includes('<div>중계: SPOTV2·BEARSTV 유튜브</div>'), '중계 안내도 박스 안에 남습니다');
+checks += 3;
+openIds.clear();
+
+// 5-1. A notice written as one line with 가운뎃점 still splits into rows inside the box.
+openIds.add('legacy-notice');
+const legacyRow = rowCtx.evRow({ id: 'legacy-notice', type: 'etc', date: '2026-11-22', title: '안내', place: '잠실야구장', desc: '첫 안내 · 둘째 안내' });
+assert.ok(legacyRow.includes('<div class="ev-info-box">'));
+assert.ok(legacyRow.includes('<div>첫 안내</div>') && legacyRow.includes('<div>둘째 안내</div>'));
+openIds.clear();
+checks += 3;
+
+// 5-2. The boxed detail keeps its own styling in light and dark mode.
+assert.ok(/\.ev-info-box\{[^}]*background:var\(--chip\)/.test(html), '박스는 회색 배경을 씁니다');
+assert.ok(/\.ev-info-lines\{[^}]*border-top:1px solid var\(--divider\)/.test(html), '박스 안쪽은 가는 선으로 나눕니다');
+assert.ok(/:root\{[^}]*--divider:/.test(html) && /:root\[data-theme="dark"\]\{[^}]*--divider:/.test(html), '어두운 테마에도 구분선 색이 있습니다');
+checks += 3;
 
 const game = { id: 'game-1', type: 'kbo', date: '2026-11-21', time: '14:00', title: '두산 vs 한화', opp: '한화', place: '잠실야구장' };
 const gameRow = rowCtx.evRow(game);
