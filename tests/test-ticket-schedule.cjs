@@ -108,4 +108,10 @@ const gameRow = rowCtx.evRow(game);
 assert.ok(gameRow.includes('경기 상세 ▾'), '경기 카드의 문구는 그대로여야 합니다');
 checks++;
 
+// 6. A one-line greeting such as a birthday stays on the card, as it was before.
+const birthdayRow = rowCtx.evRow({ id: 'birthday-2026-11-21', type: 'birthday', date: '2026-11-21', time: '00:00', title: '이주호 선수 생일', desc: '이주호 선수의 생일입니다!' });
+assert.ok(birthdayRow.includes('이주호 선수의 생일입니다!'), '생일 인사는 카드에 그대로 보여야 합니다');
+assert.ok(!birthdayRow.includes('상세 보기'), '생일 카드에는 펼치기 안내가 붙으면 안 됩니다');
+checks += 2;
+
 console.log(`ticket schedule: ${checks} checks passed`);

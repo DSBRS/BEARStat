@@ -2518,7 +2518,8 @@ function evRow(e){
   else sb=[e.place].filter(Boolean).join(' · ');
   const g=['kbo','edu','futures'].includes(e.type),n=e.type==='national',
     // 티켓·클럽처럼 긴 안내문(desc)이 붙은 일정은 목록에는 요약만 두고, 카드를 눌렀을 때 펼쳐 보여준다.
-    info=!g&&!n&&!!S(e.desc),expandable=g||n||info,o=expandable&&openIds.has(e.id);
+    // 생일 인사처럼 한 줄짜리 문구는 접지 않고 그대로 보여준다.
+    info=['ticket','club','fan','broadcast','radio','etc'].includes(e.type)&&!!S(e.desc),expandable=g||n||info,o=expandable&&openIds.has(e.id);
   return `<div class="ev${expandable?' tap':''}"${expandable?` data-x="${esc(e.id)}" role="button" tabindex="0" aria-expanded="${o?'true':'false'}"`:''}><div class="bd">${showUpcomingScheduleTime(e)?`<div class="event-start-time">${esc(handballInfo?.time||e.time||'--:--')}</div>`:''}<div class="ti"><span class="tag">${TYPES[e.type]||'기타'}</span>${g?esc(gameTitleWithHeader(e)):e.type==='handball'?esc(handballTitle):e.title}${e.demo?' <span class="tag">DEMO</span>':''}</div>${sb?`<div class="sb">${sb}</div>`:''}${rescheduleNoticeHTML(e)}${e.desc&&!info&&!(e.type==='national'&&S(e.score))?`<div class="sb">${e.desc}</div>`:''}${e.emblem?`<img class="championship-emblem" src="${e.emblem}" alt="${esc(e.title)} 엠블럼">`:''}${expandable?`<div class="more">${o?'접기 ▴':g||n?'경기 상세 ▾':'상세 보기 ▾'}</div>`:''}${o?(n?nationalDetail(e):g?detail(e):evInfoDetail(e)):''}</div></div>`;
 }
 function evInfoDetail(e){
