@@ -169,4 +169,56 @@ assert.ok(birthdayRow.includes('이주호 선수의 생일입니다!'), '생일 
 assert.ok(!birthdayRow.includes('상세 보기'), '생일 카드에는 펼치기 안내가 붙으면 안 됩니다');
 checks += 2;
 
+// 7. 한일 드림 플레이어즈 게임과 더 제너레이션 매치의 예매·경기 일정 (2026-11-23 ~ 12-06).
+const upcoming = {
+  'ticket-hanildream-20261123-41': ['2026-11-23', '14:00', 'ticket', '2026 한일 드림 플레이어즈 게임 일반 예매 오픈'],
+  'club-hanildream-20261204-42': ['2026-12-04', '18:30', 'club', '2026 한일 드림 플레이어즈 게임 전야제'],
+  'club-hanildream-20261205-43': ['2026-12-05', '14:00', 'club', '2026 한일 드림 플레이어즈 게임 본경기'],
+  'ticket-generationmatch-20261126-44': ['2026-11-26', '14:00', 'ticket', '2026 더 제너레이션 매치 티켓 예매 오픈'],
+  'club-generationmatch-20261206-45': ['2026-12-06', '18:30', 'club', '2026 더 제너레이션 매치']
+};
+for (const [id, expected] of Object.entries(upcoming)) {
+  const event = club.find(e => e.id === id);
+  assert.ok(event, id + ' 일정이 CLUB_EVENTS에 있어야 합니다');
+  assert.deepEqual([event.date, event.time, event.type, event.title], expected, id + ' 일정 정보가 어긋납니다');
+  assert.equal(event.place || event.ticketSite, event.type === 'ticket' ? 'NOL 티켓' : '서울 고척스카이돔', id + ' 장소가 어긋납니다');
+  checks += 3;
+}
+
+// 같은 일정과 안내문이 공개 피드와 푸시 피드에도 들어갑니다.
+for (const feed of feeds) {
+  for (const id of Object.keys(upcoming)) {
+    const event = feed.events.find(e => e.id === id);
+    assert.ok(event, id + ' 일정이 피드에 있어야 합니다');
+    assert.equal(event.desc, club.find(e => e.id === id).desc, id + ' 안내문이 앱과 같아야 합니다');
+    checks++;
+  }
+}
+
+// 8. 예매일에는 티켓 아이콘, 행사일에는 구단 행사 표시가 달력 칸에 그려집니다.
+const clubMarkCtx = vm.createContext({
+  S: x => (x == null ? '' : String(x)),
+  esc: x => String(x),
+  isCancelled: () => false,
+  calendarIconSVG: () => '<svg></svg>'
+});
+vm.runInContext(markSource, clubMarkCtx);
+for (const [date, mark] of [['2026-11-23', 'ticket-mark'], ['2026-11-26', 'ticket-mark'], ['2026-12-04', 'club-mark'], ['2026-12-05', 'club-mark'], ['2026-12-06', 'club-mark']]) {
+  const markHtml = clubMarkCtx.calendarMarks(club.filter(e => e.date === date), true);
+  assert.ok(markHtml.includes('cal-mark ' + mark), date + ' 달력에 ' + mark + ' 표시가 있어야 합니다');
+  assert.ok(!markHtml.includes('cal-mark circle'), '분류된 일정에는 기타 일정 점을 붙이지 않습니다');
+  checks += 2;
+}
+// 곰들의 모임 날짜는 예전처럼 곰모 아이콘 하나만 씁니다.
+const meetingMarks = clubMarkCtx.calendarMarks(club.filter(e => e.date === '2026-11-28'), true);
+assert.ok(meetingMarks.includes('bears-meeting') && !meetingMarks.includes('club-mark'), '곰모 날짜의 아이콘은 그대로여야 합니다');
+checks++;
+
+// 9. 좌석별 가격은 전야제 11줄·본경기 13줄로 한 줄에 하나씩 섭니다.
+const priceRows = club.find(e => e.id === 'ticket-hanildream-20261123-41').desc.split('\n')
+  .filter(line => /^.+ \d{1,3}(,\d{3})*(~\d{1,3}(,\d{3})*)?원$/.test(line));
+assert.equal(priceRows.length, 24, '좌석별 가격은 모두 자기 줄에 있어야 합니다');
+assert.ok(club.find(e => e.id === 'ticket-hanildream-20261123-41').desc.includes('\n\n[본경기 12/5]'), '전야제와 본경기 가격표는 빈 줄로 나눕니다');
+checks += 2;
+
 console.log(`ticket schedule: ${checks} checks passed`);
