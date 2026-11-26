@@ -16,13 +16,17 @@ permissions:
 concurrency:
   group: bearstat-public-archive
   cancel-in-progress: false
+# build and deploy are separate jobs on purpose. deploy-pages finds the "github-pages"
+# artifact by listing the run's artifacts, and right after an upload inside the same job
+# that listing can still come back empty ("Found 0 artifact(s)"), which failed every run
+# from 2026-11-24 on (actions/deploy-pages#451). A separate job leaves the artifact time
+# to become listable, and the wait plus the single retry below cover the slow tail.
 jobs:
-  archive:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      export_outcome: ${{ steps.export.outcome }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,10 +66,28 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
+    steps:
+      - name: Let the artifact listing catch up with the build job
+        run: sleep 20
       - name: Deploy saved public records even when Supabase is restricted
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+      - name: Wait for the artifact listing before a second attempt
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 45
+      - name: Deploy again once the artifact listing catches up
+        id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
       - name: Report refresh failure without deleting the last good archive
-        if: steps.export.outcome != 'success'
+        if: needs.build.outputs.export_outcome != 'success'
         run: |
           echo '::warning::Supabase refresh failed; the last saved public archive was deployed.'
